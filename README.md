@@ -25,7 +25,11 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 
 - ✅ **Landing Page fonctionnelle** avec calculateur de prix
 - ✅ **Base de données D1** initialisée avec schéma complet
-- ✅ **API REST** pour users, trips, packages
+- ✅ **API REST** complète pour users, trips, packages
+- ✅ **Système d'authentification** avec KYC (Email + Téléphone + ID + Selfie)
+- ✅ **Base de données aéroports** (21 aéroports France + Maroc)
+- ✅ **CRUD Trajets** : Publier/Modifier/Supprimer des trajets
+- ✅ **CRUD Colis** : Publier/Modifier/Supprimer des colis
 - 🔄 Réaliser **50 transactions** complètes
 - 🔄 Acquérir **200+ utilisateurs** qualifiés
 - 🔄 Valider le modèle économique (commission 12%)
@@ -37,9 +41,41 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 ### **Production (Sandbox)**
 - **Application**: https://3000-issx87j5mnvkvdy3o3xsd-8f57ffe2.sandbox.novita.ai
 - **API Health**: https://3000-issx87j5mnvkvdy3o3xsd-8f57ffe2.sandbox.novita.ai/api/health
-- **API Users**: https://3000-issx87j5mnvkvdy3o3xsd-8f57ffe2.sandbox.novita.ai/api/users
-- **API Trips**: https://3000-issx87j5mnvkvdy3o3xsd-8f57ffe2.sandbox.novita.ai/api/trips
-- **API Packages**: https://3000-issx87j5mnvkvdy3o3xsd-8f57ffe2.sandbox.novita.ai/api/packages
+
+### **Pages publiques**
+- **Landing Page** : `/`
+- **Inscription** : `/signup`
+- **Connexion** : `/login`
+- **Vérification KYC** : `/verify-profile`
+
+### **Espace Voyageur**
+- **Publier un trajet** : `/voyageur/publier-trajet`
+- **Mes trajets** : `/voyageur/mes-trajets` (à implémenter)
+
+### **Espace Expéditeur**
+- **Publier un colis** : `/expediteur/publier-colis`
+- **Mes colis** : `/expediteur/mes-colis` (à implémenter)
+
+### **APIs principales**
+- **Users**: `/api/users`
+- **Trips (CRUD)**: 
+  - `GET /api/trips` - Liste des trajets
+  - `POST /api/trips` - Créer un trajet
+  - `PUT /api/trips/:id` - Modifier un trajet
+  - `DELETE /api/trips/:id` - Supprimer un trajet
+  - `GET /api/users/:user_id/trips` - Trajets d'un utilisateur
+- **Packages (CRUD)**:
+  - `GET /api/packages` - Liste des colis
+  - `POST /api/packages` - Créer un colis
+  - `PUT /api/packages/:id` - Modifier un colis
+  - `DELETE /api/packages/:id` - Supprimer un colis
+  - `GET /api/users/:user_id/packages` - Colis d'un utilisateur
+- **Aéroports**:
+  - `GET /api/airports/search?q=Paris` - Recherche autocomplete
+  - `GET /api/airports?country=France` - Liste des aéroports
+  - `GET /api/airports/:iata` - Détail d'un aéroport
+- **Vols**:
+  - `GET /api/flights/search?from=CDG&to=CMN&date=2025-12-25` - Recherche de vols
 
 ---
 
@@ -75,20 +111,29 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 
 #### `users` - Utilisateurs
 - Profils double-rôle (Voyageur + Expéditeur)
-- KYC (vérification d'identité)
-- Stats: rating, reviews_count, total_trips, total_packages
+- KYC (vérification d'identité) : `kyc_status`, `kyc_document_url`, `kyc_selfie_url`
+- Stats: `rating`, `reviews_count`, `total_trips`, `total_packages`
 - OAuth: Google, Facebook
 
 #### `trips` - Trajets des voyageurs
-- Itinéraire: departure_city → arrival_city
-- Capacité: available_weight, price_per_kg
-- Statuts: ACTIVE, FULL, COMPLETED, CANCELLED
+- **Itinéraire**: `departure_city`, `departure_airport` (IATA) → `arrival_city`, `arrival_airport` (IATA)
+- **Vol**: `flight_number`, `departure_date`, `flexible_dates`
+- **Capacité**: `available_weight`, `price_per_kg`
+- **Statuts**: ACTIVE, FULL, COMPLETED, CANCELLED
 
 #### `packages` - Colis des expéditeurs
-- Description: title, content_declaration
-- Dimensions: weight, length, width, height
-- Budget et photos
-- Statuts: PUBLISHED, RESERVED, IN_TRANSIT, DELIVERED
+- **Description**: `title`, `content_declaration`, `description`
+- **Dimensions**: `weight`, `dimensions` (ex: "40x30x25 cm")
+- **Budget** et **photos** (JSON array)
+- **Itinéraire**: `departure_city` → `arrival_city`
+- **Dates**: `preferred_date`, `flexible_dates`
+- **Statuts**: PUBLISHED, RESERVED, IN_TRANSIT, DELIVERED
+
+#### `airports` - Aéroports France & Maroc (21 aéroports)
+- **France** (11): CDG, ORY, LYS, MRS, NCE, TLS, BVA, BOD, NTE, SXB, MPL
+- **Maroc** (10): CMN, RAK, AGA, FEZ, TNG, OUD, RBA, ESU, NDR, TTU
+- Champs: `iata_code`, `icao_code`, `name`, `city`, `country`, `latitude`, `longitude`, `timezone`
+- Index optimisés pour recherche rapide par ville, code IATA, nom
 
 #### `transactions` - Transactions
 - Liens: package_id, trip_id, shipper_id, traveler_id
@@ -106,51 +151,125 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 
 ## 🚀 Fonctionnalités actuelles
 
-### ✅ **Implémentées**
+### ✅ **Phase 1 : MVP Core (100%)**
 
 #### 1. Landing Page
 - Hero section avec double CTA (Je voyage / J'envoie un colis)
-- **Calculateur de prix** interactif
+- **Calculateur de prix** interactif (poids → prix estimé)
 - Section "Comment ça marche" (3 étapes)
 - Section Sécurité (KYC, Escrow, Reviews, Liste noire)
 - Stats du marché (4M+ voyageurs, 70% économies, 100% sécurisé)
-- Design responsive mobile-first
+- Design responsive mobile-first avec TailwindCSS
 
 #### 2. Base de données D1
-- Schéma complet avec 7 tables
-- Indexes optimisés pour performance
-- Foreign keys et contraintes
-- Données de test (seed data)
+- Schéma complet avec 7 tables + table `airports`
+- Indexes optimisés pour performance (email, IATA, ville, statut)
+- Foreign keys et contraintes d'intégrité
+- Données de test (seed data) avec 21 aéroports réels
 
-#### 3. API REST
-- `GET /api/health` - Health check
-- `GET /api/users` - Liste des utilisateurs
-- `GET /api/trips` - Liste des trajets actifs (avec profil voyageur)
-- `GET /api/packages` - Liste des colis publiés (avec profil expéditeur)
-- `POST /api/db/init` - Initialisation DB (dev only)
+### ✅ **Phase 2 : Authentification & KYC (95%)**
 
-#### 3. Authentification & KYC ✅ **NOUVEAU**
-- `POST /api/auth/signup` - Inscription utilisateur
-- `POST /api/auth/login` - Connexion utilisateur
-- `POST /api/auth/send-verification-email` - Envoyer email de vérification
-- `POST /api/auth/send-sms-verification` - Envoyer SMS de vérification
-- `POST /api/auth/upload-kyc` - Upload photo KYC (selfie/document)
+#### 3. Système d'inscription & connexion
+- **Page d'inscription** (`/signup`) :
+  - Formulaire : Nom, Email, Téléphone, Mot de passe
+  - Validation client + serveur en temps réel
+  - Acceptation CGU obligatoire
+  - Boutons OAuth Google/Facebook (UI prête, APIs à connecter)
+  - Design élégant et responsive
 
-#### 4. Pages Frontend
-- `GET /` - Landing page complète
-- `GET /signup` - Page d'inscription ✅ **NOUVEAU**
-- `GET /login` - Page de connexion ✅ **NOUVEAU**
-- `GET /verify-profile` - Page de vérification KYC ✅ **NOUVEAU**
+- **Page de connexion** (`/login`) :
+  - Formulaire Email/Password
+  - Lien "Mot de passe oublié"
+  - Redirection automatique selon `kyc_status`
 
-### 🔄 **En développement**
+#### 4. Vérification KYC en 3 étapes (`/verify-profile`)
+- **Étape 1 : Email** - Lien envoyé par email (à connecter avec Resend/SendGrid)
+- **Étape 2 : Téléphone** - Code SMS 6 chiffres (à connecter avec Twilio)
+- **Étape 3 : Identité + Selfie** :
+  - Upload selfie (webcam ou fichier)
+  - Upload pièce d'identité (CIN/Passeport/Titre de séjour)
+  - Comparaison faciale automatique (à intégrer avec Cloudflare AI)
+  - Upload vers Cloudflare R2 (à implémenter)
+- Design avec progression visuelle, badges de statut, glassmorphism
 
-- ~~Système d'authentification (Email, Google, Facebook)~~ ✅ **COMPLÉTÉ**
-- CRUD complet Trajets (création, édition, suppression)
-- CRUD complet Colis
-- Système de matching intelligent
-- Intégration Stripe Connect
-- Chat temps réel
-- Système de notation et avis
+### ✅ **Phase 3 : Aéroports & Vols (100%)**
+
+#### 5. Base de données aéroports
+- **21 aéroports** : 11 France + 10 Maroc
+- Table `airports` avec codes IATA/ICAO, coordonnées GPS, fuseaux horaires
+- Index optimisés pour recherche rapide
+
+#### 6. APIs aéroports & vols
+- **Recherche autocomplete** : `GET /api/airports/search?q=Paris`
+  - Tri intelligent par pertinence (ville, code IATA, nom)
+  - Filtrage par pays (France/Maroc)
+  - Limite 10 résultats
+- **Horaires de vols simulés** : `GET /api/flights/search?from=CDG&to=CMN&date=2025-12-25`
+  - Données mockées pour France ↔ Maroc
+  - Intégration AviationStack API prévue pour Phase 4
+
+### ✅ **Phase 4 : CRUD Trajets & Colis (100%)**
+
+#### 7. Page "Publier un trajet" (`/voyageur/publier-trajet`)
+- **Autocomplete aéroports** avec recherche en temps réel
+- **Importation numéro de vol** : Auto-remplissage de l'heure de départ
+- **Calcul gains automatique** : Poids × Prix/kg - Commission 12%
+- **Formulaire complet** :
+  - Itinéraire : Départ (aéroport IATA) → Arrivée (aéroport IATA)
+  - Date/heure de départ + numéro de vol (optionnel)
+  - Dates flexibles (±2 jours)
+  - Poids disponible (1-30 kg) + Prix par kg (5-20€)
+  - Description optionnelle
+- **Validations** :
+  - KYC VERIFIED obligatoire
+  - Champs requis + limites de poids/prix
+  - Feedback visuel en temps réel
+
+#### 8. Page "Publier un colis" (`/expediteur/publier-colis`)
+- **Autocomplete villes** basé sur les aéroports
+- **Upload photos** : Jusqu'à 5 photos, max 5MB chacune (preview local, upload R2 à implémenter)
+- **Calcul coût estimé** : Poids × Prix moyen/kg
+- **Formulaire complet** :
+  - Titre + Description
+  - **Déclaration du contenu** (obligatoire, avertissement produits interdits)
+  - Photos du colis (recommandé)
+  - Dimensions : Poids (0.1-30 kg) + Dimensions optionnelles
+  - Itinéraire : Départ → Arrivée
+  - Date préférée + Dates flexibles
+  - Budget maximum
+- **Validations** :
+  - KYC VERIFIED obligatoire
+  - Déclaration contenu obligatoire
+  - Feedback visuel
+
+#### 9. APIs CRUD complètes
+- **Trajets** :
+  - `POST /api/trips` - Créer (vérifie KYC, incrémente `total_trips`)
+  - `PUT /api/trips/:id` - Modifier (vérifie ownership)
+  - `DELETE /api/trips/:id` - Supprimer (décrémente `total_trips`)
+  - `GET /api/users/:user_id/trips` - Trajets d'un utilisateur (filtre par statut)
+- **Colis** :
+  - `POST /api/packages` - Créer (vérifie KYC, incrémente `total_packages`)
+  - `PUT /api/packages/:id` - Modifier (vérifie ownership)
+  - `DELETE /api/packages/:id` - Supprimer (décrémente `total_packages`)
+  - `GET /api/users/:user_id/packages` - Colis d'un utilisateur (filtre par statut)
+- **Réponses enrichies** : Inclut nom/avatar/rating/reviews du voyageur/expéditeur
+
+### 🔄 **En développement - Phase 5**
+
+- Dashboards Voyageur/Expéditeur (`/voyageur/mes-trajets`, `/expediteur/mes-colis`)
+- Système de matching intelligent (recherche + filtres + suggestions)
+- Négociation & réservation de colis
+- Intégration Stripe Connect avec Escrow
+- Chat temps réel (voyageur ↔ expéditeur)
+- Système de notation et avis (after delivery)
+- Finalisation OAuth (Google, Facebook)
+- Hachage bcrypt des mots de passe
+- Implémentation JWT pour sessions
+- Intégration Cloudflare AI (comparaison faciale)
+- Intégration Twilio (SMS réels)
+- Intégration Resend/SendGrid (Emails réels)
+- Upload effectif vers Cloudflare R2 (photos KYC + colis)
 
 ---
 
@@ -159,11 +278,15 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 ```
 amanah-go/
 ├── src/
-│   ├── index.tsx              # Application Hono principale
-│   └── renderer.tsx           # Renderer JSX
+│   ├── index.tsx              # Application Hono principale (2000+ lignes)
+│   └── renderer.tsx           # Renderer JSX (si nécessaire)
 ├── migrations/
-│   └── 0001_initial_schema.sql # Schéma DB initial
+│   ├── 0001_initial_schema.sql     # Schéma DB initial (users, trips, packages, transactions, etc.)
+│   └── 0002_airports_flights.sql   # Schéma aéroports + cache vols
 ├── public/
+│   └── static/
+│       ├── publish-trip.js         # Logic page publier trajet
+│       └── publish-package.js      # Logic page publier colis
 │   └── static/               # Assets statiques (future)
 ├── dist/                     # Build output (généré)
 │   ├── _worker.js           # Worker Cloudflare compilé
