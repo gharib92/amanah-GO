@@ -2004,6 +2004,809 @@ app.get('/expediteur/publier-colis', (c) => {
   `)
 })
 
+// Create trip
+app.post('/api/trips', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const { 
+      user_id, 
+      departure_city, 
+      departure_airport,
+      arrival_city,
+      arrival_airport, 
+      departure_date, 
+      available_weight, 
+      price_per_kg,
+      flight_number,
+      notes 
+    } = await c.req.json()
+    
+    // Validation
+    if (!user_id || !departure_city || !arrival_city || !departure_date || !available_weight || !price_per_kg) {
+      return c.json({ 
+        success: false, 
+        error: 'Tous les champs obligatoires doivent être remplis' 
+      }, 400)
+    }
+    
+    if (available_weight <= 0 || available_weight > 50) {
+      return c.json({ 
+        success: false, 
+        error: 'Le poids disponible doit être entre 1 et 50 kg' 
+      }, 400)
+    }
+    
+    if (price_per_kg <= 0 || price_per_kg > 50) {
+      return c.json({ 
+        success: false, 
+        error: 'Le prix par kg doit être entre 1€ et 50€' 
+      }, 400)
+    }
+    
+    // Vérifier que l'utilisateur a bien un KYC vérifié
+    const user = await DB.prepare('SELECT kyc_status FROM users WHERE id = ?').bind(user_id).first()
+    if (!user || user.kyc_status !== 'VERIFIED') {
+      return c.json({ 
+        success: false, 
+        error: 'Vous devez compléter votre vérification KYC avant de publier un trajet' 
+      }, 403)
+    }
+    
+    // Créer le trajet
+    const tripId = crypto.randomUUID()
+    await DB.prepare(`
+      INSERT INTO trips (
+        id, user_id, departure_city, departure_airport, arrival_city, arrival_airport,
+        departure_date, available_weight, price_per_kg, flight_number, notes, 
+        status, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', datetime('now'))
+    `).bind(
+      tripId, user_id, departure_city, departure_airport || null, 
+      arrival_city, arrival_airport || null, departure_date, 
+      available_weight, price_per_kg, flight_number || null, notes || null
+    ).run()
+    
+    return c.json({ 
+      success: true, 
+      trip_id: tripId,
+      message: 'Trajet publié avec succès !' 
+    }, 201)
+  } catch (error) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Get user's trips
+app.get('/api/trips/user/:userId', async (c) => {
+  const { DB } = c.env
+  const userId = c.req.param('userId')
+  
+  try {
+    const { results } = await DB.prepare(`
+      SELECT * FROM trips
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `).bind(userId).all()
+    
+    return c.json({ success: true, trips: results })
+  } catch (error) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Get single trip by ID
+app.get('/api/trips/:id', async (c) => {
+  const { DB } = c.env
+  const tripId = c.req.param('id')
+  
+  try {
+    const trip = await DB.prepare(`
+      SELECT 
+        t.*,
+        u.name as traveler_name,
+        u.email as traveler_email,
+        u.phone as traveler_phone,
+        u.rating as traveler_rating,
+        u.reviews_count,
+        u.kyc_status
+      FROM trips t
+      JOIN users u ON t.user_id = u.id
+      WHERE t.id = ?
+    `).bind(tripId).first()
+    
+    if (!trip) {
+      return c.json({ success: false, error: 'Trajet non trouvé' }, 404)
+    }
+    
+    return c.json({ success: true, trip })
+  } catch (error) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Update trip
+app.put('/api/trips/:id', async (c) => {
+  const { DB } = c.env
+  const tripId = c.req.param('id')
+  
+  try {
+    const { available_weight, price_per_kg, notes, status } = await c.req.json()
+    
+    // Vérifier que le trajet existe et appartient à l'utilisateur
+    const trip = await DB.prepare('SELECT user_id FROM trips WHERE id = ?').bind(tripId).first()
+    if (!trip) {
+      return c.json({ success: false, error: 'Trajet non trouvé' }, 404)
+    }
+    
+    // TODO: Vérifier que c'est bien le propriétaire (via JWT)
+    
+    // Mise à jour
+    await DB.prepare(`
+      UPDATE trips
+      SET available_weight = COALESCE(?, available_weight),
+          price_per_kg = COALESCE(?, price_per_kg),
+          notes = COALESCE(?, notes),
+          status = COALESCE(?, status),
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(available_weight, price_per_kg, notes, status, tripId).run()
+    
+    return c.json({ success: true, message: 'Trajet mis à jour' })
+  } catch (error) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Delete trip (soft delete)
+app.delete('/api/trips/:id', async (c) => {
+  const { DB } = c.env
+  const tripId = c.req.param('id')
+  
+  try {
+    // Vérifier que le trajet existe
+    const trip = await DB.prepare('SELECT id FROM trips WHERE id = ?').bind(tripId).first()
+    if (!trip) {
+      return c.json({ success: false, error: 'Trajet non trouvé' }, 404)
+    }
+    
+    // TODO: Vérifier que c'est bien le propriétaire (via JWT)
+    
+    // Soft delete (changer le status à CANCELLED)
+    await DB.prepare(`
+      UPDATE trips
+      SET status = 'CANCELLED', updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(tripId).run()
+    
+    return c.json({ success: true, message: 'Trajet annulé' })
+  } catch (error) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// ==========================================
+// PACKAGES API ROUTES (CRUD)
+// ==========================================
+
+// Create package
+app.post('/api/packages', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const { 
+      user_id, 
+      title,
+      description,
+      departure_city, 
+      arrival_city, 
+      preferred_date, 
+      weight,
+      dimensions,
+      budget,
+      photos,
+      is_fragile,
+      notes 
+    } = await c.req.json()
+    
+    // Validation
+    if (!user_id || !title || !departure_city || !arrival_city || !weight || !budget) {
+      return c.json({ 
+        success: false, 
+        error: 'Tous les champs obligatoires doivent être remplis' 
+      }, 400)
+    }
+    
+    if (weight <= 0 || weight > 30) {
+      return c.json({ 
+        success: false, 
+        error: 'Le poids doit être entre 0.1 et 30 kg' 
+      }, 400)
+    }
+    
+    if (budget <= 0 || budget > 1000) {
+      return c.json({ 
+        success: false, 
+        error: 'Le budget doit être entre 1€ et 1000€' 
+      }, 400)
+    }
+    
+    // Vérifier que l'utilisateur a bien un KYC vérifié
+    const user = await DB.prepare('SELECT kyc_status FROM users WHERE id = ?').bind(user_id).first()
+    if (!user || user.kyc_status !== 'VERIFIED') {
+      return c.json({ 
+        success: false, 
+        error: 'Vous devez compléter votre vérification KYC avant de publier un colis' 
+      }, 403)
+    }
+    
+    // Créer le colis
+    const packageId = crypto.randomUUID()
+    await DB.prepare(`
+      INSERT INTO packages (
+        id, user_id, title, description, departure_city, arrival_city,
+        preferred_date, weight, dimensions, budget, photos, is_fragile,
+        notes, status, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PUBLISHED', datetime('now'))
+    `).bind(
+      packageId, user_id, title, description || null, departure_city, 
+      arrival_city, preferred_date || null, weight, dimensions || null, 
+      budget, JSON.stringify(photos || []), is_fragile ? 1 : 0, notes || null
+    ).run()
+    
+    return c.json({ 
+      success: true, 
+      package_id: packageId,
+      message: 'Colis publié avec succès !' 
+    }, 201)
+  } catch (error) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Get user's packages
+app.get('/api/packages/user/:userId', async (c) => {
+  const { DB } = c.env
+  const userId = c.req.param('userId')
+  
+  try {
+    const { results } = await DB.prepare(`
+      SELECT * FROM packages
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `).bind(userId).all()
+    
+    return c.json({ success: true, packages: results })
+  } catch (error) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Get single package by ID
+app.get('/api/packages/:id', async (c) => {
+  const { DB } = c.env
+  const packageId = c.req.param('id')
+  
+  try {
+    const pkg = await DB.prepare(`
+      SELECT 
+        p.*,
+        u.name as shipper_name,
+        u.email as shipper_email,
+        u.phone as shipper_phone,
+        u.rating as shipper_rating,
+        u.reviews_count,
+        u.kyc_status
+      FROM packages p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.id = ?
+    `).bind(packageId).first()
+    
+    if (!pkg) {
+      return c.json({ success: false, error: 'Colis non trouvé' }, 404)
+    }
+    
+    return c.json({ success: true, package: pkg })
+  } catch (error) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Update package
+app.put('/api/packages/:id', async (c) => {
+  const { DB } = c.env
+  const packageId = c.req.param('id')
+  
+  try {
+    const { budget, preferred_date, notes, status } = await c.req.json()
+    
+    // Vérifier que le colis existe
+    const pkg = await DB.prepare('SELECT user_id FROM packages WHERE id = ?').bind(packageId).first()
+    if (!pkg) {
+      return c.json({ success: false, error: 'Colis non trouvé' }, 404)
+    }
+    
+    // TODO: Vérifier que c'est bien le propriétaire (via JWT)
+    
+    // Mise à jour
+    await DB.prepare(`
+      UPDATE packages
+      SET budget = COALESCE(?, budget),
+          preferred_date = COALESCE(?, preferred_date),
+          notes = COALESCE(?, notes),
+          status = COALESCE(?, status),
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(budget, preferred_date, notes, status, packageId).run()
+    
+    return c.json({ success: true, message: 'Colis mis à jour' })
+  } catch (error) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Delete package (soft delete)
+app.delete('/api/packages/:id', async (c) => {
+  const { DB } = c.env
+  const packageId = c.req.param('id')
+  
+  try {
+    // Vérifier que le colis existe
+    const pkg = await DB.prepare('SELECT id FROM packages WHERE id = ?').bind(packageId).first()
+    if (!pkg) {
+      return c.json({ success: false, error: 'Colis non trouvé' }, 404)
+    }
+    
+    // TODO: Vérifier que c'est bien le propriétaire (via JWT)
+    
+    // Soft delete
+    await DB.prepare(`
+      UPDATE packages
+      SET status = 'CANCELLED', updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(packageId).run()
+    
+    return c.json({ success: true, message: 'Colis annulé' })
+  } catch (error) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// ==========================================
+// DATABASE INITIALIZATION (DEV ONLY)
+// ==========================================
+app.post('/api/db/reset', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    // Drop existing tables
+    await DB.prepare(`DROP TABLE IF EXISTS trips`).run()
+    await DB.prepare(`DROP TABLE IF EXISTS packages`).run()
+    await DB.prepare(`DROP TABLE IF EXISTS users`).run()
+    
+    return c.json({ 
+      success: true, 
+      message: 'Tables dropped successfully. Run /api/db/init to recreate.'
+    })
+    
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+app.post('/api/db/init', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    // Create tables
+    await DB.prepare(`
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT,
+  name TEXT NOT NULL,
+  phone TEXT,
+  avatar_url TEXT,
+  kyc_status TEXT DEFAULT 'PENDING',
+  kyc_document_url TEXT,
+  kyc_selfie_url TEXT,
+  kyc_verified_at DATETIME,
+  total_trips INTEGER DEFAULT 0,
+  total_packages INTEGER DEFAULT 0,
+  rating REAL DEFAULT 0.0,
+  reviews_count INTEGER DEFAULT 0,
+  google_id TEXT UNIQUE,
+  facebook_id TEXT UNIQUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_login DATETIME
+)`).run()
+
+    await DB.prepare(`
+CREATE TABLE IF NOT EXISTS trips (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  user_id TEXT NOT NULL,
+  departure_city TEXT NOT NULL,
+  departure_country TEXT DEFAULT 'France',
+  departure_airport TEXT,
+  arrival_city TEXT NOT NULL,
+  arrival_country TEXT DEFAULT 'Maroc',
+  arrival_airport TEXT,
+  departure_date DATETIME NOT NULL,
+  flight_number TEXT,
+  available_weight REAL NOT NULL,
+  price_per_kg REAL NOT NULL,
+  description TEXT,
+  flexible_dates INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'ACTIVE',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+)`).run()
+
+    await DB.prepare(`
+CREATE TABLE IF NOT EXISTS packages (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  user_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  content_declaration TEXT NOT NULL,
+  weight REAL NOT NULL,
+  dimensions TEXT,
+  budget REAL NOT NULL,
+  photos TEXT DEFAULT '[]',
+  departure_city TEXT NOT NULL,
+  departure_country TEXT DEFAULT 'France',
+  arrival_city TEXT NOT NULL,
+  arrival_country TEXT DEFAULT 'Maroc',
+  preferred_date DATETIME,
+  flexible_dates INTEGER DEFAULT 1,
+  status TEXT DEFAULT 'PUBLISHED',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+)`).run()
+
+    // Create indexes
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)').run()
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_trips_status ON trips(status)').run()
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_packages_status ON packages(status)').run()
+    
+    // Seed data - Users
+    await DB.prepare(`
+INSERT OR IGNORE INTO users (id, email, name, phone, kyc_status, rating, reviews_count) VALUES 
+  ('user001', 'mohammed@example.com', 'Mohammed Alami', '+33612345678', 'VERIFIED', 4.8, 12),
+  ('user002', 'fatima@example.com', 'Fatima Benali', '+33623456789', 'VERIFIED', 4.9, 8),
+  ('user003', 'youssef@example.com', 'Youssef Idrissi', '+33634567890', 'VERIFIED', 4.5, 5)
+`).run()
+
+    // Seed data - Trips
+    await DB.prepare(`
+INSERT OR IGNORE INTO trips (id, user_id, departure_city, arrival_city, departure_date, available_weight, price_per_kg, status) VALUES 
+  ('trip001', 'user001', 'Paris', 'Casablanca', datetime('now', '+5 days'), 15.0, 8.0, 'ACTIVE'),
+  ('trip002', 'user003', 'Lyon', 'Marrakech', datetime('now', '+10 days'), 20.0, 7.5, 'ACTIVE')
+`).run()
+
+    // Seed data - Packages
+    await DB.prepare(`
+INSERT OR IGNORE INTO packages (id, user_id, title, description, content_declaration, weight, budget, departure_city, arrival_city, status) VALUES 
+  ('pkg001', 'user002', 'Cadeaux pour famille', 'Vêtements et jouets', 'Vêtements, jouets', 8.0, 70.0, 'Paris', 'Casablanca', 'PUBLISHED')
+`).run()
+    
+    return c.json({ 
+      success: true, 
+      message: 'Database initialized successfully with tables and seed data'
+    })
+    
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// ==========================================
+// AIRPORTS & FLIGHTS APIs
+// ==========================================
+
+// Initialize airports database
+app.post('/api/airports/init', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    // Create airports table
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS airports (
+        id TEXT PRIMARY KEY,
+        iata_code TEXT UNIQUE NOT NULL,
+        icao_code TEXT,
+        name TEXT NOT NULL,
+        city TEXT NOT NULL,
+        country TEXT NOT NULL,
+        latitude REAL,
+        longitude REAL,
+        timezone TEXT,
+        active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    
+    // Create indexes
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_airports_iata ON airports(iata_code)`).run()
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_airports_city ON airports(city)`).run()
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_airports_country ON airports(country)`).run()
+    
+    // Insert France airports
+    const franceAirports = [
+      ['cdg', 'CDG', 'LFPG', 'Aéroport Charles de Gaulle', 'Paris', 'France', 49.0097, 2.5479, 'Europe/Paris'],
+      ['ory', 'ORY', 'LFPO', "Aéroport d'Orly", 'Paris', 'France', 48.7233, 2.3794, 'Europe/Paris'],
+      ['lys', 'LYS', 'LFLL', 'Aéroport Lyon-Saint Exupéry', 'Lyon', 'France', 45.7256, 5.0811, 'Europe/Paris'],
+      ['mrs', 'MRS', 'LFML', 'Aéroport Marseille-Provence', 'Marseille', 'France', 43.4393, 5.2214, 'Europe/Paris'],
+      ['nce', 'NCE', 'LFMN', "Aéroport Nice Côte d'Azur", 'Nice', 'France', 43.6584, 7.2159, 'Europe/Paris'],
+      ['tls', 'TLS', 'LFBO', 'Aéroport Toulouse-Blagnac', 'Toulouse', 'France', 43.6290, 1.3638, 'Europe/Paris'],
+      ['bva', 'BVA', 'LFOB', 'Aéroport Paris-Beauvais', 'Beauvais', 'France', 49.4544, 2.1128, 'Europe/Paris'],
+      ['bod', 'BOD', 'LFBD', 'Aéroport de Bordeaux-Mérignac', 'Bordeaux', 'France', 44.8283, -0.7153, 'Europe/Paris'],
+      ['nte', 'NTE', 'LFRS', 'Aéroport Nantes Atlantique', 'Nantes', 'France', 47.1532, -1.6108, 'Europe/Paris'],
+      ['sxb', 'SXB', 'LFST', 'Aéroport de Strasbourg', 'Strasbourg', 'France', 48.5383, 7.6283, 'Europe/Paris'],
+      ['mpl', 'MPL', 'LFMT', 'Aéroport Montpellier-Méditerranée', 'Montpellier', 'France', 43.5762, 3.9630, 'Europe/Paris']
+    ]
+    
+    for (const airport of franceAirports) {
+      await DB.prepare(`
+        INSERT OR IGNORE INTO airports (id, iata_code, icao_code, name, city, country, latitude, longitude, timezone)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(...airport).run()
+    }
+    
+    // Insert Morocco airports
+    const moroccoAirports = [
+      ['cmn', 'CMN', 'GMMN', 'Aéroport Mohammed V', 'Casablanca', 'Maroc', 33.3675, -7.5898, 'Africa/Casablanca'],
+      ['rak', 'RAK', 'GMMX', 'Aéroport Marrakech-Ménara', 'Marrakech', 'Maroc', 31.6069, -8.0363, 'Africa/Casablanca'],
+      ['aga', 'AGA', 'GMAD', "Aéroport d'Agadir-Al Massira", 'Agadir', 'Maroc', 30.3250, -9.4131, 'Africa/Casablanca'],
+      ['fez', 'FEZ', 'GMFF', 'Aéroport de Fès-Saïss', 'Fès', 'Maroc', 33.9273, -4.9780, 'Africa/Casablanca'],
+      ['tng', 'TNG', 'GMTT', 'Aéroport de Tanger-Ibn Battouta', 'Tanger', 'Maroc', 35.7269, -5.9169, 'Africa/Casablanca'],
+      ['oud', 'OUD', 'GMFO', "Aéroport d'Oujda-Angads", 'Oujda', 'Maroc', 34.7872, -1.9240, 'Africa/Casablanca'],
+      ['rba', 'RBA', 'GMME', 'Aéroport de Rabat-Salé', 'Rabat', 'Maroc', 34.0515, -6.7515, 'Africa/Casablanca'],
+      ['esu', 'ESU', 'GMMI', "Aéroport d'Essaouira-Mogador", 'Essaouira', 'Maroc', 31.3975, -9.6816, 'Africa/Casablanca'],
+      ['ndr', 'NDR', 'GMMW', 'Aéroport de Nador-El Aroui', 'Nador', 'Maroc', 34.9888, -3.0282, 'Africa/Casablanca'],
+      ['ttu', 'TTU', 'GMTT', 'Aéroport de Tétouan-Sania Ramel', 'Tétouan', 'Maroc', 35.5943, -5.3202, 'Africa/Casablanca']
+    ]
+    
+    for (const airport of moroccoAirports) {
+      await DB.prepare(`
+        INSERT OR IGNORE INTO airports (id, iata_code, icao_code, name, city, country, latitude, longitude, timezone)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(...airport).run()
+    }
+    
+    // Create flight cache table
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS flight_cache (
+        id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+        flight_number TEXT NOT NULL,
+        airline_name TEXT,
+        airline_iata TEXT,
+        departure_airport TEXT NOT NULL,
+        arrival_airport TEXT NOT NULL,
+        departure_time DATETIME NOT NULL,
+        arrival_time DATETIME NOT NULL,
+        flight_status TEXT,
+        aircraft_type TEXT,
+        cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME
+      )
+    `).run()
+    
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_flight_cache_number ON flight_cache(flight_number)`).run()
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_flight_cache_route ON flight_cache(departure_airport, arrival_airport)`).run()
+    
+    return c.json({ 
+      success: true, 
+      message: 'Airports database initialized successfully',
+      stats: {
+        france_airports: franceAirports.length,
+        morocco_airports: moroccoAirports.length,
+        total: franceAirports.length + moroccoAirports.length
+      }
+    })
+    
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Search airports (autocomplete)
+app.get('/api/airports/search', async (c) => {
+  const { DB } = c.env
+  const query = c.req.query('q') || ''
+  const country = c.req.query('country')
+  
+  try {
+    let sql = `
+      SELECT id, iata_code, icao_code, name, city, country, latitude, longitude
+      FROM airports
+      WHERE active = 1
+        AND (
+          city LIKE ? 
+          OR name LIKE ? 
+          OR iata_code LIKE ?
+        )
+    `
+    
+    const searchTerm = `%${query}%`
+    const params = [searchTerm, searchTerm, searchTerm.toUpperCase()]
+    
+    if (country) {
+      sql += ` AND country = ?`
+      params.push(country)
+    }
+    
+    sql += ` ORDER BY 
+      CASE 
+        WHEN city LIKE ? THEN 1
+        WHEN iata_code LIKE ? THEN 2
+        ELSE 3
+      END,
+      city ASC
+      LIMIT 10
+    `
+    
+    params.push(`${query}%`, `${query.toUpperCase()}%`)
+    
+    const result = await DB.prepare(sql).bind(...params).all()
+    
+    return c.json({
+      success: true,
+      airports: result.results || []
+    })
+    
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Get all airports
+app.get('/api/airports', async (c) => {
+  const { DB } = c.env
+  const country = c.req.query('country')
+  
+  try {
+    let sql = `SELECT * FROM airports WHERE active = 1`
+    const params = []
+    
+    if (country) {
+      sql += ` AND country = ?`
+      params.push(country)
+    }
+    
+    sql += ` ORDER BY country, city`
+    
+    const result = await DB.prepare(sql).bind(...params).all()
+    
+    return c.json({
+      success: true,
+      airports: result.results || []
+    })
+    
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Get airport by IATA code
+app.get('/api/airports/:iata', async (c) => {
+  const { DB } = c.env
+  const iata = c.req.param('iata').toUpperCase()
+  
+  try {
+    const result = await DB.prepare(`
+      SELECT * FROM airports WHERE iata_code = ? AND active = 1
+    `).bind(iata).first()
+    
+    if (!result) {
+      return c.json({ 
+        success: false, 
+        error: 'Airport not found' 
+      }, 404)
+    }
+    
+    return c.json({
+      success: true,
+      airport: result
+    })
+    
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Search flights (mock data for now - AviationStack integration coming)
+app.get('/api/flights/search', async (c) => {
+  const from = c.req.query('from')
+  const to = c.req.query('to')
+  const date = c.req.query('date')
+  
+  if (!from || !to) {
+    return c.json({
+      success: false,
+      error: 'Parameters "from" and "to" are required'
+    }, 400)
+  }
+  
+  try {
+    // TODO: Integrate with AviationStack API
+    // For now, return mock data
+    const mockFlights = [
+      {
+        flight_number: 'AT800',
+        airline: 'Royal Air Maroc',
+        airline_iata: 'AT',
+        departure: {
+          airport: from,
+          time: `${date || '2025-12-25'}T08:30:00`,
+          terminal: '2E'
+        },
+        arrival: {
+          airport: to,
+          time: `${date || '2025-12-25'}T11:45:00`,
+          terminal: '1'
+        },
+        duration: '3h15min',
+        status: 'scheduled',
+        aircraft: 'Boeing 737-800'
+      },
+      {
+        flight_number: 'AT802',
+        airline: 'Royal Air Maroc',
+        airline_iata: 'AT',
+        departure: {
+          airport: from,
+          time: `${date || '2025-12-25'}T14:00:00`,
+          terminal: '2E'
+        },
+        arrival: {
+          airport: to,
+          time: `${date || '2025-12-25'}T17:15:00`,
+          terminal: '1'
+        },
+        duration: '3h15min',
+        status: 'scheduled',
+        aircraft: 'Boeing 787-9'
+      }
+    ]
+    
+    return c.json({
+      success: true,
+      flights: mockFlights,
+      note: 'Mock data - AviationStack API integration coming soon'
+    })
+    
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
 // ==========================================
 // TRIPS CRUD APIs
 // ==========================================
