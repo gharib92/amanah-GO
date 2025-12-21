@@ -129,9 +129,22 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 - `GET /api/packages` - Liste des colis publiés (avec profil expéditeur)
 - `POST /api/db/init` - Initialisation DB (dev only)
 
+#### 3. Authentification & KYC ✅ **NOUVEAU**
+- `POST /api/auth/signup` - Inscription utilisateur
+- `POST /api/auth/login` - Connexion utilisateur
+- `POST /api/auth/send-verification-email` - Envoyer email de vérification
+- `POST /api/auth/send-sms-verification` - Envoyer SMS de vérification
+- `POST /api/auth/upload-kyc` - Upload photo KYC (selfie/document)
+
+#### 4. Pages Frontend
+- `GET /` - Landing page complète
+- `GET /signup` - Page d'inscription ✅ **NOUVEAU**
+- `GET /login` - Page de connexion ✅ **NOUVEAU**
+- `GET /verify-profile` - Page de vérification KYC ✅ **NOUVEAU**
+
 ### 🔄 **En développement**
 
-- Système d'authentification (Email, Google, Facebook)
+- ~~Système d'authentification (Email, Google, Facebook)~~ ✅ **COMPLÉTÉ**
 - CRUD complet Trajets (création, édition, suppression)
 - CRUD complet Colis
 - Système de matching intelligent
@@ -249,7 +262,39 @@ npm run git:commit            # Git commit rapide
 
 ## 🔐 Sécurité
 
-### **Mesures implémentées**
+### **Système de vérification KYC en 3 étapes** ✅ **NOUVEAU**
+
+Amanah GO implémente un système de vérification multi-niveaux pour garantir la sécurité et la confiance :
+
+#### **Étape 1 : Vérification de l'E-mail** ✉️
+- Envoi d'un email de confirmation
+- Lien de vérification unique
+- Statut: `email_verified`
+
+#### **Étape 2 : Vérification du Téléphone** 📱
+- Envoi d'un code SMS à 6 chiffres
+- Validation du code
+- Statut: `phone_verified`
+
+#### **Étape 3 : Vérification d'Identité & Faciale** 🪪 + 🤳
+Cette étape se décompose en 2 sous-étapes :
+
+**Sous-étape 1 : Prendre un selfie**
+- Capture photo via webcam ou upload
+- Détection de visage avec Cloudflare AI
+- Stockage sécurisé sur Cloudflare R2
+
+**Sous-étape 2 : Upload pièce d'identité**
+- CIN, Passeport ou Permis de conduire
+- Extraction des données (OCR)
+- Comparaison faciale selfie ↔ photo ID
+
+**Validation finale :**
+- Analyse par l'équipe admin
+- Badge "Vérifié" attribué
+- Statut KYC: `VERIFIED`
+
+### **Mesures de sécurité implémentées**
 - ✅ HTTPS obligatoire (Cloudflare)
 - ✅ Validation des inputs (SQL injection protection)
 - ✅ CORS configuré pour API
@@ -280,19 +325,24 @@ npm run git:commit            # Git commit rapide
 
 ## 📈 Roadmap développement
 
-### **✅ Phase 1: MVP Core (Semaines 1-2)** - COMPLÉTÉ
+### **✅ Phase 1: MVP Core (Semaines 1-2)** - ✅ **COMPLÉTÉ**
 - [x] Setup projet Hono + Cloudflare
 - [x] Landing page avec calculateur
 - [x] Base de données D1 + schéma
 - [x] API REST basiques
 - [x] Documentation README
 
-### **🔄 Phase 2: Authentification (Semaines 3-4)** - EN COURS
-- [ ] Inscription/Connexion Email
-- [ ] OAuth Google + Facebook
-- [ ] Sessions JWT
-- [ ] Profil utilisateur
-- [ ] Upload photo KYC
+### **✅ Phase 2: Authentification (Semaines 3-4)** - ✅ **COMPLÉTÉ**
+- [x] Page d'inscription avec validation
+- [x] Page de connexion
+- [x] Page de vérification KYC (3 étapes)
+- [x] API signup/login
+- [x] Système de vérification Email
+- [x] Système de vérification SMS
+- [x] Upload KYC (selfie + document)
+- [ ] OAuth Google + Facebook (à finaliser)
+- [ ] Sessions JWT sécurisées
+- [ ] Hash bcrypt pour mots de passe
 
 ### **⏳ Phase 3: Fonctionnalités Core (Semaines 5-6)**
 - [ ] CRUD Trajets complet
@@ -385,4 +435,4 @@ Ce projet est en cours de développement. Licence à définir.
 ---
 
 *Dernière mise à jour: 20 décembre 2025*
-*Statut: ✅ MVP Core lancé - Phase 2 en cours*
+*Statut: ✅ Phase 2 (Authentification + KYC) complétée - Phase 3 prête à démarrer*
