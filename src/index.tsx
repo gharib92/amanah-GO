@@ -2573,4 +2573,192 @@ app.get('/api/users/:user_id/packages', async (c) => {
   }
 })
 
+// ==========================================
+// DASHBOARD PAGES
+// ==========================================
+
+// Dashboard Voyageur - Mes trajets
+app.get('/voyageur/mes-trajets', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Mes Trajets - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+          .filter-btn.active {
+            background-color: #2563eb;
+            color: white;
+          }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-plane text-blue-600 text-2xl"></i>
+                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-600"><i class="fas fa-user-circle mr-2"></i><span id="userName"></span></span>
+                    <a href="/" class="text-blue-600 hover:text-blue-700"><i class="fas fa-home mr-2"></i>Accueil</a>
+                </div>
+            </div>
+        </nav>
+        <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg p-8 flex flex-col items-center">
+                <i class="fas fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
+                <p class="text-gray-600">Chargement...</p>
+            </div>
+        </div>
+        <div id="mainContent" class="max-w-7xl mx-auto px-4 py-8">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2"><i class="fas fa-suitcase-rolling text-blue-600 mr-3"></i>Mes Trajets</h1>
+                <p class="text-gray-600">Gérez vos trajets et suivez vos gains</p>
+            </div>
+            <div class="grid md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm text-gray-600">Total trajets</p>
+                        <i class="fas fa-route text-2xl text-blue-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900" id="statTotalTrips">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm text-gray-600">Trajets actifs</p>
+                        <i class="fas fa-check-circle text-2xl text-green-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900" id="statActiveTrips">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm text-gray-600">Poids total (kg)</p>
+                        <i class="fas fa-weight-hanging text-2xl text-purple-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900" id="statTotalWeight">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm text-gray-600">Gains potentiels</p>
+                        <i class="fas fa-euro-sign text-2xl text-green-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-green-600" id="statTotalEarnings">0</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div class="flex gap-2">
+                    <button class="filter-btn active px-4 py-2 rounded-lg border border-gray-300 transition-colors" data-filter="ALL">Tous</button>
+                    <button class="filter-btn px-4 py-2 rounded-lg border border-gray-300 transition-colors" data-filter="ACTIVE">Actifs</button>
+                    <button class="filter-btn px-4 py-2 rounded-lg border border-gray-300 transition-colors" data-filter="COMPLETED">Terminés</button>
+                    <button class="filter-btn px-4 py-2 rounded-lg border border-gray-300 transition-colors" data-filter="CANCELLED">Annulés</button>
+                </div>
+                <a href="/voyageur/publier-trajet" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
+                    <i class="fas fa-plus mr-2"></i>Nouveau trajet
+                </a>
+            </div>
+            <div id="tripsContainer" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/traveler-dashboard.js"></script>
+    </body>
+    </html>
+  `)
+})
+
+// Dashboard Expéditeur - Mes colis
+app.get('/expediteur/mes-colis', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Mes Colis - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+          .filter-btn.active {
+            background-color: #2563eb;
+            color: white;
+          }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-plane text-blue-600 text-2xl"></i>
+                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-600"><i class="fas fa-user-circle mr-2"></i><span id="userName"></span></span>
+                    <a href="/" class="text-blue-600 hover:text-blue-700"><i class="fas fa-home mr-2"></i>Accueil</a>
+                </div>
+            </div>
+        </nav>
+        <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg p-8 flex flex-col items-center">
+                <i class="fas fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
+                <p class="text-gray-600">Chargement...</p>
+            </div>
+        </div>
+        <div id="mainContent" class="max-w-7xl mx-auto px-4 py-8">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2"><i class="fas fa-box text-blue-600 mr-3"></i>Mes Colis</h1>
+                <p class="text-gray-600">Gérez vos colis et suivez vos envois</p>
+            </div>
+            <div class="grid md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm text-gray-600">Total colis</p>
+                        <i class="fas fa-boxes text-2xl text-blue-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900" id="statTotalPackages">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm text-gray-600">Colis publiés</p>
+                        <i class="fas fa-check-circle text-2xl text-green-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900" id="statPublishedPackages">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm text-gray-600">Poids total (kg)</p>
+                        <i class="fas fa-weight-hanging text-2xl text-purple-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900" id="statTotalWeight">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm text-gray-600">Budget moyen</p>
+                        <i class="fas fa-euro-sign text-2xl text-green-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-green-600" id="statAvgBudget">0</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div class="flex gap-2">
+                    <button class="filter-btn active px-4 py-2 rounded-lg border border-gray-300 transition-colors" data-filter="ALL">Tous</button>
+                    <button class="filter-btn px-4 py-2 rounded-lg border border-gray-300 transition-colors" data-filter="PUBLISHED">Publiés</button>
+                    <button class="filter-btn px-4 py-2 rounded-lg border border-gray-300 transition-colors" data-filter="RESERVED">Réservés</button>
+                    <button class="filter-btn px-4 py-2 rounded-lg border border-gray-300 transition-colors" data-filter="DELIVERED">Livrés</button>
+                </div>
+                <a href="/expediteur/publier-colis" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
+                    <i class="fas fa-plus mr-2"></i>Nouveau colis
+                </a>
+            </div>
+            <div id="packagesContainer" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/shipper-dashboard.js"></script>
+    </body>
+    </html>
+  `)
+})
+
 export default app
