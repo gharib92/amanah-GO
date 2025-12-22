@@ -1,7 +1,17 @@
-# 📱 Configuration Twilio pour les SMS
+# 📱 Configuration Twilio pour SMS et WhatsApp
 
 ## 🎯 Objectif
-Envoyer de vrais SMS de vérification aux utilisateurs lors de l'inscription.
+Envoyer de vrais SMS et messages WhatsApp de vérification aux utilisateurs lors de l'inscription.
+
+---
+
+## 🔄 Nouvelles fonctionnalités WhatsApp
+
+L'application supporte désormais deux méthodes de vérification :
+- ✅ **SMS classique** - Code envoyé par SMS
+- ✅ **WhatsApp** - Code envoyé via WhatsApp (plus rapide, gratuit pour l'utilisateur)
+
+L'utilisateur peut choisir sa méthode préférée directement dans l'interface.
 
 ---
 
@@ -49,7 +59,13 @@ Copie-colle tes credentials :
 TWILIO_ACCOUNT_SID=AC12345678901234567890123456789012
 TWILIO_AUTH_TOKEN=your_real_auth_token_here
 TWILIO_PHONE_NUMBER=+33612345678
+
+# WhatsApp (optionnel mais recommandé)
+# Pour tester gratuitement, utilise le Twilio Sandbox
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 ```
+
+**Note** : Le numéro WhatsApp par défaut est le Twilio Sandbox. Les utilisateurs devront d'abord rejoindre le sandbox en envoyant "join <code>" au numéro +1 415 523 8886 sur WhatsApp.
 
 Sauvegarde et redémarre l'application :
 
@@ -65,15 +81,24 @@ pm2 restart amanah-go
 
 1. Va sur `/signup`
 2. Remplis le formulaire et clique "S'inscrire"
-3. Sur la page de vérification KYC, clique sur "Envoyer le code"
-4. **Tu devrais recevoir un SMS** sur le numéro saisi
+3. Sur la page de vérification KYC (`/verify-profile`), clique sur "Vérifier le téléphone"
+4. **Choisis ta méthode** : SMS ou WhatsApp
+5. **Tu devrais recevoir un message** avec le code de vérification
 
-### **Test via API**
+### **Test SMS via API**
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/send-sms-verification \
   -H "Content-Type: application/json" \
-  -d '{"phone": "+33612345678"}'
+  -d '{"phone": "+33612345678", "method": "sms"}'
+```
+
+### **Test WhatsApp via API**
+
+```bash
+curl -X POST http://localhost:3000/api/auth/send-sms-verification \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "+33612345678", "method": "whatsapp"}'
 ```
 
 **Résultat attendu** (avec Twilio configuré) :
@@ -83,6 +108,14 @@ curl -X POST http://localhost:3000/api/auth/send-sms-verification \
   "message": "SMS envoyé avec succès"
 }
 ```
+ou
+```json
+{
+  "success": true,
+  "message": "Message WhatsApp envoyé avec succès",
+  "method": "whatsapp"
+}
+```
 
 **Résultat attendu** (sans Twilio - mode dev) :
 ```json
@@ -90,7 +123,8 @@ curl -X POST http://localhost:3000/api/auth/send-sms-verification \
   "success": true,
   "message": "SMS simulé - Twilio non configuré",
   "code": "123456",
-  "dev_mode": true
+  "dev_mode": true,
+  "method": "sms"
 }
 ```
 
@@ -111,9 +145,13 @@ npx wrangler pages secret put TWILIO_ACCOUNT_SID --project-name amanah-go
 npx wrangler pages secret put TWILIO_AUTH_TOKEN --project-name amanah-go
 # Paste: your_auth_token
 
-# Set Phone Number
+# Set Phone Number (pour SMS)
 npx wrangler pages secret put TWILIO_PHONE_NUMBER --project-name amanah-go
 # Paste: +33612345678
+
+# Set WhatsApp Number (optionnel)
+npx wrangler pages secret put TWILIO_WHATSAPP_NUMBER --project-name amanah-go
+# Paste: whatsapp:+14155238886 (Sandbox) ou whatsapp:+33612345678 (Production)
 ```
 
 Vérifie que les secrets sont bien définis :
@@ -127,10 +165,48 @@ npx wrangler pages secret list --project-name amanah-go
 ## 📊 Vérifier les logs Twilio
 
 1. Va dans **Monitor** > **Logs** > **Messaging**
-2. Tu verras tous les SMS envoyés avec leur statut :
-   - ✅ **Delivered** : SMS bien reçu
+2. Tu verras tous les SMS et messages WhatsApp envoyés avec leur statut :
+   - ✅ **Delivered** : Message bien reçu
    - ⏳ **Queued** : En attente d'envoi
-   - ❌ **Failed** : Échec (vérifier le numéro)
+   - ❌ **Failed** : Échec (vérifier le numéro ou sandbox)
+
+---
+
+## 📲 Configuration WhatsApp spécifique
+
+### **Option 1 : Twilio Sandbox (Gratuit pour tests)**
+
+1. Va sur https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn
+2. **Rejoins le Sandbox** :
+   - Envoie sur WhatsApp : `join <code-shown>` au numéro `+1 415 523 8886`
+   - Tu recevras un message de confirmation
+3. **Utilise dans `.dev.vars`** :
+   ```env
+   TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+   ```
+
+**⚠️ Limitations du Sandbox** :
+- Les utilisateurs doivent d'abord rejoindre le sandbox (envoyer "join <code>")
+- Maximum 20 utilisateurs
+- Parfait pour développement et tests
+- Messages expirent après 24h d'inactivité
+
+### **Option 2 : WhatsApp Business Profile (Production)**
+
+Pour utiliser WhatsApp en production sans limitations :
+
+1. **Configure un WhatsApp Business Profile** : https://www.twilio.com/docs/whatsapp/tutorial/connect-number-business-profile
+2. **Demande l'approbation Meta** (peut prendre 3-5 jours)
+3. **Utilise ton propre numéro** :
+   ```env
+   TWILIO_WHATSAPP_NUMBER=whatsapp:+33612345678
+   ```
+
+**Avantages Production** :
+- ✅ Aucune limitation d'utilisateurs
+- ✅ Pas besoin de "join" préalable
+- ✅ Messages persistants
+- ✅ Branding professionnel
 
 ---
 
@@ -138,15 +214,24 @@ npx wrangler pages secret list --project-name amanah-go
 
 ### **Crédits gratuits**
 - **$15 offerts** à l'inscription
-- Parfait pour tester
+- Parfait pour tester SMS et WhatsApp
 
 ### **Tarifs SMS**
 - **France → France** : ~$0.08/SMS
 - **France → Maroc** : ~$0.20/SMS
 - **Réception SMS** : Gratuit
 
+### **Tarifs WhatsApp**
+- **Messages WhatsApp** : ~$0.005-$0.01/message (beaucoup moins cher que SMS !)
+- **Sandbox WhatsApp** : **GRATUIT** pour tests
+- **Réception WhatsApp** : Gratuit
+
 ### **Numéro de téléphone**
-- **Location mensuelle** : ~$1.15/mois
+- **Location mensuelle** : ~$1.15/mois (pour SMS)
+- **WhatsApp Sandbox** : Gratuit
+- **WhatsApp Business Number** : Inclus avec le numéro Twilio
+
+💡 **Astuce** : WhatsApp est ~10x moins cher que les SMS et plus populaire en France/Maroc !
 
 ---
 
@@ -186,15 +271,30 @@ npx wrangler pages secret list --project-name amanah-go
 ✅ Vérifie que le numéro est correct  
 ✅ Vérifie les logs Twilio (Monitor > Logs)
 
+### **Problème : "WhatsApp non reçu"**
+
+✅ **Sandbox** : L'utilisateur doit d'abord rejoindre le sandbox (envoyer "join <code>")  
+✅ Vérifie que le numéro WhatsApp est actif  
+✅ Le numéro doit être au format international avec prefix `whatsapp:` (ex: `whatsapp:+33612345678`)  
+✅ Vérifie les logs Twilio pour voir les erreurs
+
+### **Problème : "Invalid 'To' Phone Number"**
+
+✅ Pour WhatsApp Sandbox : Le destinataire doit avoir rejoint le sandbox  
+✅ Pour Production : Vérifie que ton WhatsApp Business Profile est approuvé  
+✅ Format du numéro : `whatsapp:+33612345678` (avec prefix "whatsapp:")
+
 ---
 
 ## 📚 Ressources
 
 - **Documentation Twilio SMS** : https://www.twilio.com/docs/sms
+- **Documentation Twilio WhatsApp** : https://www.twilio.com/docs/whatsapp
+- **WhatsApp Sandbox** : https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn
 - **API Reference** : https://www.twilio.com/docs/sms/api
 - **Console Twilio** : https://console.twilio.com
 - **Support** : https://support.twilio.com
 
 ---
 
-**Voilà ! Tu peux maintenant envoyer de vrais SMS via Twilio. 🎉**
+**Voilà ! Tu peux maintenant envoyer de vrais SMS et messages WhatsApp via Twilio. 🎉**

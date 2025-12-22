@@ -1,4 +1,4 @@
-# Twilio Configuration (pour SMS)
+# Twilio Configuration (pour SMS et WhatsApp)
 # Remplace ces valeurs par tes vraies credentials Twilio
 # NE COMMITE JAMAIS CE FICHIER SUR GIT !
 
@@ -6,8 +6,23 @@ TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=your_auth_token_here
 TWILIO_PHONE_NUMBER=+33612345678
 
+# WhatsApp (optionnel)
+# Pour utiliser WhatsApp, tu as 2 options :
+
+# Option 1 : Twilio Sandbox (GRATUIT pour tester)
+# Utilise le numéro Twilio Sandbox par défaut
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+# Les utilisateurs doivent d'abord rejoindre le sandbox en envoyant "join <code>" au numéro
+
+# Option 2 : Numéro WhatsApp approuvé (PRODUCTION)
+# Après approbation Meta/WhatsApp, utilise ton propre numéro
+# TWILIO_WHATSAPP_NUMBER=whatsapp:+33612345678
+
 # Pour obtenir ces valeurs :
 # 1. Crée un compte sur https://www.twilio.com
 # 2. Va dans Console > Account Info
 # 3. Copie ton Account SID et Auth Token
-# 4. Va dans Phone Numbers pour obtenir ton numéro Twilio
+# 4. Pour SMS : Va dans Phone Numbers pour obtenir ton numéro Twilio
+# 5. Pour WhatsApp : 
+#    - Test : Utilise le Sandbox (https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn)
+#    - Production : Demande l'approbation Meta (https://www.twilio.com/docs/whatsapp/tutorial/connect-number-business-profile)

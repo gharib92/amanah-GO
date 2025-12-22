@@ -608,13 +608,21 @@ app.post('/api/auth/send-sms-verification', async (c) => {
   const { DB } = c.env
   
   try {
-    const { phone } = await c.req.json()
+    const { phone, method = 'sms' } = await c.req.json()
     
     // Validation du numéro
     if (!phone || phone.length < 10) {
       return c.json({ 
         success: false, 
         error: 'Numéro de téléphone invalide' 
+      }, 400)
+    }
+    
+    // Validation de la méthode
+    if (!['sms', 'whatsapp'].includes(method)) {
+      return c.json({ 
+        success: false, 
+        error: 'Méthode invalide. Utilisez "sms" ou "whatsapp"' 
       }, 400)
     }
     
@@ -625,21 +633,37 @@ app.post('/api/auth/send-sms-verification', async (c) => {
     const TWILIO_ACCOUNT_SID = c.env.TWILIO_ACCOUNT_SID
     const TWILIO_AUTH_TOKEN = c.env.TWILIO_AUTH_TOKEN
     const TWILIO_PHONE_NUMBER = c.env.TWILIO_PHONE_NUMBER
+    const TWILIO_WHATSAPP_NUMBER = c.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886' // Twilio Sandbox default
     
     // Check if Twilio is configured
     if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-      console.log('⚠️ Twilio non configuré. Code de vérification (DEV ONLY):', code)
+      console.log(`⚠️ Twilio non configuré. Code de vérification ${method.toUpperCase()} (DEV ONLY):`, code)
       
       // In development, return code for testing (REMOVE IN PRODUCTION!)
       return c.json({ 
         success: true, 
-        message: 'SMS simulé - Twilio non configuré',
+        message: `${method === 'whatsapp' ? 'WhatsApp' : 'SMS'} simulé - Twilio non configuré`,
         code: code, // DEV ONLY: Remove in production!
-        dev_mode: true
+        dev_mode: true,
+        method: method
       })
     }
     
-    // Send SMS via Twilio
+    // Prepare message content
+    const messageBody = `Amanah GO - Votre code de vérification est : ${code}. Il expire dans 10 minutes.`
+    
+    // Determine sender and recipient based on method
+    let fromNumber, toNumber
+    
+    if (method === 'whatsapp') {
+      fromNumber = TWILIO_WHATSAPP_NUMBER
+      toNumber = `whatsapp:${phone}`
+    } else {
+      fromNumber = TWILIO_PHONE_NUMBER
+      toNumber = phone
+    }
+    
+    // Send message via Twilio
     try {
       const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)
       
@@ -652,35 +676,36 @@ app.post('/api/auth/send-sms-verification', async (c) => {
             'Content-Type': 'application/x-www-form-urlencoded'
           },
           body: new URLSearchParams({
-            To: phone,
-            From: TWILIO_PHONE_NUMBER,
-            Body: `Amanah GO - Votre code de vérification est : ${code}. Il expire dans 10 minutes.`
+            To: toNumber,
+            From: fromNumber,
+            Body: messageBody
           })
         }
       )
       
       if (!response.ok) {
         const error = await response.json()
-        console.error('Erreur Twilio:', error)
-        throw new Error('Échec envoi SMS')
+        console.error(`Erreur Twilio ${method.toUpperCase()}:`, error)
+        throw new Error(`Échec envoi ${method === 'whatsapp' ? 'WhatsApp' : 'SMS'}`)
       }
       
-      console.log('✅ SMS envoyé avec succès à:', phone)
+      console.log(`✅ ${method === 'whatsapp' ? 'WhatsApp' : 'SMS'} envoyé avec succès à:`, phone)
       
       // TODO: Store code in DB or KV with expiration (10 minutes)
-      // Example: await DB.prepare('INSERT INTO verification_codes (phone, code, expires_at) VALUES (?, ?, datetime("now", "+10 minutes"))').bind(phone, code).run()
+      // Example: await DB.prepare('INSERT INTO verification_codes (phone, code, expires_at, method) VALUES (?, ?, datetime("now", "+10 minutes"), ?)').bind(phone, code, method).run()
       
       return c.json({ 
         success: true, 
-        message: 'SMS envoyé avec succès',
+        message: `${method === 'whatsapp' ? 'Message WhatsApp' : 'SMS'} envoyé avec succès`,
+        method: method
         // Don't return code in production!
       })
       
     } catch (twilioError) {
-      console.error('Erreur Twilio:', twilioError)
+      console.error(`Erreur Twilio ${method.toUpperCase()}:`, twilioError)
       return c.json({ 
         success: false, 
-        error: 'Erreur lors de l\'envoi du SMS' 
+        error: `Erreur lors de l'envoi du ${method === 'whatsapp' ? 'message WhatsApp' : 'SMS'}` 
       }, 500)
     }
     
@@ -1348,14 +1373,14 @@ app.get('/verify-profile', (c) => {
                             </div>
                             <div>
                                 <h3 class="text-lg font-bold text-white">Vérifier le Téléphone</h3>
-                                <p class="text-blue-200 text-sm">Ajoutez votre numéro pour recevoir des notifications importantes.</p>
+                                <p class="text-blue-200 text-sm">Validez par SMS ou WhatsApp pour sécuriser votre compte.</p>
                             </div>
                         </div>
                         <div class="flex space-x-2">
                             <span class="bg-yellow-500/20 text-yellow-300 px-4 py-2 rounded-lg font-medium text-sm">
                                 Requis
                             </span>
-                            <button onclick="verifyPhone()" disabled
+                            <button onclick="openPhoneModal()" disabled
                                     class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed">
                                 Vérifier maintenant
                             </button>
@@ -1439,6 +1464,96 @@ app.get('/verify-profile', (c) => {
             </div>
         </div>
 
+        <!-- Modal de vérification téléphone -->
+        <div id="phoneModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900">Vérification du téléphone</h3>
+                    <button onclick="closePhoneModal()" class="text-gray-400 hover:text-gray-600 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- Étape 1: Entrer le numéro -->
+                <div id="phoneStep1" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Numéro de téléphone <span class="text-red-500">*</span>
+                        </label>
+                        <input type="tel" id="phoneInput" 
+                               placeholder="+33 6 12 34 56 78"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <p class="text-sm text-gray-500 mt-1">Format international (ex: +33612345678)</p>
+                    </div>
+
+                    <div>
+                        <p class="text-sm font-medium text-gray-700 mb-3">Choisissez votre méthode de vérification:</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="sendVerificationCode('sms')" 
+                                    class="flex flex-col items-center justify-center p-6 border-2 border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition group">
+                                <i class="fas fa-sms text-3xl text-gray-400 group-hover:text-blue-600 mb-2"></i>
+                                <span class="font-semibold text-gray-700 group-hover:text-blue-600">SMS</span>
+                                <span class="text-xs text-gray-500 mt-1">Classique</span>
+                            </button>
+                            
+                            <button onclick="sendVerificationCode('whatsapp')" 
+                                    class="flex flex-col items-center justify-center p-6 border-2 border-gray-300 rounded-xl hover:border-green-500 hover:bg-green-50 transition group">
+                                <i class="fab fa-whatsapp text-3xl text-gray-400 group-hover:text-green-600 mb-2"></i>
+                                <span class="font-semibold text-gray-700 group-hover:text-green-600">WhatsApp</span>
+                                <span class="text-xs text-gray-500 mt-1">Rapide</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="phoneError" class="hidden bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p class="text-red-600 text-sm"></p>
+                    </div>
+                </div>
+
+                <!-- Étape 2: Entrer le code -->
+                <div id="phoneStep2" class="hidden space-y-6">
+                    <div class="text-center mb-4">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-3">
+                            <i id="methodIcon" class="fas fa-sms text-2xl text-blue-600"></i>
+                        </div>
+                        <p class="text-gray-600">
+                            Code envoyé par <span id="methodText" class="font-semibold">SMS</span> au
+                            <br><span id="phoneDisplay" class="font-mono text-lg"></span>
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2 text-center">
+                            Entrez le code à 6 chiffres
+                        </label>
+                        <input type="text" id="codeInput" 
+                               maxlength="6"
+                               placeholder="000000"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl font-mono tracking-widest focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+
+                    <!-- Affichage du code en mode dev -->
+                    <div id="devCodeDisplay" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p class="text-yellow-800 text-sm">
+                            <i class="fas fa-code mr-2"></i>
+                            <strong>Mode DEV:</strong> Votre code est <span id="devCode" class="font-mono text-lg"></span>
+                        </p>
+                    </div>
+
+                    <div class="flex space-x-3">
+                        <button onclick="showStep1()" 
+                                class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition">
+                            <i class="fas fa-arrow-left mr-2"></i>Retour
+                        </button>
+                        <button onclick="verifyCode()" 
+                                class="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition">
+                            Vérifier<i class="fas fa-check ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
           let verificationState = {
@@ -1446,6 +1561,9 @@ app.get('/verify-profile', (c) => {
             phone: false,
             kyc: false
           };
+
+          let currentPhone = '';
+          let currentMethod = '';
 
           async function verifyEmail() {
             // Simuler envoi email de vérification
@@ -1464,22 +1582,87 @@ app.get('/verify-profile', (c) => {
             }
           }
 
-          async function verifyPhone() {
-            const phone = prompt('Entrez votre numéro de téléphone:');
-            if (phone) {
-              try {
-                await axios.post('/api/auth/send-sms-verification', { phone });
-                const code = prompt('Entrez le code reçu par SMS:');
-                if (code) {
-                  // Vérifier le code
-                  verificationState.phone = true;
-                  updateUI();
-                  alert('Téléphone vérifié avec succès !');
-                }
-              } catch (error) {
-                alert('Erreur lors de la vérification du téléphone');
-              }
+          function openPhoneModal() {
+            document.getElementById('phoneModal').classList.remove('hidden');
+            document.getElementById('phoneModal').classList.add('flex');
+          }
+
+          function closePhoneModal() {
+            document.getElementById('phoneModal').classList.add('hidden');
+            document.getElementById('phoneModal').classList.remove('flex');
+            showStep1();
+          }
+
+          function showStep1() {
+            document.getElementById('phoneStep1').classList.remove('hidden');
+            document.getElementById('phoneStep2').classList.add('hidden');
+            document.getElementById('phoneError').classList.add('hidden');
+          }
+
+          function showStep2() {
+            document.getElementById('phoneStep1').classList.add('hidden');
+            document.getElementById('phoneStep2').classList.remove('hidden');
+          }
+
+          function showError(message) {
+            const errorDiv = document.getElementById('phoneError');
+            errorDiv.querySelector('p').textContent = message;
+            errorDiv.classList.remove('hidden');
+          }
+
+          async function sendVerificationCode(method) {
+            const phoneInput = document.getElementById('phoneInput');
+            const phone = phoneInput.value.trim();
+
+            if (!phone || phone.length < 10) {
+              showError('Veuillez entrer un numéro de téléphone valide (format international)');
+              return;
             }
+
+            currentPhone = phone;
+            currentMethod = method;
+
+            try {
+              const response = await axios.post('/api/auth/send-sms-verification', { 
+                phone: phone,
+                method: method 
+              });
+
+              // Afficher le code en mode dev
+              if (response.data.dev_mode && response.data.code) {
+                document.getElementById('devCode').textContent = response.data.code;
+                document.getElementById('devCodeDisplay').classList.remove('hidden');
+              }
+
+              // Mettre à jour l'affichage
+              document.getElementById('phoneDisplay').textContent = phone;
+              document.getElementById('methodText').textContent = method === 'whatsapp' ? 'WhatsApp' : 'SMS';
+              document.getElementById('methodIcon').className = method === 'whatsapp' 
+                ? 'fab fa-whatsapp text-2xl text-green-600'
+                : 'fas fa-sms text-2xl text-blue-600';
+
+              showStep2();
+
+            } catch (error) {
+              const errorMsg = error.response?.data?.error || error.message;
+              showError('Erreur: ' + errorMsg);
+            }
+          }
+
+          async function verifyCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            
+            if (!code || code.length !== 6) {
+              alert('Veuillez entrer un code à 6 chiffres');
+              return;
+            }
+
+            // TODO: Appeler l'API pour vérifier le code
+            // Pour l'instant, simulation
+            verificationState.phone = true;
+            updateUI();
+            closePhoneModal();
+            alert('✅ Téléphone vérifié avec succès !');
           }
 
           function startSelfieCapture() {

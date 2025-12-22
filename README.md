@@ -184,7 +184,12 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 
 #### 4. Vérification KYC en 3 étapes (`/verify-profile`)
 - **Étape 1 : Email** - Lien envoyé par email (à connecter avec Resend/SendGrid)
-- **Étape 2 : Téléphone** - Code SMS 6 chiffres (à connecter avec Twilio)
+- **Étape 2 : Téléphone** - Code SMS ou WhatsApp 6 chiffres avec modal interactif :
+  - ✅ Choix entre SMS classique et WhatsApp
+  - ✅ Interface utilisateur moderne avec boutons clairs
+  - ✅ Intégration Twilio pour SMS et WhatsApp réels
+  - ✅ Mode développement avec affichage du code pour tests
+  - ✅ Validation du numéro au format international
 - **Étape 3 : Identité + Selfie** :
   - Upload selfie (webcam ou fichier)
   - Upload pièce d'identité (CIN/Passeport/Titre de séjour)
