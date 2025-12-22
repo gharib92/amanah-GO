@@ -49,12 +49,12 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 - **Vérification KYC** : `/verify-profile`
 
 ### **Espace Voyageur**
-- **Publier un trajet** : `/voyageur/publier-trajet`
-- **Mes trajets** : `/voyageur/mes-trajets` (à implémenter)
+- **Publier un trajet** : `/voyageur/publier-trajet` ✅
+- **Mes trajets** : `/voyageur/mes-trajets` ✅ **NOUVEAU**
 
 ### **Espace Expéditeur**
-- **Publier un colis** : `/expediteur/publier-colis`
-- **Mes colis** : `/expediteur/mes-colis` (à implémenter)
+- **Publier un colis** : `/expediteur/publier-colis` ✅
+- **Mes colis** : `/expediteur/mes-colis` ✅ **NOUVEAU**
 
 ### **APIs principales**
 - **Users**: `/api/users`
@@ -255,9 +255,47 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
   - `GET /api/users/:user_id/packages` - Colis d'un utilisateur (filtre par statut)
 - **Réponses enrichies** : Inclut nom/avatar/rating/reviews du voyageur/expéditeur
 
-### 🔄 **En développement - Phase 5**
+### ✅ **Phase 5 : Dashboards Utilisateurs (100%)**
 
-- Dashboards Voyageur/Expéditeur (`/voyageur/mes-trajets`, `/expediteur/mes-colis`)
+#### 10. Dashboard Voyageur (`/voyageur/mes-trajets`)
+- **Liste complète** : Affiche tous les trajets de l'utilisateur avec détails enrichis
+- **Statistiques en temps réel** :
+  - Total trajets
+  - Trajets actifs
+  - Poids total disponible
+  - Gains potentiels (après commission 12%)
+- **Filtres dynamiques** : Tous / Actifs / Terminés / Annulés
+- **Actions** :
+  - Modifier un trajet (UI prête, backend à connecter)
+  - Supprimer un trajet avec confirmation
+  - Bouton "Nouveau trajet"
+- **Affichage enrichi** :
+  - Route avec codes aéroports IATA
+  - Numéro de vol
+  - Calcul gains avec badge vert
+  - Badges de statut colorés
+  - Date/heure formatées
+
+#### 11. Dashboard Expéditeur (`/expediteur/mes-colis`)
+- **Liste complète** : Affiche tous les colis avec photos et détails
+- **Statistiques en temps réel** :
+  - Total colis
+  - Colis publiés
+  - Poids total
+  - Budget moyen
+- **Filtres dynamiques** : Tous / Publiés / Réservés / Livrés
+- **Actions** :
+  - Modifier un colis (UI prête, backend à connecter)
+  - Supprimer un colis avec confirmation
+  - Bouton "Nouveau colis"
+- **Affichage enrichi** :
+  - Galerie photos (max 3 preview + compteur)
+  - Déclaration contenu
+  - Route et date préférée
+  - Badges de statut colorés
+
+### 🔄 **En développement - Phase 6**
+
 - Système de matching intelligent (recherche + filtres + suggestions)
 - Négociation & réservation de colis
 - Intégration Stripe Connect avec Escrow
@@ -278,7 +316,7 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 ```
 amanah-go/
 ├── src/
-│   ├── index.tsx              # Application Hono principale (2000+ lignes)
+│   ├── index.tsx              # Application Hono principale (2600+ lignes)
 │   └── renderer.tsx           # Renderer JSX (si nécessaire)
 ├── migrations/
 │   ├── 0001_initial_schema.sql     # Schéma DB initial (users, trips, packages, transactions, etc.)
@@ -286,7 +324,9 @@ amanah-go/
 ├── public/
 │   └── static/
 │       ├── publish-trip.js         # Logic page publier trajet
-│       └── publish-package.js      # Logic page publier colis
+│       ├── publish-package.js      # Logic page publier colis
+│       ├── traveler-dashboard.js   # Logic dashboard voyageur ✨ NOUVEAU
+│       └── shipper-dashboard.js    # Logic dashboard expéditeur ✨ NOUVEAU
 │   └── static/               # Assets statiques (future)
 ├── dist/                     # Build output (généré)
 │   ├── _worker.js           # Worker Cloudflare compilé
