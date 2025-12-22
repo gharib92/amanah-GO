@@ -1376,8 +1376,192 @@ app.get('/signup', (c) => {
   `)
 })
 
+// Espace Voyageur - Dashboard principal
 app.get('/voyageur', (c) => {
-  return c.html('<h1>Espace Voyageur (à implémenter)</h1><a href="/">Retour accueil</a>')
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Espace Voyageur - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen">
+        <!-- Header -->
+        <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
+                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-600">
+                        <i class="fas fa-user-circle mr-2"></i>
+                        <span id="userName">Utilisateur</span>
+                    </span>
+                    <a href="/" class="text-blue-600 hover:text-blue-700 transition-colors">
+                        <i class="fas fa-home mr-2"></i>Accueil
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <!-- Welcome Banner -->
+            <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl shadow-xl p-8 mb-8 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold mb-2">
+                            <i class="fas fa-plane-departure mr-3"></i>
+                            Bienvenue dans votre Espace Voyageur
+                        </h1>
+                        <p class="text-blue-100 text-lg">Monétisez vos trajets France ↔ Morocco en transportant des colis</p>
+                    </div>
+                    <div class="hidden md:block">
+                        <i class="fas fa-suitcase-rolling text-6xl opacity-20"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="grid md:grid-cols-3 gap-6 mb-8">
+                <a href="/voyageur/publier-trajet" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-blue-100 rounded-full p-4 group-hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-plus text-2xl text-blue-600 group-hover:text-white"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Publier un Trajet</h3>
+                    <p class="text-gray-600">Ajoutez un nouveau trajet et commencez à gagner de l'argent</p>
+                </a>
+
+                <a href="/voyageur/mes-trajets" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-green-100 rounded-full p-4 group-hover:bg-green-600 transition-colors">
+                            <i class="fas fa-list text-2xl text-green-600 group-hover:text-white"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-green-600 transition-colors"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Mes Trajets</h3>
+                    <p class="text-gray-600">Consultez et gérez tous vos trajets publiés</p>
+                </a>
+
+                <a href="/verify-profile" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-purple-100 rounded-full p-4 group-hover:bg-purple-600 transition-colors">
+                            <i class="fas fa-shield-alt text-2xl text-purple-600 group-hover:text-white"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-purple-600 transition-colors"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Vérifier mon Profil</h3>
+                    <p class="text-gray-600">Complétez votre KYC pour débloquer toutes les fonctionnalités</p>
+                </a>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-chart-line text-blue-600 mr-2"></i>
+                    Aperçu Rapide
+                </h2>
+                <div class="grid md:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="bg-blue-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-route text-2xl text-blue-600"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900" id="statTrips">0</p>
+                        <p class="text-sm text-gray-600">Trajets publiés</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-green-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-check-circle text-2xl text-green-600"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900" id="statActive">0</p>
+                        <p class="text-sm text-gray-600">Trajets actifs</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-purple-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-weight-hanging text-2xl text-purple-600"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900" id="statWeight">0</p>
+                        <p class="text-sm text-gray-600">kg disponibles</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-yellow-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-euro-sign text-2xl text-yellow-600"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-green-600" id="statEarnings">0</p>
+                        <p class="text-sm text-gray-600">Gains potentiels</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- How It Works -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                    Comment ça marche ?
+                </h2>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="text-center">
+                        <div class="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Publiez votre trajet</h3>
+                        <p class="text-gray-600 text-sm">Indiquez votre itinéraire, dates et poids disponible</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Recevez des propositions</h3>
+                        <p class="text-gray-600 text-sm">Les expéditeurs vous contactent avec leurs demandes</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Gagnez de l'argent</h3>
+                        <p class="text-gray-600 text-sm">Transportez et recevez votre paiement sécurisé</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+          // Load user stats
+          async function loadStats() {
+            try {
+              // TODO: Replace with real user ID from session/JWT
+              const userId = localStorage.getItem('userId') || 1
+              
+              const response = await axios.get(\`/api/trips?user_id=\${userId}\`)
+              
+              if (response.data.success) {
+                const trips = response.data.trips || []
+                const activeTrips = trips.filter(t => t.status === 'ACTIVE')
+                const totalWeight = activeTrips.reduce((sum, t) => sum + (t.available_weight || 0), 0)
+                const totalEarnings = activeTrips.reduce((sum, t) => sum + (t.estimated_earnings || 0), 0)
+                
+                document.getElementById('statTrips').textContent = trips.length
+                document.getElementById('statActive').textContent = activeTrips.length
+                document.getElementById('statWeight').textContent = totalWeight
+                document.getElementById('statEarnings').textContent = totalEarnings.toFixed(2) + '€'
+              }
+            } catch (error) {
+              console.error('Erreur chargement stats:', error)
+            }
+          }
+          
+          // Load user name
+          const userName = localStorage.getItem('userName')
+          if (userName) {
+            document.getElementById('userName').textContent = userName
+          }
+          
+          loadStats()
+        </script>
+    </body>
+    </html>
+  `)
 })
 
 // Page de vérification KYC
@@ -1868,8 +2052,268 @@ app.get('/verify-profile', (c) => {
   `)
 })
 
+// Espace Expéditeur - Dashboard principal
 app.get('/expediteur', (c) => {
-  return c.html('<h1>Espace Expéditeur (à implémenter)</h1><a href="/">Retour accueil</a>')
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Espace Expéditeur - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gradient-to-br from-green-50 to-green-100 min-h-screen">
+        <!-- Header -->
+        <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
+                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-600">
+                        <i class="fas fa-user-circle mr-2"></i>
+                        <span id="userName">Utilisateur</span>
+                    </span>
+                    <a href="/" class="text-green-600 hover:text-green-700 transition-colors">
+                        <i class="fas fa-home mr-2"></i>Accueil
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <!-- Welcome Banner -->
+            <div class="bg-gradient-to-r from-green-600 to-green-800 rounded-2xl shadow-xl p-8 mb-8 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold mb-2">
+                            <i class="fas fa-box mr-3"></i>
+                            Bienvenue dans votre Espace Expéditeur
+                        </h1>
+                        <p class="text-green-100 text-lg">Économisez jusqu'à 70% sur vos envois France ↔ Morocco</p>
+                    </div>
+                    <div class="hidden md:block">
+                        <i class="fas fa-shipping-fast text-6xl opacity-20"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="grid md:grid-cols-3 gap-6 mb-8">
+                <a href="/expediteur/publier-colis" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-green-100 rounded-full p-4 group-hover:bg-green-600 transition-colors">
+                            <i class="fas fa-plus text-2xl text-green-600 group-hover:text-white"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-green-600 transition-colors"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Publier un Colis</h3>
+                    <p class="text-gray-600">Créez une nouvelle demande d'envoi de colis</p>
+                </a>
+
+                <a href="/expediteur/mes-colis" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-blue-100 rounded-full p-4 group-hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-list text-2xl text-blue-600 group-hover:text-white"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Mes Colis</h3>
+                    <p class="text-gray-600">Suivez tous vos envois en cours et passés</p>
+                </a>
+
+                <div onclick="searchTrips()" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-purple-100 rounded-full p-4 group-hover:bg-purple-600 transition-colors">
+                            <i class="fas fa-search text-2xl text-purple-600 group-hover:text-white"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-purple-600 transition-colors"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Rechercher un Trajet</h3>
+                    <p class="text-gray-600">Trouvez un voyageur pour transporter votre colis</p>
+                </div>
+            </div>
+
+            <!-- Search Section -->
+            <div id="searchSection" class="bg-white rounded-xl shadow-lg p-8 mb-8 hidden">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-search text-green-600 mr-2"></i>
+                    Rechercher un Trajet Disponible
+                </h2>
+                <div class="grid md:grid-cols-3 gap-4 mb-6">
+                    <input type="text" id="searchOrigin" placeholder="Ville de départ" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    <input type="text" id="searchDestination" placeholder="Ville d'arrivée" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    <button onclick="performSearch()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold">
+                        <i class="fas fa-search mr-2"></i>Rechercher
+                    </button>
+                </div>
+                <div id="searchResults" class="space-y-4">
+                    <!-- Results will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-chart-line text-green-600 mr-2"></i>
+                    Aperçu Rapide
+                </h2>
+                <div class="grid md:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="bg-green-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-box text-2xl text-green-600"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900" id="statPackages">0</p>
+                        <p class="text-sm text-gray-600">Colis publiés</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-blue-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-clock text-2xl text-blue-600"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900" id="statPending">0</p>
+                        <p class="text-sm text-gray-600">En attente</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-yellow-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-shipping-fast text-2xl text-yellow-600"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900" id="statInTransit">0</p>
+                        <p class="text-sm text-gray-600">En transit</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-purple-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-check-circle text-2xl text-purple-600"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900" id="statDelivered">0</p>
+                        <p class="text-sm text-gray-600">Livrés</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- How It Works -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                    Comment ça marche ?
+                </h2>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="text-center">
+                        <div class="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Publiez votre colis</h3>
+                        <p class="text-gray-600 text-sm">Décrivez votre envoi, destination et budget</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Trouvez un voyageur</h3>
+                        <p class="text-gray-600 text-sm">Des voyageurs vous contactent ou recherchez-en un</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Économisez de l'argent</h3>
+                        <p class="text-gray-600 text-sm">Recevez votre colis jusqu'à 70% moins cher</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+          // Toggle search section
+          function searchTrips() {
+            const section = document.getElementById('searchSection')
+            section.classList.toggle('hidden')
+            if (!section.classList.contains('hidden')) {
+              document.getElementById('searchOrigin').focus()
+            }
+          }
+
+          // Perform trip search
+          async function performSearch() {
+            const origin = document.getElementById('searchOrigin').value.trim()
+            const destination = document.getElementById('searchDestination').value.trim()
+            
+            if (!origin || !destination) {
+              alert('Veuillez remplir les villes de départ et d\\'arrivée')
+              return
+            }
+            
+            try {
+              const response = await axios.get(\`/api/trips?origin=\${encodeURIComponent(origin)}&destination=\${encodeURIComponent(destination)}&status=ACTIVE\`)
+              
+              const resultsDiv = document.getElementById('searchResults')
+              
+              if (response.data.success && response.data.trips.length > 0) {
+                resultsDiv.innerHTML = response.data.trips.map(trip => \`
+                  <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 class="font-semibold text-gray-900">\${trip.origin_city} → \${trip.destination_city}</h3>
+                        <p class="text-sm text-gray-600">Départ: \${new Date(trip.departure_date).toLocaleDateString('fr-FR')}</p>
+                      </div>
+                      <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">\${trip.available_weight}kg</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <p class="text-lg font-bold text-green-600">\${trip.price_per_kg}€/kg</p>
+                      <button onclick="contactTraveler(\${trip.id})" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
+                        <i class="fas fa-envelope mr-1"></i>Contacter
+                      </button>
+                    </div>
+                  </div>
+                \`).join('')
+              } else {
+                resultsDiv.innerHTML = \`
+                  <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-search text-4xl mb-4"></i>
+                    <p>Aucun trajet disponible pour cette recherche</p>
+                  </div>
+                \`
+              }
+            } catch (error) {
+              console.error('Erreur recherche:', error)
+              alert('Erreur lors de la recherche')
+            }
+          }
+
+          // Contact traveler (placeholder)
+          function contactTraveler(tripId) {
+            alert(\`Fonctionnalité de contact en cours de développement (Trajet #\${tripId})\`)
+            // TODO: Implement real-time chat or messaging system
+          }
+
+          // Load user stats
+          async function loadStats() {
+            try {
+              // TODO: Replace with real user ID from session/JWT
+              const userId = localStorage.getItem('userId') || 1
+              
+              const response = await axios.get(\`/api/packages?user_id=\${userId}\`)
+              
+              if (response.data.success) {
+                const packages = response.data.packages || []
+                document.getElementById('statPackages').textContent = packages.length
+                document.getElementById('statPending').textContent = packages.filter(p => p.status === 'PUBLISHED').length
+                document.getElementById('statInTransit').textContent = packages.filter(p => p.status === 'IN_TRANSIT').length
+                document.getElementById('statDelivered').textContent = packages.filter(p => p.status === 'DELIVERED').length
+              }
+            } catch (error) {
+              console.error('Erreur chargement stats:', error)
+            }
+          }
+          
+          // Load user name
+          const userName = localStorage.getItem('userName')
+          if (userName) {
+            document.getElementById('userName').textContent = userName
+          }
+          
+          loadStats()
+        </script>
+    </body>
+    </html>
+  `)
 })
 
 // Publier un trajet (Voyageur)
