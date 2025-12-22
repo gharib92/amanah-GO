@@ -1517,6 +1517,12 @@ app.get('/verify-profile', (c) => {
                                     Démarrer la caméra
                                 </button>
                                 
+                                <button onclick="uploadSelfieFromFile()" disabled id="uploadSelfieBtn"
+                                        class="w-full bg-blue-500/20 text-blue-300 px-4 py-2 rounded-lg font-medium transition cursor-not-allowed mb-2">
+                                    <i class="fas fa-upload mr-2"></i>
+                                    Uploader une photo
+                                </button>
+                                
                                 <button onclick="captureSelfie()" id="captureSelfieBtn" class="hidden w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition mb-2">
                                     <i class="fas fa-camera mr-2"></i>
                                     Capturer
@@ -1843,6 +1849,10 @@ app.get('/verify-profile', (c) => {
               document.getElementById('startSelfieBtn').disabled = false;
               document.getElementById('startSelfieBtn').classList.remove('bg-blue-500/20', 'text-blue-300', 'cursor-not-allowed');
               document.getElementById('startSelfieBtn').classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'cursor-pointer');
+              
+              document.getElementById('uploadSelfieBtn').disabled = false;
+              document.getElementById('uploadSelfieBtn').classList.remove('bg-blue-500/20', 'text-blue-300', 'cursor-not-allowed');
+              document.getElementById('uploadSelfieBtn').classList.add('bg-green-600', 'hover:bg-green-700', 'text-white', 'cursor-pointer');
               
               document.getElementById('uploadIDBtn').disabled = false;
               document.getElementById('uploadIDBtn').classList.remove('bg-blue-500/20', 'text-blue-300', 'cursor-not-allowed');

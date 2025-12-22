@@ -25,6 +25,11 @@ async function startSelfieCapture() {
   const selfiePreview = document.getElementById('selfiePreview');
   
   try {
+    // Vérifier si getUserMedia est disponible
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Votre navigateur ne supporte pas l\'accès à la caméra. Utilisez Chrome, Firefox ou Safari récent.');
+    }
+    
     // Demander accès à la caméra
     stream = await navigator.mediaDevices.getUserMedia({ 
       video: { 
@@ -38,13 +43,82 @@ async function startSelfieCapture() {
     videoElement.classList.remove('hidden');
     captureBtn.classList.remove('hidden');
     
-    // Cacher le bouton de démarrage
-    document.querySelector('[onclick="startSelfieCapture()"]').classList.add('hidden');
+    // Cacher le bouton de démarrage et le placeholder
+    const startBtn = document.querySelector('[onclick="startSelfieCapture()"]');
+    if (startBtn) startBtn.classList.add('hidden');
+    document.getElementById('selfiePreviewEmpty').classList.add('hidden');
     
   } catch (error) {
     console.error('Erreur accès caméra:', error);
-    alert('Impossible d\'accéder à la caméra. Vérifiez les permissions.');
+    
+    let errorMessage = 'Impossible d\'accéder à la caméra.';
+    
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      errorMessage = '❌ Permission refusée.\n\nVeuillez autoriser l\'accès à la caméra dans les paramètres de votre navigateur.';
+    } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+      errorMessage = '❌ Aucune caméra détectée.\n\nVérifiez qu\'une caméra est connectée à votre appareil.';
+    } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+      errorMessage = '❌ Caméra déjà utilisée.\n\nFermez les autres applications utilisant la caméra.';
+    } else if (error.name === 'OverconstrainedError') {
+      errorMessage = '❌ Résolution non supportée.\n\nVotre caméra ne supporte pas la résolution demandée.';
+    } else if (error.name === 'TypeError') {
+      errorMessage = '❌ Erreur HTTPS requise.\n\n⚠️ L\'accès à la caméra nécessite HTTPS.\n\nSolution temporaire : Uploadez une photo existante au lieu d\'utiliser la caméra.';
+    }
+    
+    alert(errorMessage + '\n\nSi le problème persiste, essayez :\n1. Actualiser la page\n2. Utiliser Chrome/Firefox\n3. Vérifier les permissions');
+    
+    // Proposer l'upload d'une photo à la place
+    if (confirm('Voulez-vous uploader une photo existante à la place ?')) {
+      uploadSelfieFromFile();
+    }
   }
+}
+
+// Alternative : Upload selfie depuis fichier
+function uploadSelfieFromFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'user'; // Essayer d'ouvrir la caméra sur mobile
+  
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Vérifier la taille (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Le fichier est trop volumineux. Maximum 5MB.');
+      return;
+    }
+    
+    capturedSelfie = file;
+    
+    // Afficher l'aperçu
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const preview = document.getElementById('selfiePreview');
+      preview.src = e.target.result;
+      preview.classList.remove('hidden');
+      
+      // Afficher le bouton retake
+      document.getElementById('retakeSelfieBtn').classList.remove('hidden');
+      
+      // Masquer le placeholder
+      document.getElementById('selfiePreviewEmpty').classList.add('hidden');
+      
+      // Masquer le bouton de démarrage
+      const startBtn = document.getElementById('startSelfieBtn');
+      if (startBtn) startBtn.classList.add('hidden');
+      
+      // Vérifier si on peut soumettre
+      checkDocumentsReady();
+    };
+    reader.readAsDataURL(file);
+    
+    console.log('Selfie uploadé depuis fichier:', file.name, file.size, 'bytes');
+  };
+  
+  input.click();
 }
 
 // Capturer le selfie
