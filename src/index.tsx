@@ -1495,7 +1495,13 @@ app.get('/verify-profile', (c) => {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                             <!-- Étape 1: Selfie -->
                             <div class="bg-white/5 border border-white/10 rounded-lg p-6">
-                                <h4 class="text-white font-bold mb-3">Étape 1: Prendre un Selfie</h4>
+                                <h4 class="text-white font-bold mb-3 flex items-center">
+                                    <i class="fas fa-shield-alt text-green-400 mr-2"></i>
+                                    Étape 1: Prendre un Selfie en Direct
+                                </h4>
+                                <p class="text-blue-200 text-xs mb-4">
+                                    🔒 Capture en direct obligatoire pour prévenir la fraude
+                                </p>
                                 
                                 <!-- Zone de capture vidéo/preview -->
                                 <div class="border-2 border-dashed border-white/20 rounded-lg overflow-hidden mb-4 bg-black/30">
@@ -1517,12 +1523,6 @@ app.get('/verify-profile', (c) => {
                                     Démarrer la caméra
                                 </button>
                                 
-                                <button onclick="uploadSelfieFromFile()" disabled id="uploadSelfieBtn"
-                                        class="w-full bg-blue-500/20 text-blue-300 px-4 py-2 rounded-lg font-medium transition cursor-not-allowed mb-2">
-                                    <i class="fas fa-upload mr-2"></i>
-                                    Uploader une photo
-                                </button>
-                                
                                 <button onclick="captureSelfie()" id="captureSelfieBtn" class="hidden w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition mb-2">
                                     <i class="fas fa-camera mr-2"></i>
                                     Capturer
@@ -1532,6 +1532,13 @@ app.get('/verify-profile', (c) => {
                                     <i class="fas fa-redo mr-2"></i>
                                     Reprendre
                                 </button>
+                                
+                                <div class="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                                    <p class="text-yellow-200 text-xs">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        <strong>Important :</strong> La capture en direct est obligatoire pour prévenir la fraude. Si l'accès caméra ne fonctionne pas, vérifiez que vous utilisez HTTPS.
+                                    </p>
+                                </div>
                             </div>
 
                             <!-- Étape 2: Pièce d'identité -->
@@ -1849,10 +1856,6 @@ app.get('/verify-profile', (c) => {
               document.getElementById('startSelfieBtn').disabled = false;
               document.getElementById('startSelfieBtn').classList.remove('bg-blue-500/20', 'text-blue-300', 'cursor-not-allowed');
               document.getElementById('startSelfieBtn').classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'cursor-pointer');
-              
-              document.getElementById('uploadSelfieBtn').disabled = false;
-              document.getElementById('uploadSelfieBtn').classList.remove('bg-blue-500/20', 'text-blue-300', 'cursor-not-allowed');
-              document.getElementById('uploadSelfieBtn').classList.add('bg-green-600', 'hover:bg-green-700', 'text-white', 'cursor-pointer');
               
               document.getElementById('uploadIDBtn').disabled = false;
               document.getElementById('uploadIDBtn').classList.remove('bg-blue-500/20', 'text-blue-300', 'cursor-not-allowed');

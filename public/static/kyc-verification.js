@@ -27,7 +27,7 @@ async function startSelfieCapture() {
   try {
     // Vérifier si getUserMedia est disponible
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('Votre navigateur ne supporte pas l\'accès à la caméra. Utilisez Chrome, Firefox ou Safari récent.');
+      throw new Error('BROWSER_NOT_SUPPORTED');
     }
     
     // Demander accès à la caméra
@@ -44,81 +44,82 @@ async function startSelfieCapture() {
     captureBtn.classList.remove('hidden');
     
     // Cacher le bouton de démarrage et le placeholder
-    const startBtn = document.querySelector('[onclick="startSelfieCapture()"]');
+    const startBtn = document.getElementById('startSelfieBtn');
     if (startBtn) startBtn.classList.add('hidden');
     document.getElementById('selfiePreviewEmpty').classList.add('hidden');
+    
+    console.log('✅ Caméra activée avec succès');
     
   } catch (error) {
     console.error('Erreur accès caméra:', error);
     
-    let errorMessage = 'Impossible d\'accéder à la caméra.';
+    let errorMessage = '';
+    let errorTitle = '';
+    let solution = '';
     
     if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-      errorMessage = '❌ Permission refusée.\n\nVeuillez autoriser l\'accès à la caméra dans les paramètres de votre navigateur.';
+      errorTitle = '🚫 Permission refusée';
+      errorMessage = 'Vous avez refusé l\'accès à la caméra.';
+      solution = '➡️ Solution :\n1. Cliquez sur l\'icône 🔒 dans la barre d\'adresse\n2. Autorisez l\'accès à la caméra\n3. Actualisez la page (F5)';
     } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-      errorMessage = '❌ Aucune caméra détectée.\n\nVérifiez qu\'une caméra est connectée à votre appareil.';
+      errorTitle = '📷 Aucune caméra détectée';
+      errorMessage = 'Aucune caméra n\'a été trouvée sur votre appareil.';
+      solution = '➡️ Solution :\n1. Vérifiez qu\'une webcam est connectée\n2. Testez votre caméra dans une autre application\n3. Réessayez';
     } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-      errorMessage = '❌ Caméra déjà utilisée.\n\nFermez les autres applications utilisant la caméra.';
+      errorTitle = '⚠️ Caméra déjà utilisée';
+      errorMessage = 'La caméra est déjà utilisée par une autre application.';
+      solution = '➡️ Solution :\n1. Fermez toutes les applications utilisant la caméra\n2. Fermez les autres onglets avec caméra\n3. Réessayez';
     } else if (error.name === 'OverconstrainedError') {
-      errorMessage = '❌ Résolution non supportée.\n\nVotre caméra ne supporte pas la résolution demandée.';
-    } else if (error.name === 'TypeError') {
-      errorMessage = '❌ Erreur HTTPS requise.\n\n⚠️ L\'accès à la caméra nécessite HTTPS.\n\nSolution temporaire : Uploadez une photo existante au lieu d\'utiliser la caméra.';
+      errorTitle = '⚙️ Résolution non supportée';
+      errorMessage = 'Votre caméra ne supporte pas la résolution demandée.';
+      solution = '➡️ Solution : La caméra va redémarrer avec une résolution plus basse...';
+      
+      // Réessayer avec résolution plus basse
+      setTimeout(() => startSelfieCaptureWithLowerResolution(), 2000);
+      return;
+    } else if (error.name === 'TypeError' || error.message === 'BROWSER_NOT_SUPPORTED') {
+      errorTitle = '🔒 Connexion sécurisée requise (HTTPS)';
+      errorMessage = 'L\'accès à la caméra nécessite une connexion HTTPS sécurisée.\n\n⚠️ IMPORTANT : Vous devez accéder au site via HTTPS.';
+      solution = '➡️ Solutions :\n\n1. Utilisez l\'URL HTTPS du site :\n   https://votre-domaine.pages.dev\n\n2. En développement local :\n   http://localhost:3000\n\n3. Déployez sur Cloudflare Pages pour avoir HTTPS automatique';
+    } else {
+      errorTitle = '❌ Erreur inconnue';
+      errorMessage = 'Une erreur inattendue s\'est produite : ' + error.message;
+      solution = '➡️ Solution :\n1. Actualisez la page (F5)\n2. Réessayez dans quelques instants\n3. Contactez le support si le problème persiste';
     }
     
-    alert(errorMessage + '\n\nSi le problème persiste, essayez :\n1. Actualiser la page\n2. Utiliser Chrome/Firefox\n3. Vérifier les permissions');
-    
-    // Proposer l'upload d'une photo à la place
-    if (confirm('Voulez-vous uploader une photo existante à la place ?')) {
-      uploadSelfieFromFile();
-    }
+    alert(errorTitle + '\n\n' + errorMessage + '\n\n' + solution);
   }
 }
 
-// Alternative : Upload selfie depuis fichier
-function uploadSelfieFromFile() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.capture = 'user'; // Essayer d'ouvrir la caméra sur mobile
+// Réessayer avec résolution plus basse
+async function startSelfieCaptureWithLowerResolution() {
+  const videoElement = document.getElementById('selfieVideo');
+  const captureBtn = document.getElementById('captureSelfieBtn');
   
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        facingMode: 'user',
+        width: { ideal: 640 },
+        height: { ideal: 480 }
+      } 
+    });
     
-    // Vérifier la taille (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Le fichier est trop volumineux. Maximum 5MB.');
-      return;
-    }
+    videoElement.srcObject = stream;
+    videoElement.classList.remove('hidden');
+    captureBtn.classList.remove('hidden');
     
-    capturedSelfie = file;
+    const startBtn = document.getElementById('startSelfieBtn');
+    if (startBtn) startBtn.classList.add('hidden');
+    document.getElementById('selfiePreviewEmpty').classList.add('hidden');
     
-    // Afficher l'aperçu
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const preview = document.getElementById('selfiePreview');
-      preview.src = e.target.result;
-      preview.classList.remove('hidden');
-      
-      // Afficher le bouton retake
-      document.getElementById('retakeSelfieBtn').classList.remove('hidden');
-      
-      // Masquer le placeholder
-      document.getElementById('selfiePreviewEmpty').classList.add('hidden');
-      
-      // Masquer le bouton de démarrage
-      const startBtn = document.getElementById('startSelfieBtn');
-      if (startBtn) startBtn.classList.add('hidden');
-      
-      // Vérifier si on peut soumettre
-      checkDocumentsReady();
-    };
-    reader.readAsDataURL(file);
+    console.log('✅ Caméra activée en résolution réduite (640x480)');
+    alert('✅ Caméra activée en résolution réduite (640x480)');
     
-    console.log('Selfie uploadé depuis fichier:', file.name, file.size, 'bytes');
-  };
-  
-  input.click();
+  } catch (error) {
+    console.error('Erreur même avec résolution réduite:', error);
+    alert('❌ Impossible d\'activer la caméra même en basse résolution.\n\nVeuillez vérifier que votre caméra fonctionne correctement.');
+  }
 }
 
 // Capturer le selfie
