@@ -47,9 +47,8 @@ app.get('/', (c) => {
         <nav class="bg-white shadow-sm">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16 items-center">
-                    <div class="flex items-center space-x-3">
-                        <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-10 w-10">
-                        <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                    <div class="flex items-center">
+                        <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-16 w-auto">
                     </div>
                     <div class="hidden md:flex space-x-6">
                         <a href="#comment-ca-marche" class="text-gray-700 hover:text-blue-600">Comment ça marche</a>
@@ -992,8 +991,8 @@ app.get('/login', (c) => {
         <nav class="bg-white shadow-sm">
             <div class="max-w-7xl mx-auto px-4 py-4">
                 <a href="/" class="flex items-center space-x-2">
-                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-10 w-10">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-16 w-auto">
+                    
                 </a>
             </div>
         </nav>
@@ -1124,8 +1123,8 @@ app.get('/signup', (c) => {
         <nav class="bg-white shadow-sm">
             <div class="max-w-7xl mx-auto px-4 py-4">
                 <a href="/" class="flex items-center space-x-2">
-                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-10 w-10">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-16 w-auto">
+                    
                 </a>
             </div>
         </nav>
@@ -1321,9 +1320,8 @@ app.get('/verify-profile', (c) => {
         <!-- Header -->
         <nav class="bg-blue-900/50 backdrop-blur-sm border-b border-blue-700">
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-10 w-10">
-                    <span class="text-2xl font-bold text-white">Amanah GO</span>
+                <div class="flex items-center">
+                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-16 w-auto">
                 </div>
                 <a href="/" class="text-white hover:text-blue-200">
                     <i class="fas fa-arrow-left mr-2"></i>
@@ -1741,8 +1739,8 @@ app.get('/voyageur/publier-trajet', (c) => {
         <nav class="bg-white shadow-sm border-b">
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-10 w-10">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-16 w-auto">
+                    
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-gray-600">
@@ -1981,8 +1979,8 @@ app.get('/expediteur/publier-colis', (c) => {
         <nav class="bg-white shadow-sm border-b">
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-10 w-10">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-16 w-auto">
+                    
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-gray-600">
@@ -2850,8 +2848,8 @@ app.get('/voyageur/mes-trajets', (c) => {
         <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-10 w-10">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-16 w-auto">
+                    
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-gray-600"><i class="fas fa-user-circle mr-2"></i><span id="userName"></span></span>
@@ -2942,8 +2940,8 @@ app.get('/expediteur/mes-colis', (c) => {
         <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-10 w-10">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                    <img src="/static/logo-amanah-go.png" alt="Amanah GO" class="h-16 w-auto">
+                    
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-gray-600"><i class="fas fa-user-circle mr-2"></i><span id="userName"></span></span>
