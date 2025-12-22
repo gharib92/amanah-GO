@@ -79,6 +79,26 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 
 ---
 
+## 🎨 Design & Branding
+
+### **Logo**
+- **Fichier** : `public/static/logo-amanah-go.png`
+- **Format** : PNG 1024x1024 (haute qualité)
+- **Symbolisme** :
+  - Deux personnes se passant un colis : **collaboration peer-to-peer**
+  - Mains protectrices roses : **confiance et sécurité (Amanah)**
+  - Avion au-dessus : **voyage France ↔ Maroc**
+  - Colis jaune au centre : **l'objet du service**
+
+### **Couleurs**
+- **Bleu** (#2563EB) : Confiance, sécurité, voyage
+- **Orange** (#EA580C) : Énergie, dynamisme, connexion
+- **Rose** (#E11D48) : Confiance, protection, Amanah
+- **Vert** (#16A34A) : Économie, écologie, succès
+- **Jaune** (#CA8A04) : Colis, optimisme
+
+---
+
 ## 🛠️ Stack Technique
 
 ### **Frontend**
