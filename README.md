@@ -48,13 +48,15 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 - **Connexion** : `/login`
 - **Vérification KYC** : `/verify-profile`
 
-### **Espace Voyageur**
+### **Espace Voyageur** 🧳✈️
+- **Dashboard Voyageur** : `/voyageur` ✅ **NOUVEAU** - Accueil avec stats temps réel
 - **Publier un trajet** : `/voyageur/publier-trajet` ✅
-- **Mes trajets** : `/voyageur/mes-trajets` ✅ **NOUVEAU**
+- **Mes trajets** : `/voyageur/mes-trajets` ✅ - Dashboard complet avec statistiques
 
-### **Espace Expéditeur**
+### **Espace Expéditeur** 📦🚚
+- **Dashboard Expéditeur** : `/expediteur` ✅ **NOUVEAU** - Accueil + recherche de trajets
 - **Publier un colis** : `/expediteur/publier-colis` ✅
-- **Mes colis** : `/expediteur/mes-colis` ✅ **NOUVEAU**
+- **Mes colis** : `/expediteur/mes-colis` ✅ - Suivi complet des envois
 
 ### **APIs principales**
 - **Users**: `/api/users`
@@ -282,7 +284,21 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
 
 ### ✅ **Phase 5 : Dashboards Utilisateurs (100%)**
 
-#### 10. Dashboard Voyageur (`/voyageur/mes-trajets`)
+#### 10. Espace Voyageur principal (`/voyageur`)
+- **Dashboard moderne** : Bannière d'accueil personnalisée avec stats en direct
+- **3 Actions rapides** (cards interactives) :
+  - 🆕 Publier un trajet
+  - 📋 Mes trajets
+  - 🛡️ Vérifier mon profil
+- **Aperçu rapide** : 
+  - Trajets publiés / actifs
+  - Poids disponible (kg)
+  - Gains potentiels (€)
+- **Section "Comment ça marche"** (3 étapes simplifiées)
+- **Design bleu** : Confiance et voyage
+- **Chargement stats via** : `GET /api/trips?user_id={id}`
+
+#### 11. Dashboard Voyageur - Liste trajets (`/voyageur/mes-trajets`)
 - **Liste complète** : Affiche tous les trajets de l'utilisateur avec détails enrichis
 - **Statistiques en temps réel** :
   - Total trajets
@@ -301,7 +317,25 @@ Connecter les voyageurs effectuant le trajet France ↔ Maroc avec des expédite
   - Badges de statut colorés
   - Date/heure formatées
 
-#### 11. Dashboard Expéditeur (`/expediteur/mes-colis`)
+#### 12. Espace Expéditeur principal (`/expediteur`)
+- **Dashboard moderne** : Bannière d'accueil avec économies mises en avant (-70%)
+- **3 Actions rapides** (cards interactives) :
+  - 🆕 Publier un colis
+  - 📋 Mes colis
+  - 🔍 Rechercher un trajet
+- **Moteur de recherche intégré** :
+  - Recherche par origine/destination
+  - Résultats en temps réel avec `GET /api/trips?origin=X&destination=Y&status=ACTIVE`
+  - Cards trajets disponibles (poids, prix/kg, date)
+  - Bouton "Contacter" (chat à implémenter)
+- **Aperçu rapide** :
+  - Colis publiés
+  - En attente / En transit / Livrés
+- **Section "Comment ça marche"** (3 étapes simplifiées)
+- **Design vert** : Économie et écologie
+- **Chargement stats via** : `GET /api/packages?user_id={id}`
+
+#### 13. Dashboard Expéditeur - Liste colis (`/expediteur/mes-colis`)
 - **Liste complète** : Affiche tous les colis avec photos et détails
 - **Statistiques en temps réel** :
   - Total colis
