@@ -605,17 +605,85 @@ app.post('/api/auth/send-verification-email', async (c) => {
 
 // Envoyer SMS de vérification
 app.post('/api/auth/send-sms-verification', async (c) => {
-  // TODO: Intégrer avec Twilio
+  const { DB } = c.env
+  
   try {
     const { phone } = await c.req.json()
-    console.log('Envoi SMS de vérification à:', phone)
+    
+    // Validation du numéro
+    if (!phone || phone.length < 10) {
+      return c.json({ 
+        success: false, 
+        error: 'Numéro de téléphone invalide' 
+      }, 400)
+    }
     
     // Générer code à 6 chiffres
-    const code = Math.floor(100000 + Math.random() * 900000)
+    const code = Math.floor(100000 + Math.random() * 900000).toString()
     
-    // TODO: Envoyer via Twilio et stocker le code en DB ou KV
+    // Get Twilio credentials from environment variables
+    const TWILIO_ACCOUNT_SID = c.env.TWILIO_ACCOUNT_SID
+    const TWILIO_AUTH_TOKEN = c.env.TWILIO_AUTH_TOKEN
+    const TWILIO_PHONE_NUMBER = c.env.TWILIO_PHONE_NUMBER
     
-    return c.json({ success: true, message: 'SMS envoyé', code: code }) // Ne pas renvoyer le code en prod !
+    // Check if Twilio is configured
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+      console.log('⚠️ Twilio non configuré. Code de vérification (DEV ONLY):', code)
+      
+      // In development, return code for testing (REMOVE IN PRODUCTION!)
+      return c.json({ 
+        success: true, 
+        message: 'SMS simulé - Twilio non configuré',
+        code: code, // DEV ONLY: Remove in production!
+        dev_mode: true
+      })
+    }
+    
+    // Send SMS via Twilio
+    try {
+      const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)
+      
+      const response = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            To: phone,
+            From: TWILIO_PHONE_NUMBER,
+            Body: `Amanah GO - Votre code de vérification est : ${code}. Il expire dans 10 minutes.`
+          })
+        }
+      )
+      
+      if (!response.ok) {
+        const error = await response.json()
+        console.error('Erreur Twilio:', error)
+        throw new Error('Échec envoi SMS')
+      }
+      
+      console.log('✅ SMS envoyé avec succès à:', phone)
+      
+      // TODO: Store code in DB or KV with expiration (10 minutes)
+      // Example: await DB.prepare('INSERT INTO verification_codes (phone, code, expires_at) VALUES (?, ?, datetime("now", "+10 minutes"))').bind(phone, code).run()
+      
+      return c.json({ 
+        success: true, 
+        message: 'SMS envoyé avec succès',
+        // Don't return code in production!
+      })
+      
+    } catch (twilioError) {
+      console.error('Erreur Twilio:', twilioError)
+      return c.json({ 
+        success: false, 
+        error: 'Erreur lors de l\'envoi du SMS' 
+      }, 500)
+    }
+    
   } catch (error) {
     return c.json({ success: false, error: error.message }, 500)
   }

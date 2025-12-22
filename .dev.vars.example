@@ -1,0 +1,13 @@
+# Twilio Configuration (pour SMS)
+# Remplace ces valeurs par tes vraies credentials Twilio
+# NE COMMITE JAMAIS CE FICHIER SUR GIT !
+
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_PHONE_NUMBER=+33612345678
+
+# Pour obtenir ces valeurs :
+# 1. Crée un compte sur https://www.twilio.com
+# 2. Va dans Console > Account Info
+# 3. Copie ton Account SID et Auth Token
+# 4. Va dans Phone Numbers pour obtenir ton numéro Twilio
