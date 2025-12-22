@@ -48,7 +48,7 @@ app.get('/', (c) => {
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-20 items-center">
                     <div class="flex items-center space-x-3">
-                        <img src="/static/logo-amanah-go.svg" alt="Amanah GO" class="h-16 w-auto">
+                        <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
                         <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
                     </div>
                     <div class="hidden md:flex space-x-6">
@@ -992,7 +992,7 @@ app.get('/login', (c) => {
         <nav class="bg-white shadow-sm">
             <div class="max-w-7xl mx-auto px-4 py-4">
                 <a href="/" class="flex items-center space-x-2">
-                    <img src="/static/logo-amanah-go.svg" alt="Amanah GO" class="h-16 w-auto">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
                     <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
                 </a>
             </div>
@@ -1124,7 +1124,7 @@ app.get('/signup', (c) => {
         <nav class="bg-white shadow-sm">
             <div class="max-w-7xl mx-auto px-4 py-4">
                 <a href="/" class="flex items-center space-x-2">
-                    <img src="/static/logo-amanah-go.svg" alt="Amanah GO" class="h-16 w-auto">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
                     <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
                 </a>
             </div>
@@ -1322,7 +1322,7 @@ app.get('/verify-profile', (c) => {
         <nav class="bg-blue-900/50 backdrop-blur-sm border-b border-blue-700">
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go.svg" alt="Amanah GO" class="h-16 w-auto">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
                     <span class="text-2xl font-bold text-white">Amanah GO</span>
                 </div>
                 <a href="/" class="text-white hover:text-blue-200">
@@ -1741,7 +1741,7 @@ app.get('/voyageur/publier-trajet', (c) => {
         <nav class="bg-white shadow-sm border-b">
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go.svg" alt="Amanah GO" class="h-16 w-auto">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
                     <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -1981,7 +1981,7 @@ app.get('/expediteur/publier-colis', (c) => {
         <nav class="bg-white shadow-sm border-b">
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go.svg" alt="Amanah GO" class="h-16 w-auto">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
                     <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -2850,7 +2850,7 @@ app.get('/voyageur/mes-trajets', (c) => {
         <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go.svg" alt="Amanah GO" class="h-16 w-auto">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
                     <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -2942,7 +2942,7 @@ app.get('/expediteur/mes-colis', (c) => {
         <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go.svg" alt="Amanah GO" class="h-16 w-auto">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
                     <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
                 </div>
                 <div class="flex items-center space-x-4">
