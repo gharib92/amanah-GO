@@ -201,9 +201,9 @@ app.get('/', (c) => {
                     </div>
                     
                     <!-- Right Section: Language + Buttons -->
-                    <div class="flex items-center space-x-3">
-                        <!-- Language Switcher -->
-                        <div id="langSwitcher" class="mr-2"></div>
+                    <div class="flex items-center space-x-5">
+                        <!-- Language Switcher with balanced spacing -->
+                        <div id="langSwitcher" class="px-4"></div>
                         
                         <!-- Auth Buttons -->
                         <button onclick="window.location.href='/login'" class="text-blue-600 hover:text-blue-800 font-medium px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors">
