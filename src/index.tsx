@@ -17,6 +17,145 @@ app.use('/api/*', cors())
 app.use('/static/*', serveStatic({ root: './public' }))
 
 // ==========================================
+// TEST I18N
+// ==========================================
+app.get('/test-i18n', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Test i18n - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/i18n.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- Header -->
+        <nav class="bg-white shadow-sm border-b sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
+                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="langSwitcher"></div>
+                    <a href="/" class="text-blue-600 hover:text-blue-700">
+                        <i class="fas fa-home mr-2"></i><span data-i18n="common.home">Accueil</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-4xl mx-auto px-4 py-12">
+            <!-- Test Section -->
+            <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 mb-4">
+                    <i class="fas fa-language text-blue-600 mr-3"></i>
+                    Test Multi-langue (i18n)
+                </h1>
+                <p class="text-gray-600 mb-6">
+                    Testez le système de traduction en changeant la langue via le menu en haut à droite.
+                </p>
+
+                <!-- Common translations -->
+                <div class="space-y-4">
+                    <div class="border-b pb-4">
+                        <h3 class="font-semibold text-lg mb-3">Common</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><span class="font-medium">Login:</span> <span data-i18n="common.login"></span></div>
+                            <div><span class="font-medium">Signup:</span> <span data-i18n="common.signup"></span></div>
+                            <div><span class="font-medium">Loading:</span> <span data-i18n="common.loading"></span></div>
+                            <div><span class="font-medium">Search:</span> <span data-i18n="common.search"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- Nav translations -->
+                    <div class="border-b pb-4">
+                        <h3 class="font-semibold text-lg mb-3">Navigation</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><span class="font-medium">How it works:</span> <span data-i18n="nav.how_it_works"></span></div>
+                            <div><span class="font-medium">Security:</span> <span data-i18n="nav.security"></span></div>
+                            <div><span class="font-medium">Pricing:</span> <span data-i18n="nav.pricing"></span></div>
+                            <div><span class="font-medium">Traveler Space:</span> <span data-i18n="nav.traveler_space"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- Traveler translations -->
+                    <div class="border-b pb-4">
+                        <h3 class="font-semibold text-lg mb-3">Traveler Space</h3>
+                        <div class="space-y-2">
+                            <div><span class="font-medium">Welcome:</span> <span data-i18n="traveler.welcome"></span></div>
+                            <div><span class="font-medium">Subtitle:</span> <span data-i18n="traveler.welcome_subtitle"></span></div>
+                            <div><span class="font-medium">Publish Trip:</span> <span data-i18n="traveler.publish_trip"></span></div>
+                            <div><span class="font-medium">My Trips:</span> <span data-i18n="traveler.my_trips"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- Sender translations -->
+                    <div>
+                        <h3 class="font-semibold text-lg mb-3">Sender Space</h3>
+                        <div class="space-y-2">
+                            <div><span class="font-medium">Welcome:</span> <span data-i18n="sender.welcome"></span></div>
+                            <div><span class="font-medium">Subtitle:</span> <span data-i18n="sender.welcome_subtitle"></span></div>
+                            <div><span class="font-medium">Publish Package:</span> <span data-i18n="sender.publish_package"></span></div>
+                            <div><span class="font-medium">Search Trip:</span> <span data-i18n="sender.search_trip"></span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Direction Test -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">
+                    <i class="fas fa-arrows-alt-h text-green-600 mr-3"></i>
+                    Test RTL (Arabic)
+                </h2>
+                <p class="text-gray-600 mb-4">
+                    Passez en arabe pour voir le layout s'inverser automatiquement (direction RTL).
+                </p>
+                <div class="flex items-center gap-4">
+                    <div class="flex-1 p-4 bg-blue-50 rounded-lg">
+                        <i class="fas fa-arrow-right mr-2"></i>
+                        <span>LTR (Français/English)</span>
+                    </div>
+                    <div class="flex-1 p-4 bg-green-50 rounded-lg">
+                        <i class="fas fa-arrow-left ml-2"></i>
+                        <span>RTL (العربية)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="/static/i18n.js"></script>
+        <script src="/static/lang-switcher.js"></script>
+        <script>
+          // Wait for i18n to load
+          window.addEventListener('DOMContentLoaded', async () => {
+            // Initialize i18n first
+            await window.i18n.init()
+            
+            // Inject language switcher
+            document.getElementById('langSwitcher').innerHTML = createLanguageSwitcher()
+            
+            // Apply translations to all elements with data-i18n attribute
+            applyTranslations()
+          })
+
+          function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+              const key = el.getAttribute('data-i18n')
+              el.textContent = window.t(key)
+            })
+          }
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// ==========================================
 // LANDING PAGE
 // ==========================================
 app.get('/', (c) => {
