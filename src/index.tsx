@@ -29,7 +29,7 @@ app.get('/test-i18n', (c) => {
         <title>Test i18n - Amanah GO</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <link href="/static/i18n.css" rel="stylesheet">
+        <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
     <body class="bg-gray-50 min-h-screen">
         <!-- Header -->
@@ -128,8 +128,8 @@ app.get('/test-i18n', (c) => {
             </div>
         </div>
 
-        <script src="/static/i18n.js"></script>
-        <script src="/static/lang-switcher.js"></script>
+        <script src="/static/i18n.js?v=3"></script>
+        <script src="/static/lang-switcher.js?v=3"></script>
         <script>
           // Wait for i18n to load
           window.addEventListener('DOMContentLoaded', async () => {
@@ -168,7 +168,7 @@ app.get('/', (c) => {
         <title>Amanah GO - Transport Collaboratif France ↔ Maroc</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <link href="/static/i18n.css" rel="stylesheet">
+        <link href="/static/i18n.css?v=3" rel="stylesheet">
         <style>
           .gradient-bg {
             background: linear-gradient(135deg, #1E40AF 0%, #10B981 100%);
@@ -411,8 +411,8 @@ app.get('/', (c) => {
           calculatePrice();
         </script>
 
-        <script src="/static/i18n.js"></script>
-        <script src="/static/lang-switcher.js"></script>
+        <script src="/static/i18n.js?v=3"></script>
+        <script src="/static/lang-switcher.js?v=3"></script>
         <script>
           // Initialize i18n and inject language switcher
           window.addEventListener('DOMContentLoaded', async () => {
@@ -1552,7 +1552,7 @@ app.get('/voyageur', (c) => {
         <title>Espace Voyageur - Amanah GO</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <link href="/static/i18n.css" rel="stylesheet">
+        <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
     <body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen">
         <!-- Header -->
@@ -1727,8 +1727,8 @@ app.get('/voyageur', (c) => {
           loadStats()
         </script>
 
-        <script src="/static/i18n.js"></script>
-        <script src="/static/lang-switcher.js"></script>
+        <script src="/static/i18n.js?v=3"></script>
+        <script src="/static/lang-switcher.js?v=3"></script>
         <script>
           // Initialize i18n and inject language switcher
           window.addEventListener('DOMContentLoaded', async () => {
@@ -2246,7 +2246,7 @@ app.get('/expediteur', (c) => {
         <title>Espace Expéditeur - Amanah GO</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <link href="/static/i18n.css" rel="stylesheet">
+        <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
     <body class="bg-gradient-to-br from-green-50 to-green-100 min-h-screen">
         <!-- Header -->
@@ -2497,8 +2497,8 @@ app.get('/expediteur', (c) => {
           loadStats()
         </script>
 
-        <script src="/static/i18n.js"></script>
-        <script src="/static/lang-switcher.js"></script>
+        <script src="/static/i18n.js?v=3"></script>
+        <script src="/static/lang-switcher.js?v=3"></script>
         <script>
           // Initialize i18n and inject language switcher
           window.addEventListener('DOMContentLoaded', async () => {
