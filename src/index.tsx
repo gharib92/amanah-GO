@@ -4071,6 +4071,444 @@ app.get('/api/matches/packages-for-trip', async (c) => {
 })
 
 // ==========================================
+// EXCHANGE SYSTEM - Gestion des échanges de colis (RDV Public)
+// ==========================================
+
+/**
+ * Helper: Init tables if not exist (dev mode)
+ */
+async function initExchangeTables(DB: D1Database) {
+  // Create exchanges table
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS exchanges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      package_id INTEGER NOT NULL,
+      trip_id INTEGER NOT NULL,
+      sender_id INTEGER NOT NULL,
+      traveler_id INTEGER NOT NULL,
+      receiver_id INTEGER,
+      pickup_location TEXT NOT NULL,
+      pickup_latitude REAL,
+      pickup_longitude REAL,
+      pickup_date DATETIME,
+      pickup_code TEXT NOT NULL,
+      pickup_confirmed BOOLEAN DEFAULT 0,
+      pickup_photo_url TEXT,
+      pickup_notes TEXT,
+      delivery_location TEXT NOT NULL,
+      delivery_latitude REAL,
+      delivery_longitude REAL,
+      delivery_date DATETIME,
+      delivery_code TEXT NOT NULL,
+      delivery_confirmed BOOLEAN DEFAULT 0,
+      delivery_photo_url TEXT,
+      delivery_notes TEXT,
+      status TEXT DEFAULT 'PENDING',
+      transaction_code TEXT NOT NULL,
+      amount REAL NOT NULL,
+      commission REAL NOT NULL,
+      traveler_earnings REAL NOT NULL,
+      payment_status TEXT DEFAULT 'PENDING',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      accepted_at DATETIME,
+      pickup_confirmed_at DATETIME,
+      delivery_confirmed_at DATETIME,
+      completed_at DATETIME,
+      cancelled_at DATETIME
+    )
+  `).run()
+
+  // Create exchange_messages table
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS exchange_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      exchange_id INTEGER NOT NULL,
+      sender_id INTEGER NOT NULL,
+      receiver_id INTEGER NOT NULL,
+      message TEXT NOT NULL,
+      message_type TEXT DEFAULT 'TEXT',
+      read_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run()
+
+  // Create public_meeting_places table
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS public_meeting_places (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      address TEXT NOT NULL,
+      city TEXT NOT NULL,
+      country TEXT NOT NULL,
+      latitude REAL,
+      longitude REAL,
+      description TEXT,
+      hours TEXT,
+      safety_rating REAL DEFAULT 5.0,
+      is_recommended BOOLEAN DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run()
+  
+  // Insert default meeting places if table is empty
+  const count = await DB.prepare('SELECT COUNT(*) as count FROM public_meeting_places').first()
+  if (count.count === 0) {
+    // FRANCE - Paris
+    await DB.prepare(`
+      INSERT INTO public_meeting_places (name, type, address, city, country, latitude, longitude, description, hours, safety_rating) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind('Gare de Lyon', 'TRAIN_STATION', 'Place Louis-Armand, 75012', 'Paris', 'France', 48.8443, 2.3736, 'Grande gare SNCF avec de nombreux commerces', '{"all": "24/7"}', 5.0).run()
+    
+    await DB.prepare(`
+      INSERT INTO public_meeting_places (name, type, address, city, country, latitude, longitude, description, hours, safety_rating) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind('Gare du Nord', 'TRAIN_STATION', 'Rue de Dunkerque, 75010', 'Paris', 'France', 48.8809, 2.3553, 'Gare internationale Eurostar et Thalys', '{"all": "24/7"}', 5.0).run()
+    
+    await DB.prepare(`
+      INSERT INTO public_meeting_places (name, type, address, city, country, latitude, longitude, description, hours, safety_rating) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind('Aéroport Charles de Gaulle', 'AIRPORT', 'Terminal 2, 95700 Roissy', 'Paris', 'France', 49.0097, 2.5479, 'Terminal 2 - Zone publique', '{"all": "24/7"}', 5.0).run()
+
+    // MAROC - Casablanca
+    await DB.prepare(`
+      INSERT INTO public_meeting_places (name, type, address, city, country, latitude, longitude, description, hours, safety_rating) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind('Gare Casa-Voyageurs', 'TRAIN_STATION', 'Boulevard Mohammed V', 'Casablanca', 'Maroc', 33.5925, -7.6187, 'Gare ONCF principale de Casablanca', '{"all": "24/7"}', 5.0).run()
+    
+    await DB.prepare(`
+      INSERT INTO public_meeting_places (name, type, address, city, country, latitude, longitude, description, hours, safety_rating) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind('Aéroport Mohammed V', 'AIRPORT', 'Nouasseur, 27000', 'Casablanca', 'Maroc', 33.3675, -7.5898, 'Terminal 1 - Zone publique', '{"all": "24/7"}', 5.0).run()
+    
+    await DB.prepare(`
+      INSERT INTO public_meeting_places (name, type, address, city, country, latitude, longitude, description, hours, safety_rating) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind('Morocco Mall', 'MALL', 'Boulevard de la Corniche', 'Casablanca', 'Maroc', 33.5699, -7.6771, 'Plus grand centre commercial du Maroc', '{"all": "10h-22h"}', 5.0).run()
+  }
+}
+
+/**
+ * Helper: Generate unique 6-digit code
+ */
+function generateCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+/**
+ * API: POST /api/exchanges/request
+ * Créer une demande d'échange de colis (Expéditeur → Voyageur)
+ */
+app.post('/api/exchanges/request', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    // Init tables (dev mode)
+    await initExchangeTables(DB)
+    
+    const body = await c.req.json()
+    const {
+      package_id,
+      trip_id,
+      sender_id,
+      traveler_id,
+      receiver_id,
+      pickup_location,
+      pickup_latitude,
+      pickup_longitude,
+      pickup_date,
+      pickup_notes,
+      delivery_location,
+      delivery_latitude,
+      delivery_longitude,
+      delivery_date,
+      delivery_notes
+    } = body
+    
+    // Validation
+    if (!package_id || !trip_id || !sender_id || !traveler_id || !pickup_location || !delivery_location) {
+      return c.json({ 
+        success: false, 
+        error: 'package_id, trip_id, sender_id, traveler_id, pickup_location, delivery_location sont requis' 
+      }, 400)
+    }
+    
+    // Get package and trip info for pricing
+    const pkg = await DB.prepare('SELECT * FROM packages WHERE id = ?').bind(package_id).first()
+    const trip = await DB.prepare('SELECT * FROM trips WHERE id = ?').bind(trip_id).first()
+    
+    if (!pkg || !trip) {
+      return c.json({ success: false, error: 'Package ou Trip introuvable' }, 404)
+    }
+    
+    // Calculate pricing
+    const amount = pkg.weight * trip.price_per_kg
+    const commission = amount * 0.12
+    const traveler_earnings = amount - commission
+    
+    // Generate unique codes
+    const pickup_code = generateCode()
+    const delivery_code = generateCode()
+    const transaction_code = generateCode()
+    
+    // Create exchange
+    const result = await DB.prepare(`
+      INSERT INTO exchanges (
+        package_id, trip_id, sender_id, traveler_id, receiver_id,
+        pickup_location, pickup_latitude, pickup_longitude, pickup_date, pickup_code, pickup_notes,
+        delivery_location, delivery_latitude, delivery_longitude, delivery_date, delivery_code, delivery_notes,
+        status, transaction_code, amount, commission, traveler_earnings, payment_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, 'PENDING')
+    `).bind(
+      package_id, trip_id, sender_id, traveler_id, receiver_id || null,
+      pickup_location, pickup_latitude || null, pickup_longitude || null, pickup_date || null, pickup_code, pickup_notes || null,
+      delivery_location, delivery_latitude || null, delivery_longitude || null, delivery_date || null, delivery_code, delivery_notes || null,
+      transaction_code, amount, commission, traveler_earnings
+    ).run()
+    
+    return c.json({
+      success: true,
+      exchange_id: result.meta.last_row_id,
+      pickup_code,
+      delivery_code,
+      transaction_code,
+      amount,
+      commission,
+      traveler_earnings,
+      message: 'Demande d\'échange créée avec succès'
+    })
+    
+  } catch (error) {
+    console.error('Erreur création échange:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+/**
+ * API: GET /api/exchanges/:id
+ * Obtenir les détails d'un échange
+ */
+app.get('/api/exchanges/:id', async (c) => {
+  const { DB } = c.env
+  const id = c.req.param('id')
+  
+  try {
+    const exchange = await DB.prepare(`
+      SELECT 
+        e.*,
+        p.title as package_title,
+        p.weight as package_weight,
+        p.departure_city as package_departure,
+        p.arrival_city as package_arrival,
+        t.departure_city as trip_departure,
+        t.arrival_city as trip_arrival,
+        t.departure_date as trip_date,
+        sender.name as sender_name,
+        sender.email as sender_email,
+        sender.phone as sender_phone,
+        sender.avatar_url as sender_avatar,
+        traveler.name as traveler_name,
+        traveler.email as traveler_email,
+        traveler.phone as traveler_phone,
+        traveler.avatar_url as traveler_avatar,
+        traveler.rating as traveler_rating,
+        traveler.kyc_status as traveler_kyc
+      FROM exchanges e
+      INNER JOIN packages p ON e.package_id = p.id
+      INNER JOIN trips t ON e.trip_id = t.id
+      INNER JOIN users sender ON e.sender_id = sender.id
+      INNER JOIN users traveler ON e.traveler_id = traveler.id
+      WHERE e.id = ?
+    `).bind(id).first()
+    
+    if (!exchange) {
+      return c.json({ success: false, error: 'Échange introuvable' }, 404)
+    }
+    
+    return c.json({ success: true, exchange })
+    
+  } catch (error) {
+    console.error('Erreur récupération échange:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+/**
+ * API: PUT /api/exchanges/:id/accept
+ * Voyageur accepte la demande d'échange
+ */
+app.put('/api/exchanges/:id/accept', async (c) => {
+  const { DB } = c.env
+  const id = c.req.param('id')
+  
+  try {
+    const result = await DB.prepare(`
+      UPDATE exchanges 
+      SET status = 'ACCEPTED', accepted_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status = 'PENDING'
+    `).bind(id).run()
+    
+    if (result.meta.changes === 0) {
+      return c.json({ success: false, error: 'Échange introuvable ou déjà accepté' }, 404)
+    }
+    
+    return c.json({ success: true, message: 'Échange accepté avec succès' })
+    
+  } catch (error) {
+    console.error('Erreur acceptation échange:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+/**
+ * API: PUT /api/exchanges/:id/confirm-pickup
+ * Voyageur confirme avoir récupéré le colis
+ */
+app.put('/api/exchanges/:id/confirm-pickup', async (c) => {
+  const { DB } = c.env
+  const id = c.req.param('id')
+  const body = await c.req.json()
+  const { pickup_code, pickup_photo_url } = body
+  
+  try {
+    // Verify code
+    const exchange = await DB.prepare('SELECT * FROM exchanges WHERE id = ?').bind(id).first()
+    
+    if (!exchange) {
+      return c.json({ success: false, error: 'Échange introuvable' }, 404)
+    }
+    
+    if (exchange.pickup_code !== pickup_code) {
+      return c.json({ success: false, error: 'Code de collecte invalide' }, 400)
+    }
+    
+    const result = await DB.prepare(`
+      UPDATE exchanges 
+      SET pickup_confirmed = 1, 
+          pickup_confirmed_at = CURRENT_TIMESTAMP,
+          pickup_photo_url = ?,
+          status = 'IN_TRANSIT'
+      WHERE id = ?
+    `).bind(pickup_photo_url || null, id).run()
+    
+    return c.json({ 
+      success: true, 
+      message: 'Collecte confirmée ! Le colis est maintenant en transit.' 
+    })
+    
+  } catch (error) {
+    console.error('Erreur confirmation collecte:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+/**
+ * API: PUT /api/exchanges/:id/confirm-delivery
+ * Voyageur confirme avoir livré le colis
+ */
+app.put('/api/exchanges/:id/confirm-delivery', async (c) => {
+  const { DB } = c.env
+  const id = c.req.param('id')
+  const body = await c.req.json()
+  const { delivery_code, delivery_photo_url } = body
+  
+  try {
+    // Verify code
+    const exchange = await DB.prepare('SELECT * FROM exchanges WHERE id = ?').bind(id).first()
+    
+    if (!exchange) {
+      return c.json({ success: false, error: 'Échange introuvable' }, 404)
+    }
+    
+    if (exchange.delivery_code !== delivery_code) {
+      return c.json({ success: false, error: 'Code de livraison invalide' }, 400)
+    }
+    
+    const result = await DB.prepare(`
+      UPDATE exchanges 
+      SET delivery_confirmed = 1, 
+          delivery_confirmed_at = CURRENT_TIMESTAMP,
+          delivery_photo_url = ?,
+          status = 'DELIVERED',
+          completed_at = CURRENT_TIMESTAMP,
+          payment_status = 'RELEASED'
+      WHERE id = ?
+    `).bind(delivery_photo_url || null, id).run()
+    
+    // TODO: Trigger payment release to traveler
+    
+    return c.json({ 
+      success: true, 
+      message: 'Livraison confirmée ! Le paiement va être libéré au voyageur.' 
+    })
+    
+  } catch (error) {
+    console.error('Erreur confirmation livraison:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+/**
+ * API: GET /api/meeting-places
+ * Obtenir la liste des lieux publics recommandés
+ */
+app.get('/api/meeting-places', async (c) => {
+  const { DB } = c.env
+  const { city, country, type } = c.req.query()
+  
+  try {
+    // Init tables (dev mode)
+    await initExchangeTables(DB)
+    
+    let sql = 'SELECT * FROM public_meeting_places WHERE is_recommended = 1'
+    const params = []
+    
+    if (city) {
+      sql += ' AND LOWER(city) LIKE ?'
+      params.push(`%${city.toLowerCase()}%`)
+    }
+    
+    if (country) {
+      sql += ' AND LOWER(country) = ?'
+      params.push(country.toLowerCase())
+    }
+    
+    if (type) {
+      sql += ' AND type = ?'
+      params.push(type)
+    }
+    
+    sql += ' ORDER BY safety_rating DESC, name ASC'
+    
+    const { results } = await DB.prepare(sql).bind(...params).all()
+    
+    return c.json({ success: true, meeting_places: results || [] })
+    
+  } catch (error) {
+    console.error('Erreur récupération lieux:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// ==========================================
 // PAGE: RECHERCHE AVANCÉE DE MATCHING
 // ==========================================
 
