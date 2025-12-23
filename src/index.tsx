@@ -184,24 +184,32 @@ app.get('/', (c) => {
     </head>
     <body class="bg-gray-50">
         <!-- Header -->
-        <nav class="bg-white shadow-sm">
+        <nav class="bg-white shadow-sm sticky top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-20 items-center">
+                <div class="flex justify-between items-center py-4">
+                    <!-- Logo -->
                     <div class="flex items-center space-x-3">
-                        <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
-                        <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                        <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-14 w-auto">
+                        <span class="text-xl font-bold text-gray-900">Amanah GO</span>
                     </div>
-                    <div class="hidden md:flex space-x-6">
-                        <a href="#comment-ca-marche" class="text-gray-700 hover:text-blue-600" data-i18n="nav.how_it_works">Comment ça marche</a>
-                        <a href="#securite" class="text-gray-700 hover:text-blue-600" data-i18n="nav.security">Sécurité</a>
-                        <a href="#tarifs" class="text-gray-700 hover:text-blue-600" data-i18n="nav.pricing">Tarifs</a>
+                    
+                    <!-- Navigation Links (Center) -->
+                    <div class="hidden md:flex items-center space-x-8">
+                        <a href="#comment-ca-marche" class="text-gray-700 hover:text-blue-600 transition-colors font-medium" data-i18n="nav.how_it_works">Comment ça marche</a>
+                        <a href="#securite" class="text-gray-700 hover:text-blue-600 transition-colors font-medium" data-i18n="nav.security">Sécurité</a>
+                        <a href="#tarifs" class="text-gray-700 hover:text-blue-600 transition-colors font-medium" data-i18n="nav.pricing">Tarifs</a>
                     </div>
-                    <div class="flex items-center space-x-4">
-                        <div id="langSwitcher"></div>
-                        <button onclick="window.location.href='/login'" class="text-blue-600 hover:text-blue-800 font-medium">
+                    
+                    <!-- Right Section: Language + Buttons -->
+                    <div class="flex items-center space-x-3">
+                        <!-- Language Switcher -->
+                        <div id="langSwitcher" class="mr-2"></div>
+                        
+                        <!-- Auth Buttons -->
+                        <button onclick="window.location.href='/login'" class="text-blue-600 hover:text-blue-800 font-medium px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors">
                             <span data-i18n="common.login">Connexion</span>
                         </button>
-                        <button onclick="window.location.href='/signup'" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium">
+                        <button onclick="window.location.href='/signup'" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-sm">
                             <span data-i18n="common.signup">Inscription</span>
                         </button>
                     </div>
