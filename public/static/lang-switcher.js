@@ -1,7 +1,7 @@
 /**
  * Amanah GO - Language Switcher Component
  * Creates a dropdown to switch between FR 🇫🇷 / AR 🇲🇦 / EN 🇬🇧
- * Compact version: Flag only (no text)
+ * Minimal version: Flag only (no text, no chevron)
  */
 
 function createLanguageSwitcher() {
@@ -16,9 +16,8 @@ function createLanguageSwitcher() {
   
   return `
     <div class="lang-switcher">
-      <button class="lang-switcher-button-compact" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="${current.name}">
-        <span class="lang-flag-large">${current.flag}</span>
-        <i class="fas fa-chevron-down text-xs text-gray-500"></i>
+      <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="${current.name}">
+        <span class="lang-flag-only">${current.flag}</span>
       </button>
       
       <div class="lang-switcher-dropdown" id="langDropdown">
