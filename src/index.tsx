@@ -4291,4 +4291,429 @@ app.get('/search', (c) => {
   `)
 })
 
+// ==========================================
+// PAGE: RÉSULTATS DE MATCHING
+// ==========================================
+
+app.get('/results', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Résultats de recherche - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/i18n.css?v=3" rel="stylesheet">
+        <style>
+            .match-card {
+                transition: all 0.3s ease;
+            }
+            .match-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            }
+            .score-badge {
+                position: absolute;
+                top: -10px;
+                right: -10px;
+                animation: pulse 2s infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.8; }
+            }
+            .skeleton {
+                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+                background-size: 200% 100%;
+                animation: loading 1.5s infinite;
+            }
+            @keyframes loading {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+        </style>
+    </head>
+    <body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-md border-b-2 border-blue-500 sticky top-0 z-50">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-10 w-auto">
+                    <h1 class="text-xl font-bold text-gray-800">Amanah GO</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="langSwitcherContainer"></div>
+                    <a href="/search" class="px-4 py-2 text-gray-600 hover:text-blue-600 transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i><span data-i18n="common.back">Retour</span>
+                    </a>
+                    <a href="/" class="px-4 py-2 text-gray-600 hover:text-blue-600 transition-colors" data-i18n="nav.home">Accueil</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="container mx-auto px-4 py-8">
+            <!-- Search Summary -->
+            <div id="searchSummary" class="bg-white rounded-xl shadow-md p-6 mb-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                            <i id="summaryIcon" class="fas fa-search mr-2"></i>
+                            <span id="summaryTitle">Résultats de recherche</span>
+                        </h2>
+                        <p id="summaryRoute" class="text-gray-600"></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-3xl font-bold text-blue-600" id="resultsCount">0</p>
+                        <p class="text-sm text-gray-500" data-i18n="search.results_found">résultats trouvés</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters & Sorting -->
+            <div class="grid md:grid-cols-4 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-sort mr-2"></i>Trier par
+                    </label>
+                    <select id="sortBy" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="score">Score (meilleur)</option>
+                        <option value="price_asc">Prix (croissant)</option>
+                        <option value="price_desc">Prix (décroissant)</option>
+                        <option value="date">Date (proche)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-star mr-2"></i>Rating min
+                    </label>
+                    <select id="filterRating" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="0">Tous</option>
+                        <option value="3">3+ ⭐</option>
+                        <option value="4">4+ ⭐⭐⭐⭐</option>
+                        <option value="4.5">4.5+ ⭐⭐⭐⭐⭐</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-shield-alt mr-2"></i>KYC
+                    </label>
+                    <select id="filterKYC" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="all">Tous</option>
+                        <option value="VERIFIED">Vérifiés uniquement</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-chart-line mr-2"></i>Score min
+                    </label>
+                    <select id="filterScore" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="0">Tous</option>
+                        <option value="60">60+ (Fair)</option>
+                        <option value="75">75+ (Good)</option>
+                        <option value="90">90+ (Excellent)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl p-6 skeleton h-64"></div>
+                <div class="bg-white rounded-xl p-6 skeleton h-64"></div>
+                <div class="bg-white rounded-xl p-6 skeleton h-64"></div>
+            </div>
+
+            <!-- Results Container -->
+            <div id="resultsContainer" class="hidden grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Results will be injected here -->
+            </div>
+
+            <!-- No Results State -->
+            <div id="noResults" class="hidden text-center py-16">
+                <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
+                <h3 class="text-2xl font-bold text-gray-600 mb-2" data-i18n="search.no_results">Aucun résultat trouvé</h3>
+                <p class="text-gray-500 mb-6">Essayez de modifier vos critères de recherche</p>
+                <a href="/search" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block">
+                    <i class="fas fa-redo mr-2"></i>Nouvelle recherche
+                </a>
+            </div>
+        </div>
+
+        <!-- Contact Modal -->
+        <div id="contactModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-envelope mr-2 text-blue-600"></i>Contacter
+                    </h3>
+                    <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div id="modalContent"></div>
+            </div>
+        </div>
+
+        <!-- JavaScript -->
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n.js?v=3"></script>
+        <script src="/static/lang-switcher.js?v=3"></script>
+        <script>
+            let allResults = []
+            let searchType = ''
+
+            // Parse URL parameters
+            const urlParams = new URLSearchParams(window.location.search)
+            searchType = urlParams.get('search_type')
+
+            // Fetch results on page load
+            async function fetchResults() {
+                try {
+                    let apiUrl = ''
+                    
+                    if (searchType === 'trips') {
+                        // Expéditeur cherche des trajets
+                        apiUrl = '/api/matches/trips-for-package?' + urlParams.toString()
+                        document.getElementById('summaryIcon').className = 'fas fa-plane-departure mr-2 text-blue-600'
+                        document.getElementById('summaryTitle').textContent = 'Trajets disponibles'
+                    } else if (searchType === 'packages') {
+                        // Voyageur cherche des colis
+                        apiUrl = '/api/matches/packages-for-trip?' + urlParams.toString()
+                        document.getElementById('summaryIcon').className = 'fas fa-box mr-2 text-green-600'
+                        document.getElementById('summaryTitle').textContent = 'Colis disponibles'
+                    } else {
+                        showNoResults()
+                        return
+                    }
+
+                    const response = await axios.get(apiUrl)
+                    
+                    if (response.data.success) {
+                        allResults = response.data.matches
+                        updateSummary(response.data.search_params)
+                        displayResults(allResults)
+                    } else {
+                        showNoResults()
+                    }
+                } catch (error) {
+                    console.error('Erreur:', error)
+                    showNoResults()
+                }
+            }
+
+            function updateSummary(params) {
+                const origin = params.origin || '?'
+                const destination = params.destination || '?'
+                document.getElementById('summaryRoute').innerHTML = 
+                    \`<i class="fas fa-map-marker-alt text-blue-600 mr-2"></i>\${origin} <i class="fas fa-arrow-right mx-2"></i> \${destination}\`
+            }
+
+            function displayResults(results) {
+                document.getElementById('loadingState').classList.add('hidden')
+                document.getElementById('resultsCount').textContent = results.length
+
+                if (results.length === 0) {
+                    showNoResults()
+                    return
+                }
+
+                document.getElementById('resultsContainer').classList.remove('hidden')
+                const container = document.getElementById('resultsContainer')
+                container.innerHTML = ''
+
+                results.forEach(result => {
+                    const card = createResultCard(result)
+                    container.appendChild(card)
+                })
+            }
+
+            function createResultCard(result) {
+                const div = document.createElement('div')
+                div.className = 'match-card bg-white rounded-xl shadow-md p-6 relative cursor-pointer'
+                
+                const isTrip = searchType === 'trips'
+                const themeColor = isTrip ? 'blue' : 'green'
+                
+                // Score badge
+                const scoreColor = result.match_score >= 90 ? 'green' : result.match_score >= 75 ? 'blue' : result.match_score >= 60 ? 'yellow' : 'gray'
+                const scoreLabel = result.match_quality === 'excellent' ? 'Excellent' : 
+                                   result.match_quality === 'good' ? 'Good' : 
+                                   result.match_quality === 'fair' ? 'Fair' : 'Low'
+
+                // User info
+                const userName = isTrip ? result.traveler_name : result.shipper_name
+                const userAvatar = isTrip ? result.traveler_avatar : result.shipper_avatar
+                const userRating = isTrip ? result.traveler_rating : result.shipper_rating
+                const userKYC = isTrip ? result.traveler_kyc : result.shipper_kyc
+                const userTrips = isTrip ? result.traveler_total_trips : result.shipper_total_packages
+
+                div.innerHTML = \`
+                    <div class="score-badge">
+                        <div class="bg-\${scoreColor}-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                            \${result.match_score}% <i class="fas fa-star ml-1"></i>
+                        </div>
+                    </div>
+
+                    <!-- User Info -->
+                    <div class="flex items-center mb-4">
+                        <img src="\${userAvatar || '/static/default-avatar.png'}" alt="\${userName}" class="w-12 h-12 rounded-full mr-3 border-2 border-\${themeColor}-500">
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">\${userName}</h3>
+                            <div class="flex items-center text-sm text-gray-600">
+                                <span class="text-yellow-500 mr-1">\${'⭐'.repeat(Math.floor(userRating || 0))}</span>
+                                <span>(\${userRating || 'N/A'})</span>
+                                \${userKYC === 'VERIFIED' ? '<i class="fas fa-check-circle text-green-600 ml-2" title="Vérifié"></i>' : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trip/Package Info -->
+                    <div class="space-y-2 mb-4">
+                        <div class="flex items-center text-gray-700">
+                            <i class="fas fa-map-marker-alt text-\${themeColor}-600 w-5"></i>
+                            <span class="text-sm">\${result.departure_city} → \${result.arrival_city}</span>
+                        </div>
+                        <div class="flex items-center text-gray-700">
+                            <i class="fas fa-calendar text-\${themeColor}-600 w-5"></i>
+                            <span class="text-sm">\${new Date(result.departure_date || result.preferred_date).toLocaleDateString('fr-FR')}</span>
+                        </div>
+                        <div class="flex items-center text-gray-700">
+                            <i class="fas fa-weight text-\${themeColor}-600 w-5"></i>
+                            <span class="text-sm">\${isTrip ? result.available_weight : result.weight} kg</span>
+                        </div>
+                    </div>
+
+                    <!-- Price Info -->
+                    <div class="border-t pt-4 mb-4">
+                        \${isTrip ? \`
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Prix total estimé:</span>
+                                <span class="text-2xl font-bold text-\${themeColor}-600">\${result.estimated_cost}€</span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Commission: \${result.platform_fee}€
+                            </div>
+                        \` : \`
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Gain potentiel:</span>
+                                <span class="text-2xl font-bold text-\${themeColor}-600">\${result.potential_earnings || 'N/A'}€</span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Prix: \${result.price_per_kg || 'N/A'}€/kg
+                            </div>
+                        \`}
+                    </div>
+
+                    <!-- CTA Button -->
+                    <button onclick="contactUser(\${result.id}, '\${userName}')" class="w-full py-3 bg-\${themeColor}-600 text-white rounded-lg hover:bg-\${themeColor}-700 transition-colors font-bold">
+                        <i class="fas fa-envelope mr-2"></i>Contacter
+                    </button>
+                \`
+
+                return div
+            }
+
+            function showNoResults() {
+                document.getElementById('loadingState').classList.add('hidden')
+                document.getElementById('resultsContainer').classList.add('hidden')
+                document.getElementById('noResults').classList.remove('hidden')
+            }
+
+            // Contact Modal
+            function contactUser(id, name) {
+                const modal = document.getElementById('contactModal')
+                const content = document.getElementById('modalContent')
+                
+                content.innerHTML = \`
+                    <div class="text-center py-4">
+                        <p class="text-gray-700 mb-4">Contacter <strong>\${name}</strong></p>
+                        <p class="text-sm text-gray-500 mb-6">
+                            Cette fonctionnalité sera bientôt disponible. 
+                            Un système de chat en temps réel sera intégré prochainement.
+                        </p>
+                        <button onclick="closeContactModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Compris
+                        </button>
+                    </div>
+                \`
+                
+                modal.classList.remove('hidden')
+            }
+
+            function closeContactModal() {
+                document.getElementById('contactModal').classList.add('hidden')
+            }
+
+            document.getElementById('closeModal').addEventListener('click', closeContactModal)
+
+            // Filters & Sorting
+            document.getElementById('sortBy').addEventListener('change', applyFilters)
+            document.getElementById('filterRating').addEventListener('change', applyFilters)
+            document.getElementById('filterKYC').addEventListener('change', applyFilters)
+            document.getElementById('filterScore').addEventListener('change', applyFilters)
+
+            function applyFilters() {
+                let filtered = [...allResults]
+
+                // Filter by rating
+                const minRating = parseFloat(document.getElementById('filterRating').value)
+                if (minRating > 0) {
+                    filtered = filtered.filter(r => {
+                        const rating = searchType === 'trips' ? r.traveler_rating : r.shipper_rating
+                        return rating >= minRating
+                    })
+                }
+
+                // Filter by KYC
+                const kycFilter = document.getElementById('filterKYC').value
+                if (kycFilter === 'VERIFIED') {
+                    filtered = filtered.filter(r => {
+                        const kyc = searchType === 'trips' ? r.traveler_kyc : r.shipper_kyc
+                        return kyc === 'VERIFIED'
+                    })
+                }
+
+                // Filter by score
+                const minScore = parseInt(document.getElementById('filterScore').value)
+                if (minScore > 0) {
+                    filtered = filtered.filter(r => r.match_score >= minScore)
+                }
+
+                // Sort
+                const sortBy = document.getElementById('sortBy').value
+                if (sortBy === 'score') {
+                    filtered.sort((a, b) => b.match_score - a.match_score)
+                } else if (sortBy === 'price_asc') {
+                    filtered.sort((a, b) => {
+                        const priceA = parseFloat(a.estimated_cost || a.potential_earnings || 0)
+                        const priceB = parseFloat(b.estimated_cost || b.potential_earnings || 0)
+                        return priceA - priceB
+                    })
+                } else if (sortBy === 'price_desc') {
+                    filtered.sort((a, b) => {
+                        const priceA = parseFloat(a.estimated_cost || a.potential_earnings || 0)
+                        const priceB = parseFloat(b.estimated_cost || b.potential_earnings || 0)
+                        return priceB - priceA
+                    })
+                } else if (sortBy === 'date') {
+                    filtered.sort((a, b) => {
+                        const dateA = new Date(a.departure_date || a.preferred_date)
+                        const dateB = new Date(b.departure_date || b.preferred_date)
+                        return dateA - dateB
+                    })
+                }
+
+                displayResults(filtered)
+            }
+
+            // Initialize
+            fetchResults()
+        </script>
+    </body>
+    </html>
+  `)
+})
+
 export default app
