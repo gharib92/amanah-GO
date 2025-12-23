@@ -223,10 +223,10 @@ app.get('/', (c) => {
         <!-- Hero Section -->
         <section class="gradient-bg text-white py-20">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <h1 class="text-5xl font-bold mb-6">
+                <h1 class="text-5xl font-bold mb-6" data-i18n="landing.hero_title">
                     Voyagez Malin, Envoyez Futé
                 </h1>
-                <p class="text-xl mb-8 text-blue-100">
+                <p class="text-xl mb-8 text-blue-100" data-i18n="landing.hero_subtitle">
                     La plateforme de confiance pour transporter vos colis entre la France et le Maroc
                 </p>
                 
@@ -234,18 +234,18 @@ app.get('/', (c) => {
                 <div class="flex flex-col md:flex-row justify-center gap-6 mb-12">
                     <div class="bg-white text-gray-900 rounded-xl p-8 card-hover cursor-pointer flex-1 max-w-md" onclick="window.location.href='/voyageur'">
                         <i class="fas fa-plane-departure text-blue-600 text-5xl mb-4"></i>
-                        <h3 class="text-2xl font-bold mb-2">Je voyage</h3>
-                        <p class="text-gray-600 mb-4">Rentabilisez votre voyage en transportant des colis</p>
-                        <button class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium w-full hover:bg-blue-700">
+                        <h3 class="text-2xl font-bold mb-2" data-i18n="landing.cta_traveler_title">Je voyage</h3>
+                        <p class="text-gray-600 mb-4" data-i18n="landing.cta_traveler_desc">Rentabilisez votre voyage en transportant des colis</p>
+                        <button class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium w-full hover:bg-blue-700" data-i18n="landing.cta_traveler_button">
                             Publier mon voyage →
                         </button>
                     </div>
                     
                     <div class="bg-white text-gray-900 rounded-xl p-8 card-hover cursor-pointer flex-1 max-w-md" onclick="window.location.href='/expediteur'">
                         <i class="fas fa-box text-green-600 text-5xl mb-4"></i>
-                        <h3 class="text-2xl font-bold mb-2">J'envoie un colis</h3>
-                        <p class="text-gray-600 mb-4">Économisez jusqu'à 70% sur vos envois</p>
-                        <button class="bg-green-600 text-white px-6 py-3 rounded-lg font-medium w-full hover:bg-green-700">
+                        <h3 class="text-2xl font-bold mb-2" data-i18n="landing.cta_sender_title">J'envoie un colis</h3>
+                        <p class="text-gray-600 mb-4" data-i18n="landing.cta_sender_desc">Économisez jusqu'à 70% sur vos envois</p>
+                        <button class="bg-green-600 text-white px-6 py-3 rounded-lg font-medium w-full hover:bg-green-700" data-i18n="landing.cta_sender_button">
                             Publier mon colis →
                         </button>
                     </div>
@@ -255,15 +255,15 @@ app.get('/', (c) => {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
                     <div>
                         <div class="text-4xl font-bold">3.5M+</div>
-                        <div class="text-blue-100">voyageurs/an</div>
+                        <div class="text-blue-100" data-i18n="landing.stats_travelers">voyageurs/an</div>
                     </div>
                     <div>
                         <div class="text-4xl font-bold">70%</div>
-                        <div class="text-blue-100">D'économies vs DHL</div>
+                        <div class="text-blue-100" data-i18n="landing.stats_savings">D'économies vs DHL</div>
                     </div>
                     <div>
                         <div class="text-4xl font-bold">100%</div>
-                        <div class="text-blue-100">Paiement sécurisé</div>
+                        <div class="text-blue-100" data-i18n="landing.stats_security">Paiement sécurisé</div>
                     </div>
                 </div>
             </div>
