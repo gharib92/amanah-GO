@@ -5154,4 +5154,492 @@ app.get('/results', (c) => {
   `)
 })
 
+// ==========================================
+// PAGE: PRODUITS INTERDITS
+// ==========================================
+
+app.get('/prohibited-items', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Produits Interdits - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/i18n.css?v=3" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-md border-b-2 border-red-500 sticky top-0 z-50">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-10 w-auto">
+                    <h1 class="text-xl font-bold text-gray-800">Amanah GO</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="langSwitcherContainer"></div>
+                    <a href="/" class="px-4 py-2 text-gray-600 hover:text-blue-600 transition-colors">
+                        <i class="fas fa-home mr-2"></i>Accueil
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="container mx-auto px-4 py-8 max-w-5xl">
+            <!-- Title Section -->
+            <div class="text-center mb-8">
+                <div class="inline-block p-4 bg-red-100 rounded-full mb-4">
+                    <i class="fas fa-ban text-5xl text-red-600"></i>
+                </div>
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">Liste Noire</h1>
+                <p class="text-xl text-gray-600">Produits interdits clairement affichés</p>
+                <p class="text-sm text-gray-500 mt-2">Conforme aux réglementations IATA + Douanes France & Maroc</p>
+            </div>
+
+            <!-- Warning Banner -->
+            <div class="bg-red-50 border-l-4 border-red-600 p-6 mb-8 rounded-r-lg">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-600 mr-4 mt-1"></i>
+                    <div>
+                        <h3 class="text-xl font-bold text-red-800 mb-2">⚠️ AVERTISSEMENT IMPORTANT</h3>
+                        <p class="text-gray-700 mb-2">
+                            Le transport de produits interdits est <strong>STRICTEMENT INTERDIT</strong> et constitue une infraction pénale grave.
+                        </p>
+                        <p class="text-gray-700 mb-2">
+                            <strong>Sanctions encourues :</strong>
+                        </p>
+                        <ul class="list-disc ml-6 text-gray-700 space-y-1">
+                            <li>Amendes jusqu'à <strong>750 000€</strong></li>
+                            <li>Peine de prison jusqu'à <strong>10 ans</strong></li>
+                            <li>Confiscation des biens</li>
+                            <li>Interdiction de territoire</li>
+                            <li>Bannissement définitif de la plateforme</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categories -->
+            <div class="space-y-6">
+                
+                <!-- Category 1: Stupéfiants & Drogues -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-red-600 text-white p-4">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-pills mr-3"></i>
+                            1. Stupéfiants & Drogues
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <ul class="grid md:grid-cols-2 gap-3">
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Cannabis (haschisch, marijuana, huile, résine)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Cocaïne et dérivés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Héroïne et opiacés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Amphétamines et méthamphétamines</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>LSD et substances hallucinogènes</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Drogues de synthèse (MDMA, ecstasy)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Médicaments psychotropes sans ordonnance</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Précurseurs chimiques</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Category 2: Armes & Explosifs -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-red-600 text-white p-4">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-bomb mr-3"></i>
+                            2. Armes, Munitions & Explosifs
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <ul class="grid md:grid-cols-2 gap-3">
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Armes à feu (pistolets, fusils, revolvers)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Munitions et cartouches</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Armes blanches (couteaux, épées, poignards)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Explosifs et détonateurs</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Feux d'artifice et pétards</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Tasers et paralysants électriques</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Gaz lacrymogènes et bombes au poivre</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-red-600 mr-2 mt-1"></i>
+                                <span>Répliques d'armes (même jouets réalistes)</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Category 3: Produits Dangereux (IATA) -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-orange-600 text-white p-4">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-radiation-alt mr-3"></i>
+                            3. Matières Dangereuses (IATA)
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <ul class="grid md:grid-cols-2 gap-3">
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-orange-600 mr-2 mt-1"></i>
+                                <span>Liquides inflammables (essence, alcool pur >70°)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-orange-600 mr-2 mt-1"></i>
+                                <span>Gaz comprimés (bonbonnes, aérosols)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-orange-600 mr-2 mt-1"></i>
+                                <span>Batteries lithium en vrac (>100Wh)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-orange-600 mr-2 mt-1"></i>
+                                <span>Produits corrosifs (acides, bases fortes)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-orange-600 mr-2 mt-1"></i>
+                                <span>Matières radioactives</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-orange-600 mr-2 mt-1"></i>
+                                <span>Mercure et thermomètres au mercure</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-orange-600 mr-2 mt-1"></i>
+                                <span>Peroxydes organiques</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-orange-600 mr-2 mt-1"></i>
+                                <span>Phosphore blanc ou jaune</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Category 4: Contrefaçons & Propriété Intellectuelle -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-purple-600 text-white p-4">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-copyright mr-3"></i>
+                            4. Contrefaçons & Propriété Intellectuelle
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <ul class="grid md:grid-cols-2 gap-3">
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-purple-600 mr-2 mt-1"></i>
+                                <span>Vêtements et accessoires contrefaits</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-purple-600 mr-2 mt-1"></i>
+                                <span>Montres et bijoux de luxe contrefaits</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-purple-600 mr-2 mt-1"></i>
+                                <span>Sacs à main et maroquinerie contrefaits</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-purple-600 mr-2 mt-1"></i>
+                                <span>Médicaments contrefaits ou non autorisés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-purple-600 mr-2 mt-1"></i>
+                                <span>DVD et CD piratés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-purple-600 mr-2 mt-1"></i>
+                                <span>Logiciels piratés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-purple-600 mr-2 mt-1"></i>
+                                <span>Produits cosmétiques contrefaits</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-purple-600 mr-2 mt-1"></i>
+                                <span>Électronique contrefaite (smartphones, etc.)</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Category 5: Produits Alimentaires Réglementés -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-green-600 text-white p-4">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-apple-alt mr-3"></i>
+                            5. Produits Alimentaires Réglementés
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <ul class="grid md:grid-cols-2 gap-3">
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-green-600 mr-2 mt-1"></i>
+                                <span>Viandes fraîches ou congelées</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-green-600 mr-2 mt-1"></i>
+                                <span>Produits laitiers non pasteurisés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-green-600 mr-2 mt-1"></i>
+                                <span>Fruits et légumes frais (contrôle phytosanitaire)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-green-600 mr-2 mt-1"></i>
+                                <span>Graines et plants (sans autorisation)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-green-600 mr-2 mt-1"></i>
+                                <span>Miel et produits de la ruche non certifiés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-green-600 mr-2 mt-1"></i>
+                                <span>Alcool >5L ou >18° sans déclaration</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-green-600 mr-2 mt-1"></i>
+                                <span>Tabac >200 cigarettes sans déclaration</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-green-600 mr-2 mt-1"></i>
+                                <span>Compléments alimentaires non autorisés UE/Maroc</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Category 6: Produits Culturels & Religieux Sensibles -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-indigo-600 text-white p-4">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-book-open mr-3"></i>
+                            6. Contenu Culturel & Religieux Sensible
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <ul class="grid md:grid-cols-2 gap-3">
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-indigo-600 mr-2 mt-1"></i>
+                                <span>Matériel pornographique</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-indigo-600 mr-2 mt-1"></i>
+                                <span>Publications incitant à la haine ou terrorisme</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-indigo-600 mr-2 mt-1"></i>
+                                <span>Livres interdits par les autorités</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-indigo-600 mr-2 mt-1"></i>
+                                <span>Propagande politique extrémiste</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-indigo-600 mr-2 mt-1"></i>
+                                <span>Matériel de prosélytisme offensant</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-indigo-600 mr-2 mt-1"></i>
+                                <span>Symboles nazis ou de haine</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-indigo-600 mr-2 mt-1"></i>
+                                <span>Films ou jeux vidéo interdits aux mineurs</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-indigo-600 mr-2 mt-1"></i>
+                                <span>Matériel pédophile (crime grave)</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Category 7: Argent & Valeurs -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-yellow-600 text-white p-4">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-money-bill-wave mr-3"></i>
+                            7. Argent, Devises & Objets de Valeur
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <ul class="grid md:grid-cols-2 gap-3">
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-yellow-600 mr-2 mt-1"></i>
+                                <span>Espèces >10 000€ sans déclaration</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-yellow-600 mr-2 mt-1"></i>
+                                <span>Fausse monnaie</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-yellow-600 mr-2 mt-1"></i>
+                                <span>Chèques de banque au porteur non déclarés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-yellow-600 mr-2 mt-1"></i>
+                                <span>Lingots d'or ou d'argent non déclarés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-yellow-600 mr-2 mt-1"></i>
+                                <span>Bijoux de grande valeur non déclarés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-yellow-600 mr-2 mt-1"></i>
+                                <span>Œuvres d'art protégées ou volées</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-yellow-600 mr-2 mt-1"></i>
+                                <span>Antiquités historiques sans certificat</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-yellow-600 mr-2 mt-1"></i>
+                                <span>Cryptomonnaies physiques (hardware wallets avec fonds)</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Category 8: Produits Animaux & Végétaux -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-teal-600 text-white p-4">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-paw mr-3"></i>
+                            8. Faune, Flore & Produits Dérivés
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <ul class="grid md:grid-cols-2 gap-3">
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-teal-600 mr-2 mt-1"></i>
+                                <span>Animaux vivants (sans certificat vétérinaire)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-teal-600 mr-2 mt-1"></i>
+                                <span>Ivoire d'éléphant</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-teal-600 mr-2 mt-1"></i>
+                                <span>Cornes de rhinocéros</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-teal-600 mr-2 mt-1"></i>
+                                <span>Peaux d'animaux protégés (CITES)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-teal-600 mr-2 mt-1"></i>
+                                <span>Corail et coquillages protégés</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-teal-600 mr-2 mt-1"></i>
+                                <span>Fourrures d'espèces menacées</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-teal-600 mr-2 mt-1"></i>
+                                <span>Bois exotiques protégés (ébène, teck)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-times-circle text-teal-600 mr-2 mt-1"></i>
+                                <span>Plantes rares (orchidées, cactus) sans CITES</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer Info -->
+            <div class="mt-12 bg-blue-50 border-l-4 border-blue-600 p-6 rounded-r-lg">
+                <h3 class="text-xl font-bold text-blue-800 mb-3">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Informations Importantes
+                </h3>
+                <ul class="space-y-2 text-gray-700">
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-blue-600 mr-2 mt-1"></i>
+                        <span><strong>Doute ?</strong> En cas de doute, NE TRANSPORTEZ PAS le colis. Contactez nos équipes.</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-blue-600 mr-2 mt-1"></i>
+                        <span><strong>Déclaration obligatoire :</strong> Vous devez déclarer honnêtement le contenu de chaque colis.</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-blue-600 mr-2 mt-1"></i>
+                        <span><strong>Inspection possible :</strong> Les autorités peuvent inspecter les colis à tout moment.</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-blue-600 mr-2 mt-1"></i>
+                        <span><strong>Responsabilité :</strong> Le voyageur ET l'expéditeur sont responsables du contenu.</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-blue-600 mr-2 mt-1"></i>
+                        <span><strong>Signalement :</strong> Signalez tout colis suspect via notre plateforme.</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- CTA Button -->
+            <div class="mt-8 text-center">
+                <a href="/" class="inline-block px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold text-lg shadow-lg">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Retour à l'accueil
+                </a>
+            </div>
+        </div>
+
+        <!-- JavaScript -->
+        <script src="/static/i18n.js?v=3"></script>
+        <script src="/static/lang-switcher.js?v=3"></script>
+    </body>
+    </html>
+  `)
+})
+
 export default app
