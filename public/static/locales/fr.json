@@ -24,13 +24,38 @@
   },
   
   "nav": {
+    "home": "Accueil",
     "how_it_works": "Comment ça marche",
     "security": "Sécurité",
     "pricing": "Tarifs",
+    "login": "Connexion",
+    "signup": "Inscription",
     "traveler_space": "Espace Voyageur",
     "sender_space": "Espace Expéditeur",
     "my_profile": "Mon Profil",
     "verify_profile": "Vérifier mon Profil"
+  },
+  
+  "search": {
+    "title": "Recherche Avancée",
+    "subtitle": "Trouvez le trajet ou colis parfait pour vous",
+    "search_trips": "Je cherche un trajet",
+    "search_trips_desc": "Pour envoyer un colis",
+    "search_packages": "Je cherche des colis",
+    "search_packages_desc": "Pour optimiser mon voyage",
+    "form_trips_title": "Trouver un trajet",
+    "form_packages_title": "Trouver des colis",
+    "origin": "Origine",
+    "destination": "Destination",
+    "weight": "Poids (kg)",
+    "available_weight": "Poids disponible (kg)",
+    "price_per_kg": "Prix proposé (€/kg)",
+    "departure_date": "Date départ",
+    "max_price": "Prix max (€/kg)",
+    "flexible_dates": "Dates flexibles (±2 jours)",
+    "search_button": "Rechercher",
+    "no_results": "Aucun résultat trouvé",
+    "results_found": "résultats trouvés"
   },
   
   "landing": {

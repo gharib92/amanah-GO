@@ -3805,4 +3805,490 @@ app.get('/expediteur/mes-colis', (c) => {
   `)
 })
 
+// ==========================================
+// MATCHING SYSTEM - Intelligent Algorithm
+// ==========================================
+
+/**
+ * API: GET /api/matches/trips-for-package
+ * Find compatible trips for a package (Expéditeur use case)
+ * Smart matching with compatibility score
+ */
+app.get('/api/matches/trips-for-package', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const origin = c.req.query('origin')
+    const destination = c.req.query('destination')
+    const weight = parseFloat(c.req.query('weight') || '0')
+    const departureDate = c.req.query('departure_date')
+    const maxPrice = parseFloat(c.req.query('max_price') || '999')
+    const flexibleDates = c.req.query('flexible_dates') === 'true'
+    
+    if (!origin || !destination || !weight) {
+      return c.json({ 
+        success: false, 
+        error: 'origin, destination et weight sont requis' 
+      }, 400)
+    }
+    
+    // Build SQL query
+    let sql = `
+      SELECT 
+        t.*,
+        u.name as traveler_name,
+        u.email as traveler_email,
+        u.avatar_url as traveler_avatar,
+        u.rating as traveler_rating,
+        u.total_trips as traveler_total_trips,
+        u.kyc_status as traveler_kyc
+      FROM trips t
+      INNER JOIN users u ON t.user_id = u.id
+      WHERE t.status = 'ACTIVE'
+        AND t.available_weight >= ?
+        AND t.price_per_kg <= ?
+        AND LOWER(t.departure_city) LIKE ?
+        AND LOWER(t.arrival_city) LIKE ?
+    `
+    
+    const params = [
+      weight,
+      maxPrice,
+      `%${origin.toLowerCase()}%`,
+      `%${destination.toLowerCase()}%`
+    ]
+    
+    // Date filtering
+    if (departureDate && !flexibleDates) {
+      sql += ` AND DATE(t.departure_date) = DATE(?)`
+      params.push(departureDate)
+    } else if (departureDate && flexibleDates) {
+      sql += ` AND DATE(t.departure_date) BETWEEN DATE(?, '-2 days') AND DATE(?, '+2 days')`
+      params.push(departureDate, departureDate)
+    }
+    
+    sql += ` ORDER BY t.departure_date ASC, t.price_per_kg ASC LIMIT 50`
+    
+    const { results } = await DB.prepare(sql).bind(...params).all()
+    
+    // Calculate match score for each trip
+    const tripsWithScore = results.map(trip => {
+      let score = 100
+      
+      // Score based on available weight (prefer trips with just enough space)
+      const weightDiff = trip.available_weight - weight
+      if (weightDiff === 0) score += 20 // Perfect match
+      else if (weightDiff < 5) score += 10 // Close match
+      else if (weightDiff > 20) score -= 5 // Too much space (might wait for bigger package)
+      
+      // Score based on price (lower is better)
+      const priceRatio = trip.price_per_kg / maxPrice
+      if (priceRatio < 0.5) score += 15 // Great price
+      else if (priceRatio < 0.7) score += 10
+      else if (priceRatio < 0.9) score += 5
+      
+      // Score based on traveler reputation
+      if (trip.traveler_kyc === 'VERIFIED') score += 15
+      if (trip.traveler_rating >= 4.5) score += 10
+      else if (trip.traveler_rating >= 4.0) score += 5
+      if (trip.traveler_total_trips > 10) score += 5
+      
+      // Score based on date proximity
+      if (departureDate) {
+        const tripDate = new Date(trip.departure_date)
+        const targetDate = new Date(departureDate)
+        const daysDiff = Math.abs((tripDate - targetDate) / (1000 * 60 * 60 * 24))
+        if (daysDiff === 0) score += 15 // Same day
+        else if (daysDiff === 1) score += 10 // 1 day diff
+        else if (daysDiff <= 2) score += 5 // 2 days diff
+      }
+      
+      // Calculate estimated cost
+      const estimatedCost = (weight * trip.price_per_kg).toFixed(2)
+      const platformFee = (estimatedCost * 0.12).toFixed(2)
+      const totalCost = (parseFloat(estimatedCost) + parseFloat(platformFee)).toFixed(2)
+      
+      return {
+        ...trip,
+        match_score: Math.min(score, 100), // Cap at 100
+        estimated_cost: estimatedCost,
+        platform_fee: platformFee,
+        total_cost: totalCost,
+        match_quality: score >= 90 ? 'excellent' : score >= 75 ? 'good' : score >= 60 ? 'fair' : 'low'
+      }
+    })
+    
+    // Sort by match score (highest first)
+    tripsWithScore.sort((a, b) => b.match_score - a.match_score)
+    
+    return c.json({
+      success: true,
+      matches: tripsWithScore,
+      total: tripsWithScore.length,
+      search_params: { origin, destination, weight, departureDate, maxPrice, flexibleDates }
+    })
+    
+  } catch (error) {
+    console.error('Erreur matching:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+/**
+ * API: GET /api/matches/packages-for-trip
+ * Find compatible packages for a trip (Voyageur use case)
+ * Smart matching with compatibility score
+ */
+app.get('/api/matches/packages-for-trip', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const origin = c.req.query('origin')
+    const destination = c.req.query('destination')
+    const availableWeight = parseFloat(c.req.query('available_weight') || '0')
+    const pricePerKg = parseFloat(c.req.query('price_per_kg') || '0')
+    const departureDate = c.req.query('departure_date')
+    const flexibleDates = c.req.query('flexible_dates') === 'true'
+    
+    if (!origin || !destination || !availableWeight) {
+      return c.json({ 
+        success: false, 
+        error: 'origin, destination et available_weight sont requis' 
+      }, 400)
+    }
+    
+    // Build SQL query
+    let sql = `
+      SELECT 
+        p.*,
+        u.name as shipper_name,
+        u.email as shipper_email,
+        u.avatar_url as shipper_avatar,
+        u.rating as shipper_rating,
+        u.total_packages as shipper_total_packages,
+        u.kyc_status as shipper_kyc
+      FROM packages p
+      INNER JOIN users u ON p.user_id = u.id
+      WHERE p.status = 'PUBLISHED'
+        AND p.weight <= ?
+        AND LOWER(p.departure_city) LIKE ?
+        AND LOWER(p.arrival_city) LIKE ?
+    `
+    
+    const params = [
+      availableWeight,
+      `%${origin.toLowerCase()}%`,
+      `%${destination.toLowerCase()}%`
+    ]
+    
+    // Date filtering
+    if (departureDate && !flexibleDates) {
+      sql += ` AND DATE(p.preferred_date) = DATE(?)`
+      params.push(departureDate)
+    } else if (departureDate && flexibleDates) {
+      sql += ` AND (
+        p.flexible_dates = 1 
+        OR DATE(p.preferred_date) BETWEEN DATE(?, '-2 days') AND DATE(?, '+2 days')
+      )`
+      params.push(departureDate, departureDate)
+    }
+    
+    sql += ` ORDER BY p.created_at DESC LIMIT 50`
+    
+    const { results } = await DB.prepare(sql).bind(...params).all()
+    
+    // Calculate match score for each package
+    const packagesWithScore = results.map(pkg => {
+      let score = 100
+      
+      // Score based on weight (prefer packages that use more capacity)
+      const weightRatio = pkg.weight / availableWeight
+      if (weightRatio > 0.8) score += 20 // Great use of capacity
+      else if (weightRatio > 0.5) score += 15
+      else if (weightRatio > 0.3) score += 10
+      else if (weightRatio < 0.1) score -= 5 // Too small
+      
+      // Score based on budget vs price
+      if (pricePerKg > 0) {
+        const estimatedPrice = pkg.weight * pricePerKg
+        const budgetRatio = pkg.budget / estimatedPrice
+        if (budgetRatio >= 1.2) score += 15 // Good margin
+        else if (budgetRatio >= 1.0) score += 10
+        else if (budgetRatio >= 0.9) score += 5
+        else if (budgetRatio < 0.8) score -= 10 // Budget too low
+      }
+      
+      // Score based on shipper reputation
+      if (pkg.shipper_kyc === 'VERIFIED') score += 15
+      if (pkg.shipper_rating >= 4.5) score += 10
+      else if (pkg.shipper_rating >= 4.0) score += 5
+      if (pkg.shipper_total_packages > 5) score += 5
+      
+      // Score based on date compatibility
+      if (departureDate && pkg.preferred_date) {
+        const pkgDate = new Date(pkg.preferred_date)
+        const tripDate = new Date(departureDate)
+        const daysDiff = Math.abs((pkgDate - tripDate) / (1000 * 60 * 60 * 24))
+        if (daysDiff === 0) score += 15 // Same day
+        else if (daysDiff === 1) score += 10
+        else if (daysDiff <= 2) score += 5
+        if (pkg.flexible_dates) score += 5 // Flexible dates bonus
+      }
+      
+      // Calculate potential earnings
+      const potentialEarnings = pricePerKg > 0 
+        ? (pkg.weight * pricePerKg * 0.88).toFixed(2) // After 12% commission
+        : null
+      
+      return {
+        ...pkg,
+        match_score: Math.min(score, 100),
+        potential_earnings: potentialEarnings,
+        match_quality: score >= 90 ? 'excellent' : score >= 75 ? 'good' : score >= 60 ? 'fair' : 'low'
+      }
+    })
+    
+    // Sort by match score (highest first)
+    packagesWithScore.sort((a, b) => b.match_score - a.match_score)
+    
+    return c.json({
+      success: true,
+      matches: packagesWithScore,
+      total: packagesWithScore.length,
+      search_params: { origin, destination, availableWeight, pricePerKg, departureDate, flexibleDates }
+    })
+    
+  } catch (error) {
+    console.error('Erreur matching:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// ==========================================
+// PAGE: RECHERCHE AVANCÉE DE MATCHING
+// ==========================================
+
+app.get('/search', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Recherche Avancée - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/i18n.css?v=3" rel="stylesheet">
+    </head>
+    <body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-md border-b-2 border-blue-500">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-10 w-auto">
+                    <h1 class="text-xl font-bold text-gray-800">Amanah GO</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="langSwitcherContainer"></div>
+                    <a href="/" class="px-4 py-2 text-gray-600 hover:text-blue-600 transition-colors" data-i18n="nav.home">Accueil</a>
+                    <a href="/login" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" data-i18n="nav.login">Connexion</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="container mx-auto px-4 py-8 max-w-4xl">
+            <!-- Title Section -->
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">
+                    <i class="fas fa-search text-blue-600 mr-3"></i>
+                    <span data-i18n="search.title">Recherche Avancée</span>
+                </h2>
+                <p class="text-gray-600" data-i18n="search.subtitle">Trouvez le trajet ou colis parfait pour vous</p>
+            </div>
+
+            <!-- User Type Selection -->
+            <div class="grid md:grid-cols-2 gap-4 mb-8">
+                <button id="btnSearchTrips" class="p-6 bg-white rounded-xl shadow-md hover:shadow-xl transition-all border-2 border-blue-500">
+                    <div class="text-center">
+                        <i class="fas fa-plane-departure text-4xl text-blue-600 mb-3"></i>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2" data-i18n="search.search_trips">Je cherche un trajet</h3>
+                        <p class="text-sm text-gray-600" data-i18n="search.search_trips_desc">Pour envoyer un colis</p>
+                    </div>
+                </button>
+                <button id="btnSearchPackages" class="p-6 bg-white rounded-xl shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-green-500">
+                    <div class="text-center">
+                        <i class="fas fa-box text-4xl text-green-600 mb-3"></i>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2" data-i18n="search.search_packages">Je cherche des colis</h3>
+                        <p class="text-sm text-gray-600" data-i18n="search.search_packages_desc">Pour optimiser mon voyage</p>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Search Form for Trips (Expéditeur) -->
+            <div id="formSearchTrips" class="bg-white rounded-xl shadow-lg p-6 hidden">
+                <h3 class="text-2xl font-bold text-blue-600 mb-6">
+                    <i class="fas fa-plane mr-2"></i>
+                    <span data-i18n="search.form_trips_title">Trouver un trajet</span>
+                </h3>
+                <form id="searchTripsForm" class="space-y-4">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="search.origin">Origine</label>
+                            <input type="text" name="origin" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Paris, Marseille...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="search.destination">Destination</label>
+                            <input type="text" name="destination" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Casablanca, Marrakech...">
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="search.weight">Poids (kg)</label>
+                            <input type="number" name="weight" required min="0.1" max="30" step="0.1" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="5">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="search.departure_date">Date départ</label>
+                            <input type="date" name="departure_date" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="search.max_price">Prix max (€/kg)</label>
+                            <input type="number" name="max_price" min="0" step="0.1" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="15">
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="flexible_dates" id="flexibleDatesTrips" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500">
+                        <label for="flexibleDatesTrips" class="ml-3 text-sm text-gray-700" data-i18n="search.flexible_dates">Dates flexibles (±2 jours)</label>
+                    </div>
+                    <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold text-lg">
+                        <i class="fas fa-search mr-2"></i>
+                        <span data-i18n="search.search_button">Rechercher</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Search Form for Packages (Voyageur) -->
+            <div id="formSearchPackages" class="bg-white rounded-xl shadow-lg p-6 hidden">
+                <h3 class="text-2xl font-bold text-green-600 mb-6">
+                    <i class="fas fa-box mr-2"></i>
+                    <span data-i18n="search.form_packages_title">Trouver des colis</span>
+                </h3>
+                <form id="searchPackagesForm" class="space-y-4">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="search.origin">Origine</label>
+                            <input type="text" name="origin" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Paris, Marseille...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="search.destination">Destination</label>
+                            <input type="text" name="destination" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Casablanca, Marrakech...">
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="search.available_weight">Poids disponible (kg)</label>
+                            <input type="number" name="available_weight" required min="1" max="30" step="0.1" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="15">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="search.price_per_kg">Prix proposé (€/kg)</label>
+                            <input type="number" name="price_per_kg" min="0" step="0.1" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="8">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2" data-i18n="search.departure_date">Date départ</label>
+                            <input type="date" name="departure_date" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="flexible_dates" id="flexibleDatesPackages" class="w-5 h-5 text-green-600 rounded focus:ring-green-500">
+                        <label for="flexibleDatesPackages" class="ml-3 text-sm text-gray-700" data-i18n="search.flexible_dates">Dates flexibles (±2 jours)</label>
+                    </div>
+                    <button type="submit" class="w-full py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold text-lg">
+                        <i class="fas fa-search mr-2"></i>
+                        <span data-i18n="search.search_button">Rechercher</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- JavaScript -->
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/i18n.js?v=3"></script>
+        <script src="/static/lang-switcher.js?v=3"></script>
+        <script>
+            // Toggle between search types
+            const btnSearchTrips = document.getElementById('btnSearchTrips')
+            const btnSearchPackages = document.getElementById('btnSearchPackages')
+            const formSearchTrips = document.getElementById('formSearchTrips')
+            const formSearchPackages = document.getElementById('formSearchPackages')
+
+            btnSearchTrips.addEventListener('click', () => {
+                btnSearchTrips.classList.add('border-blue-500')
+                btnSearchTrips.classList.remove('border-transparent')
+                btnSearchPackages.classList.remove('border-green-500')
+                btnSearchPackages.classList.add('border-transparent')
+                formSearchTrips.classList.remove('hidden')
+                formSearchPackages.classList.add('hidden')
+            })
+
+            btnSearchPackages.addEventListener('click', () => {
+                btnSearchPackages.classList.add('border-green-500')
+                btnSearchPackages.classList.remove('border-transparent')
+                btnSearchTrips.classList.remove('border-blue-500')
+                btnSearchTrips.classList.add('border-transparent')
+                formSearchPackages.classList.remove('hidden')
+                formSearchTrips.classList.add('hidden')
+            })
+
+            // Handle Trips Search
+            document.getElementById('searchTripsForm').addEventListener('submit', async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const params = new URLSearchParams({
+                    origin: formData.get('origin'),
+                    destination: formData.get('destination'),
+                    weight: formData.get('weight'),
+                    departure_date: formData.get('departure_date') || '',
+                    max_price: formData.get('max_price') || '999',
+                    flexible_dates: formData.get('flexible_dates') ? 'true' : 'false',
+                    search_type: 'trips'
+                })
+                window.location.href = \`/results?\${params.toString()}\`
+            })
+
+            // Handle Packages Search
+            document.getElementById('searchPackagesForm').addEventListener('submit', async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const params = new URLSearchParams({
+                    origin: formData.get('origin'),
+                    destination: formData.get('destination'),
+                    available_weight: formData.get('available_weight'),
+                    price_per_kg: formData.get('price_per_kg') || '0',
+                    departure_date: formData.get('departure_date') || '',
+                    flexible_dates: formData.get('flexible_dates') ? 'true' : 'false',
+                    search_type: 'packages'
+                })
+                window.location.href = \`/results?\${params.toString()}\`
+            })
+
+            // Auto-select based on URL param
+            const urlParams = new URLSearchParams(window.location.search)
+            const searchType = urlParams.get('type')
+            if (searchType === 'packages') {
+                btnSearchPackages.click()
+            } else {
+                btnSearchTrips.click()
+            }
+        </script>
+    </body>
+    </html>
+  `)
+})
+
 export default app
