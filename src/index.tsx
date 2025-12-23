@@ -168,6 +168,7 @@ app.get('/', (c) => {
         <title>Amanah GO - Transport Collaboratif France ↔ Maroc</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/i18n.css" rel="stylesheet">
         <style>
           .gradient-bg {
             background: linear-gradient(135deg, #1E40AF 0%, #10B981 100%);
@@ -191,16 +192,17 @@ app.get('/', (c) => {
                         <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
                     </div>
                     <div class="hidden md:flex space-x-6">
-                        <a href="#comment-ca-marche" class="text-gray-700 hover:text-blue-600">Comment ça marche</a>
-                        <a href="#securite" class="text-gray-700 hover:text-blue-600">Sécurité</a>
-                        <a href="#tarifs" class="text-gray-700 hover:text-blue-600">Tarifs</a>
+                        <a href="#comment-ca-marche" class="text-gray-700 hover:text-blue-600" data-i18n="nav.how_it_works">Comment ça marche</a>
+                        <a href="#securite" class="text-gray-700 hover:text-blue-600" data-i18n="nav.security">Sécurité</a>
+                        <a href="#tarifs" class="text-gray-700 hover:text-blue-600" data-i18n="nav.pricing">Tarifs</a>
                     </div>
-                    <div class="flex space-x-4">
+                    <div class="flex items-center space-x-4">
+                        <div id="langSwitcher"></div>
                         <button onclick="window.location.href='/login'" class="text-blue-600 hover:text-blue-800 font-medium">
-                            Connexion
+                            <span data-i18n="common.login">Connexion</span>
                         </button>
                         <button onclick="window.location.href='/signup'" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium">
-                            Inscription
+                            <span data-i18n="common.signup">Inscription</span>
                         </button>
                     </div>
                 </div>
@@ -399,6 +401,22 @@ app.get('/', (c) => {
           
           // Initial calculation
           calculatePrice();
+        </script>
+
+        <script src="/static/i18n.js"></script>
+        <script src="/static/lang-switcher.js"></script>
+        <script>
+          // Initialize i18n and inject language switcher
+          window.addEventListener('DOMContentLoaded', async () => {
+            await window.i18n.init()
+            document.getElementById('langSwitcher').innerHTML = createLanguageSwitcher()
+            
+            // Apply translations
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+              const key = el.getAttribute('data-i18n')
+              el.textContent = window.t(key)
+            })
+          })
         </script>
     </body>
     </html>
