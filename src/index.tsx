@@ -251,8 +251,8 @@ app.get('/', (c) => {
                 <!-- Stats -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
                     <div>
-                        <div class="text-4xl font-bold">4M+</div>
-                        <div class="text-blue-100">Voyageurs MRE/an</div>
+                        <div class="text-4xl font-bold">3.5M+</div>
+                        <div class="text-blue-100">voyageurs/an</div>
                     </div>
                     <div>
                         <div class="text-4xl font-bold">70%</div>
@@ -1584,7 +1584,7 @@ app.get('/voyageur', (c) => {
                             <i class="fas fa-plane-departure mr-3"></i>
                             Bienvenue dans votre Espace Voyageur
                         </h1>
-                        <p class="text-blue-100 text-lg">Monétisez vos trajets France ↔ Morocco en transportant des colis</p>
+                        <p class="text-blue-100 text-lg">Monétisez vos trajets France ↔ Maroc en transportant des colis</p>
                     </div>
                     <div class="hidden md:block">
                         <i class="fas fa-suitcase-rolling text-6xl opacity-20"></i>
@@ -2278,7 +2278,7 @@ app.get('/expediteur', (c) => {
                             <i class="fas fa-box mr-3"></i>
                             Bienvenue dans votre Espace Expéditeur
                         </h1>
-                        <p class="text-green-100 text-lg">Économisez jusqu'à 70% sur vos envois France ↔ Morocco</p>
+                        <p class="text-green-100 text-lg">Économisez jusqu'à 70% sur vos envois France ↔ Maroc</p>
                     </div>
                     <div class="hidden md:block">
                         <i class="fas fa-shipping-fast text-6xl opacity-20"></i>
