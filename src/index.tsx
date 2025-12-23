@@ -198,6 +198,9 @@ app.get('/', (c) => {
                         <a href="#comment-ca-marche" class="text-gray-700 hover:text-blue-600 transition-colors font-medium" data-i18n="nav.how_it_works">Comment ça marche</a>
                         <a href="#securite" class="text-gray-700 hover:text-blue-600 transition-colors font-medium" data-i18n="nav.security">Sécurité</a>
                         <a href="#tarifs" class="text-gray-700 hover:text-blue-600 transition-colors font-medium" data-i18n="nav.pricing">Tarifs</a>
+                        <a href="/prohibited-items" class="text-red-600 hover:text-red-700 transition-colors font-bold flex items-center" data-i18n="nav.prohibited_items">
+                            <i class="fas fa-ban mr-1"></i>Liste Noire
+                        </a>
                     </div>
                     
                     <!-- Right Section: Language + Buttons -->
@@ -1568,6 +1571,9 @@ app.get('/voyageur', (c) => {
                         <i class="fas fa-user-circle mr-2"></i>
                         <span id="userName">Utilisateur</span>
                     </span>
+                    <a href="/prohibited-items" class="text-red-600 hover:text-red-700 transition-colors font-bold" title="Produits interdits">
+                        <i class="fas fa-ban mr-2"></i><span data-i18n="nav.prohibited_items">Liste Noire</span>
+                    </a>
                     <a href="/" class="text-blue-600 hover:text-blue-700 transition-colors">
                         <i class="fas fa-home mr-2"></i><span data-i18n="common.home">Accueil</span>
                     </a>
@@ -2262,6 +2268,9 @@ app.get('/expediteur', (c) => {
                         <i class="fas fa-user-circle mr-2"></i>
                         <span id="userName">Utilisateur</span>
                     </span>
+                    <a href="/prohibited-items" class="text-red-600 hover:text-red-700 transition-colors font-bold" title="Produits interdits">
+                        <i class="fas fa-ban mr-2"></i><span data-i18n="nav.prohibited_items">Liste Noire</span>
+                    </a>
                     <a href="/" class="text-green-600 hover:text-green-700 transition-colors">
                         <i class="fas fa-home mr-2"></i><span data-i18n="common.home">Accueil</span>
                     </a>
