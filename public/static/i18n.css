@@ -60,6 +60,32 @@
   border-color: #d1d5db;
 }
 
+/* Compact button - Flag only */
+.lang-switcher-button-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.6rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 60px;
+  justify-content: center;
+}
+
+.lang-switcher-button-compact:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.lang-flag-large {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
 .lang-switcher-dropdown {
   position: absolute;
   top: calc(100% + 0.5rem);
