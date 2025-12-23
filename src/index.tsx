@@ -1526,6 +1526,7 @@ app.get('/voyageur', (c) => {
         <title>Espace Voyageur - Amanah GO</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/i18n.css" rel="stylesheet">
     </head>
     <body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen">
         <!-- Header -->
@@ -1536,12 +1537,13 @@ app.get('/voyageur', (c) => {
                     <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
                 </div>
                 <div class="flex items-center space-x-4">
+                    <div id="langSwitcher"></div>
                     <span class="text-gray-600">
                         <i class="fas fa-user-circle mr-2"></i>
                         <span id="userName">Utilisateur</span>
                     </span>
                     <a href="/" class="text-blue-600 hover:text-blue-700 transition-colors">
-                        <i class="fas fa-home mr-2"></i>Accueil
+                        <i class="fas fa-home mr-2"></i><span data-i18n="common.home">Accueil</span>
                     </a>
                 </div>
             </div>
@@ -1697,6 +1699,22 @@ app.get('/voyageur', (c) => {
           }
           
           loadStats()
+        </script>
+
+        <script src="/static/i18n.js"></script>
+        <script src="/static/lang-switcher.js"></script>
+        <script>
+          // Initialize i18n and inject language switcher
+          window.addEventListener('DOMContentLoaded', async () => {
+            await window.i18n.init()
+            document.getElementById('langSwitcher').innerHTML = createLanguageSwitcher()
+            
+            // Apply translations
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+              const key = el.getAttribute('data-i18n')
+              el.textContent = window.t(key)
+            })
+          })
         </script>
     </body>
     </html>
@@ -2202,6 +2220,7 @@ app.get('/expediteur', (c) => {
         <title>Espace Expéditeur - Amanah GO</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/i18n.css" rel="stylesheet">
     </head>
     <body class="bg-gradient-to-br from-green-50 to-green-100 min-h-screen">
         <!-- Header -->
@@ -2212,12 +2231,13 @@ app.get('/expediteur', (c) => {
                     <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
                 </div>
                 <div class="flex items-center space-x-4">
+                    <div id="langSwitcher"></div>
                     <span class="text-gray-600">
                         <i class="fas fa-user-circle mr-2"></i>
                         <span id="userName">Utilisateur</span>
                     </span>
                     <a href="/" class="text-green-600 hover:text-green-700 transition-colors">
-                        <i class="fas fa-home mr-2"></i>Accueil
+                        <i class="fas fa-home mr-2"></i><span data-i18n="common.home">Accueil</span>
                     </a>
                 </div>
             </div>
@@ -2449,6 +2469,22 @@ app.get('/expediteur', (c) => {
           }
           
           loadStats()
+        </script>
+
+        <script src="/static/i18n.js"></script>
+        <script src="/static/lang-switcher.js"></script>
+        <script>
+          // Initialize i18n and inject language switcher
+          window.addEventListener('DOMContentLoaded', async () => {
+            await window.i18n.init()
+            document.getElementById('langSwitcher').innerHTML = createLanguageSwitcher()
+            
+            // Apply translations
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+              const key = el.getAttribute('data-i18n')
+              el.textContent = window.t(key)
+            })
+          })
         </script>
     </body>
     </html>
