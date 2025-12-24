@@ -309,31 +309,31 @@ app.get('/', (c) => {
         <!-- Comment ça marche -->
         <section id="comment-ca-marche" class="py-16 bg-gray-50">
             <div class="max-w-7xl mx-auto px-4">
-                <h2 class="text-3xl font-bold text-center mb-12">Comment ça marche ?</h2>
+                <h2 class="text-3xl font-bold text-center mb-12" data-i18n="landing.how_it_works_title">Comment ça marche ?</h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div class="text-center">
                         <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span class="text-2xl font-bold text-blue-600">1</span>
                         </div>
-                        <h3 class="text-xl font-bold mb-2">Créez votre annonce</h3>
-                        <p class="text-gray-600">Voyageur : Publiez votre trajet. Expéditeur : Décrivez votre colis</p>
+                        <h3 class="text-xl font-bold mb-2" data-i18n="landing.how_step1_title">Créez votre annonce</h3>
+                        <p class="text-gray-600" data-i18n="landing.how_step1_desc">Voyageur : Publiez votre trajet. Expéditeur : Décrivez votre colis</p>
                     </div>
                     
                     <div class="text-center">
                         <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span class="text-2xl font-bold text-green-600">2</span>
                         </div>
-                        <h3 class="text-xl font-bold mb-2">Trouvez un match</h3>
-                        <p class="text-gray-600">Notre système intelligent vous connecte avec des profils vérifiés</p>
+                        <h3 class="text-xl font-bold mb-2" data-i18n="landing.how_step2_title">Trouvez un match</h3>
+                        <p class="text-gray-600" data-i18n="landing.how_step2_desc">Notre système intelligent vous connecte avec des profils vérifiés</p>
                     </div>
                     
                     <div class="text-center">
                         <div class="bg-orange-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span class="text-2xl font-bold text-orange-600">3</span>
                         </div>
-                        <h3 class="text-xl font-bold mb-2">Livraison sécurisée</h3>
-                        <p class="text-gray-600">Paiement bloqué jusqu'à confirmation de livraison</p>
+                        <h3 class="text-xl font-bold mb-2" data-i18n="landing.how_step3_title">Livraison sécurisée</h3>
+                        <p class="text-gray-600" data-i18n="landing.how_step3_desc">Paiement bloqué jusqu'à confirmation de livraison</p>
                     </div>
                 </div>
             </div>
@@ -342,31 +342,31 @@ app.get('/', (c) => {
         <!-- Sécurité -->
         <section id="securite" class="py-16 bg-white">
             <div class="max-w-7xl mx-auto px-4">
-                <h2 class="text-3xl font-bold text-center mb-12">Votre sécurité, notre priorité</h2>
+                <h2 class="text-3xl font-bold text-center mb-12" data-i18n="landing.security_title">Votre sécurité, notre priorité</h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div class="text-center p-6">
                         <i class="fas fa-shield-alt text-blue-600 text-4xl mb-4"></i>
-                        <h3 class="font-bold mb-2">Vérification KYC</h3>
-                        <p class="text-sm text-gray-600">Tous les utilisateurs vérifient leur identité</p>
+                        <h3 class="font-bold mb-2" data-i18n="landing.security_kyc_title">Vérification KYC</h3>
+                        <p class="text-sm text-gray-600" data-i18n="landing.security_kyc_desc">Tous les utilisateurs vérifient leur identité</p>
                     </div>
                     
                     <div class="text-center p-6">
                         <i class="fas fa-lock text-green-600 text-4xl mb-4"></i>
-                        <h3 class="font-bold mb-2">Paiement Escrow</h3>
-                        <p class="text-sm text-gray-600">Fonds sécurisés jusqu'à livraison</p>
+                        <h3 class="font-bold mb-2" data-i18n="landing.security_escrow_title">Paiement Escrow</h3>
+                        <p class="text-sm text-gray-600" data-i18n="landing.security_escrow_desc">Fonds sécurisés jusqu'à livraison</p>
                     </div>
                     
                     <div class="text-center p-6">
                         <i class="fas fa-star text-orange-600 text-4xl mb-4"></i>
-                        <h3 class="font-bold mb-2">Système de notes</h3>
-                        <p class="text-sm text-gray-600">Avis vérifiés après chaque transaction</p>
+                        <h3 class="font-bold mb-2" data-i18n="landing.security_rating_title">Système de notes</h3>
+                        <p class="text-sm text-gray-600" data-i18n="landing.security_rating_desc">Avis vérifiés après chaque transaction</p>
                     </div>
                     
                     <div class="text-center p-6">
                         <i class="fas fa-ban text-red-600 text-4xl mb-4"></i>
-                        <h3 class="font-bold mb-2">Liste noire</h3>
-                        <p class="text-sm text-gray-600">Produits interdits clairement affichés</p>
+                        <h3 class="font-bold mb-2" data-i18n="landing.security_blacklist_title">Liste noire</h3>
+                        <p class="text-sm text-gray-600" data-i18n="landing.security_blacklist_desc">Produits interdits clairement affichés</p>
                     </div>
                 </div>
             </div>
@@ -375,9 +375,9 @@ app.get('/', (c) => {
         <!-- CTA Final -->
         <section class="gradient-bg text-white py-16">
             <div class="max-w-4xl mx-auto px-4 text-center">
-                <h2 class="text-3xl font-bold mb-4">Prêt à commencer ?</h2>
-                <p class="text-xl mb-8 text-blue-100">Rejoignez des milliers d'utilisateurs qui font confiance à Amanah GO</p>
-                <button onclick="window.location.href='/signup'" class="bg-white text-blue-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100">
+                <h2 class="text-3xl font-bold mb-4" data-i18n="landing.cta_final_title">Prêt à commencer ?</h2>
+                <p class="text-xl mb-8 text-blue-100" data-i18n="landing.cta_final_subtitle">Rejoignez des milliers d'utilisateurs qui font confiance à Amanah GO</p>
+                <button onclick="window.location.href='/signup'" class="bg-white text-blue-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100" data-i18n="landing.cta_final_button">
                     Créer mon compte gratuitement
                 </button>
             </div>
@@ -387,12 +387,12 @@ app.get('/', (c) => {
         <footer class="bg-gray-900 text-white py-8">
             <div class="max-w-7xl mx-auto px-4 text-center">
                 <div class="flex justify-center space-x-6 mb-4">
-                    <a href="#" class="hover:text-blue-400">À propos</a>
-                    <a href="#" class="hover:text-blue-400">CGU</a>
-                    <a href="#" class="hover:text-blue-400">Confidentialité</a>
-                    <a href="#" class="hover:text-blue-400">Contact</a>
+                    <a href="#" class="hover:text-blue-400" data-i18n="landing.footer_about">À propos</a>
+                    <a href="#" class="hover:text-blue-400" data-i18n="landing.footer_toc">CGU</a>
+                    <a href="#" class="hover:text-blue-400" data-i18n="landing.footer_privacy">Confidentialité</a>
+                    <a href="#" class="hover:text-blue-400" data-i18n="landing.footer_contact">Contact</a>
                 </div>
-                <p class="text-gray-400">© 2025 Amanah GO. Tous droits réservés.</p>
+                <p class="text-gray-400" data-i18n="landing.footer_copyright">© 2025 Amanah GO. Tous droits réservés.</p>
             </div>
         </footer>
 
