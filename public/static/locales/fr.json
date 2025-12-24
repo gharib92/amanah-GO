@@ -56,7 +56,24 @@
     "flexible_dates": "Dates flexibles (±2 jours)",
     "search_button": "Rechercher",
     "no_results": "Aucun résultat trouvé",
-    "results_found": "résultats trouvés"
+    "results_found": "résultats trouvés",
+    "sort_by": "Trier par",
+    "sort_score": "Score (meilleur)",
+    "sort_price_asc": "Prix (croissant)",
+    "sort_price_desc": "Prix (décroissant)",
+    "sort_date": "Date (proche)",
+    "filter_rating": "Rating min",
+    "filter_rating_all": "Tous",
+    "filter_kyc": "KYC",
+    "filter_kyc_all": "Tous",
+    "filter_kyc_verified": "Vérifiés uniquement",
+    "filter_score": "Score min",
+    "filter_score_all": "Tous",
+    "no_results_desc": "Essayez de modifier vos critères de recherche",
+    "new_search": "Nouvelle recherche",
+    "contact": "Contacter",
+    "trips_available": "Trajets disponibles",
+    "packages_available": "Colis disponibles"
   },
   
   "landing": {

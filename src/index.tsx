@@ -4841,21 +4841,21 @@ app.get('/results', (c) => {
             <div class="grid md:grid-cols-4 gap-4 mb-6">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-sort mr-2"></i>Trier par
+                        <i class="fas fa-sort mr-2"></i><span data-i18n="search.sort_by">Trier par</span>
                     </label>
                     <select id="sortBy" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="score">Score (meilleur)</option>
-                        <option value="price_asc">Prix (croissant)</option>
-                        <option value="price_desc">Prix (décroissant)</option>
-                        <option value="date">Date (proche)</option>
+                        <option value="score" data-i18n="search.sort_score">Score (meilleur)</option>
+                        <option value="price_asc" data-i18n="search.sort_price_asc">Prix (croissant)</option>
+                        <option value="price_desc" data-i18n="search.sort_price_desc">Prix (décroissant)</option>
+                        <option value="date" data-i18n="search.sort_date">Date (proche)</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-star mr-2"></i>Rating min
+                        <i class="fas fa-star mr-2"></i><span data-i18n="search.filter_rating">Rating min</span>
                     </label>
                     <select id="filterRating" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="0">Tous</option>
+                        <option value="0" data-i18n="search.filter_rating_all">Tous</option>
                         <option value="3">3+ ⭐</option>
                         <option value="4">4+ ⭐⭐⭐⭐</option>
                         <option value="4.5">4.5+ ⭐⭐⭐⭐⭐</option>
@@ -4863,19 +4863,19 @@ app.get('/results', (c) => {
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-shield-alt mr-2"></i>KYC
+                        <i class="fas fa-shield-alt mr-2"></i><span data-i18n="search.filter_kyc">KYC</span>
                     </label>
                     <select id="filterKYC" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="all">Tous</option>
-                        <option value="VERIFIED">Vérifiés uniquement</option>
+                        <option value="all" data-i18n="search.filter_kyc_all">Tous</option>
+                        <option value="VERIFIED" data-i18n="search.filter_kyc_verified">Vérifiés uniquement</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-chart-line mr-2"></i>Score min
+                        <i class="fas fa-chart-line mr-2"></i><span data-i18n="search.filter_score">Score min</span>
                     </label>
                     <select id="filterScore" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="0">Tous</option>
+                        <option value="0" data-i18n="search.filter_score_all">Tous</option>
                         <option value="60">60+ (Fair)</option>
                         <option value="75">75+ (Good)</option>
                         <option value="90">90+ (Excellent)</option>
@@ -4898,10 +4898,10 @@ app.get('/results', (c) => {
             <!-- No Results State -->
             <div id="noResults" class="hidden text-center py-16">
                 <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
-                <h3 class="text-2xl font-bold text-gray-600 mb-2" data-i18n="search.no_results">Aucun résultat trouvé</h3>
-                <p class="text-gray-500 mb-6">Essayez de modifier vos critères de recherche</p>
+                <h3 class="text-2xl font-bold text-gray-600 mb-2" data-i18n="search.no_results">Àucun résultat trouvé</h3>
+                <p class="text-gray-500 mb-6" data-i18n="search.no_results_desc">Essayez de modifier vos critères de recherche</p>
                 <a href="/search" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block">
-                    <i class="fas fa-redo mr-2"></i>Nouvelle recherche
+                    <i class="fas fa-redo mr-2"></i><span data-i18n="search.new_search">Nouvelle recherche</span>
                 </a>
             </div>
         </div>
@@ -4911,7 +4911,7 @@ app.get('/results', (c) => {
             <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-2xl font-bold text-gray-800">
-                        <i class="fas fa-envelope mr-2 text-blue-600"></i>Contacter
+                        <i class="fas fa-envelope mr-2 text-blue-600"></i><span data-i18n="search.contact">Contacter</span>
                     </h3>
                     <button id="closeModal" class="text-gray-400 hover:text-gray-600">
                         <i class="fas fa-times text-2xl"></i>
@@ -4942,12 +4942,12 @@ app.get('/results', (c) => {
                         // Expéditeur cherche des trajets
                         apiUrl = '/api/matches/trips-for-package?' + urlParams.toString()
                         document.getElementById('summaryIcon').className = 'fas fa-plane-departure mr-2 text-blue-600'
-                        document.getElementById('summaryTitle').textContent = 'Trajets disponibles'
+                        document.getElementById('summaryTitle').textContent = window.t ? window.t('search.trips_available') : 'Trajets disponibles'
                     } else if (searchType === 'packages') {
                         // Voyageur cherche des colis
                         apiUrl = '/api/matches/packages-for-trip?' + urlParams.toString()
                         document.getElementById('summaryIcon').className = 'fas fa-box mr-2 text-green-600'
-                        document.getElementById('summaryTitle').textContent = 'Colis disponibles'
+                        document.getElementById('summaryTitle').textContent = window.t ? window.t('search.packages_available') : 'Colis disponibles'
                     } else {
                         showNoResults()
                         return
