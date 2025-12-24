@@ -1588,9 +1588,9 @@ app.get('/voyageur', (c) => {
                     <div>
                         <h1 class="text-3xl font-bold mb-2">
                             <i class="fas fa-plane-departure mr-3"></i>
-                            Bienvenue dans votre Espace Voyageur
+                            <span data-i18n="traveler.welcome">Bienvenue dans votre Espace Voyageur</span>
                         </h1>
-                        <p class="text-blue-100 text-lg">Monétisez vos trajets France ↔ Maroc en transportant des colis</p>
+                        <p class="text-blue-100 text-lg" data-i18n="traveler.welcome_subtitle">Monétisez vos trajets France ↔ Maroc en transportant des colis</p>
                     </div>
                     <div class="hidden md:block">
                         <i class="fas fa-suitcase-rolling text-6xl opacity-20"></i>
@@ -1607,8 +1607,8 @@ app.get('/voyageur', (c) => {
                         </div>
                         <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Publier un Trajet</h3>
-                    <p class="text-gray-600">Ajoutez un nouveau trajet et commencez à gagner de l'argent</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="traveler.publish_trip">Publier un Trajet</h3>
+                    <p class="text-gray-600" data-i18n="traveler.publish_trip_desc">Ajoutez un nouveau trajet et commencez à gagner de l'argent</p>
                 </a>
 
                 <a href="/voyageur/mes-trajets" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
@@ -1618,8 +1618,8 @@ app.get('/voyageur', (c) => {
                         </div>
                         <i class="fas fa-arrow-right text-gray-400 group-hover:text-green-600 transition-colors"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Mes Trajets</h3>
-                    <p class="text-gray-600">Consultez et gérez tous vos trajets publiés</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="traveler.my_trips">Mes Trajets</h3>
+                    <p class="text-gray-600" data-i18n="traveler.my_trips_desc">Consultez et gérez tous vos trajets publiés</p>
                 </a>
 
                 <a href="/verify-profile" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
@@ -1629,8 +1629,8 @@ app.get('/voyageur', (c) => {
                         </div>
                         <i class="fas fa-arrow-right text-gray-400 group-hover:text-purple-600 transition-colors"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Vérifier mon Profil</h3>
-                    <p class="text-gray-600">Complétez votre KYC pour débloquer toutes les fonctionnalités</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="nav.verify_profile">Vérifier mon Profil</h3>
+                    <p class="text-gray-600" data-i18n="traveler.verify_profile_desc">Complétez votre KYC pour débloquer toutes les fonctionnalités</p>
                 </a>
             </div>
 
@@ -1638,7 +1638,7 @@ app.get('/voyageur', (c) => {
             <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
                     <i class="fas fa-chart-line text-blue-600 mr-2"></i>
-                    Aperçu Rapide
+                    <span data-i18n="traveler.quick_overview">Aperçu Rapide</span>
                 </h2>
                 <div class="grid md:grid-cols-4 gap-6">
                     <div class="text-center">
@@ -1646,28 +1646,28 @@ app.get('/voyageur', (c) => {
                             <i class="fas fa-route text-2xl text-blue-600"></i>
                         </div>
                         <p class="text-3xl font-bold text-gray-900" id="statTrips">0</p>
-                        <p class="text-sm text-gray-600">Trajets publiés</p>
+                        <p class="text-sm text-gray-600" data-i18n="traveler.stats_trips">Trajets publiés</p>
                     </div>
                     <div class="text-center">
                         <div class="bg-green-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
                             <i class="fas fa-check-circle text-2xl text-green-600"></i>
                         </div>
                         <p class="text-3xl font-bold text-gray-900" id="statActive">0</p>
-                        <p class="text-sm text-gray-600">Trajets actifs</p>
+                        <p class="text-sm text-gray-600" data-i18n="traveler.stats_active">Trajets actifs</p>
                     </div>
                     <div class="text-center">
                         <div class="bg-purple-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
                             <i class="fas fa-weight-hanging text-2xl text-purple-600"></i>
                         </div>
                         <p class="text-3xl font-bold text-gray-900" id="statWeight">0</p>
-                        <p class="text-sm text-gray-600">kg disponibles</p>
+                        <p class="text-sm text-gray-600" data-i18n="traveler.stats_weight">kg disponibles</p>
                     </div>
                     <div class="text-center">
                         <div class="bg-yellow-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
                             <i class="fas fa-euro-sign text-2xl text-yellow-600"></i>
                         </div>
                         <p class="text-3xl font-bold text-green-600" id="statEarnings">0</p>
-                        <p class="text-sm text-gray-600">Gains potentiels</p>
+                        <p class="text-sm text-gray-600" data-i18n="traveler.stats_earnings">Gains potentiels</p>
                     </div>
                 </div>
             </div>
@@ -1676,23 +1676,23 @@ app.get('/voyageur', (c) => {
             <div class="bg-white rounded-xl shadow-lg p-8">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
                     <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
-                    Comment ça marche ?
+                    <span data-i18n="landing.how_it_works_title">Comment ça marche ?</span>
                 </h2>
                 <div class="grid md:grid-cols-3 gap-6">
                     <div class="text-center">
                         <div class="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Publiez votre trajet</h3>
-                        <p class="text-gray-600 text-sm">Indiquez votre itinéraire, dates et poids disponible</p>
+                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="traveler.how_step1">Publiez votre trajet</h3>
+                        <p class="text-gray-600 text-sm" data-i18n="traveler.how_step1_desc">Indiquez votre itinéraire, dates et poids disponible</p>
                     </div>
                     <div class="text-center">
                         <div class="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Recevez des propositions</h3>
-                        <p class="text-gray-600 text-sm">Les expéditeurs vous contactent avec leurs demandes</p>
+                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="traveler.how_step2">Recevez des propositions</h3>
+                        <p class="text-gray-600 text-sm" data-i18n="traveler.how_step2_desc">Les expéditeurs vous contactent avec leurs demandes</p>
                     </div>
                     <div class="text-center">
                         <div class="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Gagnez de l'argent</h3>
-                        <p class="text-gray-600 text-sm">Transportez et recevez votre paiement sécurisé</p>
+                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="traveler.how_step3">Gagnez de l'argent</h3>
+                        <p class="text-gray-600 text-sm" data-i18n="traveler.how_step3_desc">Transportez et recevez votre paiement sécurisé</p>
                     </div>
                 </div>
             </div>
