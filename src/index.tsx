@@ -2285,9 +2285,9 @@ app.get('/expediteur', (c) => {
                     <div>
                         <h1 class="text-3xl font-bold mb-2">
                             <i class="fas fa-box mr-3"></i>
-                            Bienvenue dans votre Espace Expéditeur
+                            <span data-i18n="sender.welcome">Bienvenue dans votre Espace Expéditeur</span>
                         </h1>
-                        <p class="text-green-100 text-lg">Économisez jusqu'à 70% sur vos envois France ↔ Maroc</p>
+                        <p class="text-green-100 text-lg" data-i18n="sender.welcome_subtitle">Économisez jusqu'à 70% sur vos envois France ↔ Maroc</p>
                     </div>
                     <div class="hidden md:block">
                         <i class="fas fa-shipping-fast text-6xl opacity-20"></i>
@@ -2304,8 +2304,8 @@ app.get('/expediteur', (c) => {
                         </div>
                         <i class="fas fa-arrow-right text-gray-400 group-hover:text-green-600 transition-colors"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Publier un Colis</h3>
-                    <p class="text-gray-600">Créez une nouvelle demande d'envoi de colis</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="sender.publish_package">Publier un Colis</h3>
+                    <p class="text-gray-600" data-i18n="sender.publish_package_desc">Créez une nouvelle demande d'envoi de colis</p>
                 </a>
 
                 <a href="/expediteur/mes-colis" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
@@ -2315,8 +2315,8 @@ app.get('/expediteur', (c) => {
                         </div>
                         <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Mes Colis</h3>
-                    <p class="text-gray-600">Suivez tous vos envois en cours et passés</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="sender.my_packages">Mes Colis</h3>
+                    <p class="text-gray-600" data-i18n="sender.my_packages_desc">Suivez tous vos envois en cours et passés</p>
                 </a>
 
                 <div onclick="searchTrips()" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
@@ -2326,8 +2326,8 @@ app.get('/expediteur', (c) => {
                         </div>
                         <i class="fas fa-arrow-right text-gray-400 group-hover:text-purple-600 transition-colors"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Rechercher un Trajet</h3>
-                    <p class="text-gray-600">Trouvez un voyageur pour transporter votre colis</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="sender.search_trip">Rechercher un Trajet</h3>
+                    <p class="text-gray-600" data-i18n="sender.search_trip_desc">Trouvez un voyageur pour transporter votre colis</p>
                 </div>
             </div>
 
@@ -2335,13 +2335,13 @@ app.get('/expediteur', (c) => {
             <div id="searchSection" class="bg-white rounded-xl shadow-lg p-8 mb-8 hidden">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
                     <i class="fas fa-search text-green-600 mr-2"></i>
-                    Rechercher un Trajet Disponible
+                    <span data-i18n="sender.search_title">Rechercher un Trajet Disponible</span>
                 </h2>
                 <div class="grid md:grid-cols-3 gap-4 mb-6">
-                    <input type="text" id="searchOrigin" placeholder="Ville de départ" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                    <input type="text" id="searchDestination" placeholder="Ville d'arrivée" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    <input type="text" id="searchOrigin" placeholder="Ville de départ" data-i18n-placeholder="sender.search_origin" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    <input type="text" id="searchDestination" placeholder="Ville d'arrivée" data-i18n-placeholder="sender.search_destination" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
                     <button onclick="performSearch()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold">
-                        <i class="fas fa-search mr-2"></i>Rechercher
+                        <i class="fas fa-search mr-2"></i><span data-i18n="sender.search_button">Rechercher</span>
                     </button>
                 </div>
                 <div id="searchResults" class="space-y-4">
@@ -2353,7 +2353,7 @@ app.get('/expediteur', (c) => {
             <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
                     <i class="fas fa-chart-line text-green-600 mr-2"></i>
-                    Aperçu Rapide
+                    <span data-i18n="traveler.quick_overview">Aperçu Rapide</span>
                 </h2>
                 <div class="grid md:grid-cols-4 gap-6">
                     <div class="text-center">
@@ -2361,28 +2361,28 @@ app.get('/expediteur', (c) => {
                             <i class="fas fa-box text-2xl text-green-600"></i>
                         </div>
                         <p class="text-3xl font-bold text-gray-900" id="statPackages">0</p>
-                        <p class="text-sm text-gray-600">Colis publiés</p>
+                        <p class="text-sm text-gray-600" data-i18n="sender.stats_packages">Colis publiés</p>
                     </div>
                     <div class="text-center">
                         <div class="bg-blue-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
                             <i class="fas fa-clock text-2xl text-blue-600"></i>
                         </div>
                         <p class="text-3xl font-bold text-gray-900" id="statPending">0</p>
-                        <p class="text-sm text-gray-600">En attente</p>
+                        <p class="text-sm text-gray-600" data-i18n="sender.stats_pending">En attente</p>
                     </div>
                     <div class="text-center">
                         <div class="bg-yellow-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
                             <i class="fas fa-shipping-fast text-2xl text-yellow-600"></i>
                         </div>
                         <p class="text-3xl font-bold text-gray-900" id="statInTransit">0</p>
-                        <p class="text-sm text-gray-600">En transit</p>
+                        <p class="text-sm text-gray-600" data-i18n="sender.stats_in_transit">En transit</p>
                     </div>
                     <div class="text-center">
                         <div class="bg-purple-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
                             <i class="fas fa-check-circle text-2xl text-purple-600"></i>
                         </div>
                         <p class="text-3xl font-bold text-gray-900" id="statDelivered">0</p>
-                        <p class="text-sm text-gray-600">Livrés</p>
+                        <p class="text-sm text-gray-600" data-i18n="sender.stats_delivered">Livrés</p>
                     </div>
                 </div>
             </div>
@@ -2391,23 +2391,23 @@ app.get('/expediteur', (c) => {
             <div class="bg-white rounded-xl shadow-lg p-8">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
                     <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
-                    Comment ça marche ?
+                    <span data-i18n="landing.how_it_works_title">Comment ça marche ?</span>
                 </h2>
                 <div class="grid md:grid-cols-3 gap-6">
                     <div class="text-center">
                         <div class="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Publiez votre colis</h3>
-                        <p class="text-gray-600 text-sm">Décrivez votre envoi, destination et budget</p>
+                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="sender.how_step1">Publiez votre colis</h3>
+                        <p class="text-gray-600 text-sm" data-i18n="sender.how_step1_desc">Décrivez votre envoi, destination et budget</p>
                     </div>
                     <div class="text-center">
                         <div class="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Trouvez un voyageur</h3>
-                        <p class="text-gray-600 text-sm">Des voyageurs vous contactent ou recherchez-en un</p>
+                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="sender.how_step2">Trouvez un voyageur</h3>
+                        <p class="text-gray-600 text-sm" data-i18n="sender.how_step2_desc">Des voyageurs vous contactent ou recherchez-en un</p>
                     </div>
                     <div class="text-center">
                         <div class="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Économisez de l'argent</h3>
-                        <p class="text-gray-600 text-sm">Recevez votre colis jusqu'à 70% moins cher</p>
+                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="sender.how_step3">Économisez de l'argent</h3>
+                        <p class="text-gray-600 text-sm" data-i18n="sender.how_step3_desc">Recevez votre colis jusqu'à 70% moins cher</p>
                     </div>
                 </div>
             </div>
