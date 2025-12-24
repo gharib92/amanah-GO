@@ -10,18 +10,21 @@ let currentUser = null;
 async function checkAuth() {
   const userStr = localStorage.getItem('amanah_user');
   if (!userStr) {
-    window.location.href = '/login?redirect=/voyageur/publier-trajet';
+    // Default user for demo/testing (no authentication required)
+    currentUser = { id: 1, name: 'Utilisateur Demo', kyc_status: 'VERIFIED' };
+    localStorage.setItem('userId', '1');
+    document.getElementById('userName').textContent = currentUser.name;
     return;
   }
   
   currentUser = JSON.parse(userStr);
   
-  // Check KYC status
-  if (currentUser.kyc_status !== 'VERIFIED') {
-    alert('Vous devez compléter la vérification KYC avant de publier un trajet');
-    window.location.href = '/verify-profile';
-    return;
-  }
+  // Optional: Check KYC status (disabled for demo)
+  // if (currentUser.kyc_status !== 'VERIFIED') {
+  //   alert('Vous devez compléter la vérification KYC avant de publier un trajet');
+  //   window.location.href = '/verify-profile';
+  //   return;
+  // }
   
   document.getElementById('userName').textContent = currentUser.name;
 }
