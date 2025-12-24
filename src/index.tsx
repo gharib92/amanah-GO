@@ -272,17 +272,17 @@ app.get('/', (c) => {
         <!-- Calculateur de Prix -->
         <section class="py-16 bg-white">
             <div class="max-w-4xl mx-auto px-4">
-                <h2 class="text-3xl font-bold text-center mb-8">Calculez votre économie</h2>
+                <h2 class="text-3xl font-bold text-center mb-8" data-i18n="landing.calculator_title">Calculez votre économie</h2>
                 <div class="bg-gray-50 rounded-xl p-8 shadow-lg">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Poids du colis (kg)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="landing.calculator_weight_label">Poids du colis (kg)</label>
                             <input type="number" id="weight" value="10" min="1" max="50" 
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                                    onchange="calculatePrice()">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Prix par kg (€)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="landing.calculator_price_label">Prix par kg (€)</label>
                             <input type="number" id="pricePerKg" value="8" min="5" max="15" 
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                                    onchange="calculatePrice()">
@@ -292,11 +292,11 @@ app.get('/', (c) => {
                     <div class="bg-white rounded-lg p-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="text-center border-r border-gray-200">
-                                <div class="text-sm text-gray-600 mb-2">Avec Amanah GO</div>
+                                <div class="text-sm text-gray-600 mb-2" data-i18n="landing.calculator_amanah">Avec Amanah GO</div>
                                 <div class="text-3xl font-bold text-green-600" id="amanahPrice">80 €</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-sm text-gray-600 mb-2">DHL/Chronopost</div>
+                                <div class="text-sm text-gray-600 mb-2" data-i18n="landing.calculator_dhl">DHL/Chronopost</div>
                                 <div class="text-3xl font-bold text-gray-400" id="dhlPrice">280 €</div>
                                 <div class="text-sm text-red-600 font-medium mt-2" id="savings">Vous économisez 200 € !</div>
                             </div>
@@ -407,7 +407,10 @@ app.get('/', (c) => {
             
             document.getElementById('amanahPrice').textContent = Math.round(amanahTotal) + ' €';
             document.getElementById('dhlPrice').textContent = Math.round(dhlTotal) + ' €';
-            document.getElementById('savings').textContent = 'Vous économisez ' + Math.round(savings) + ' € !';
+            
+            // Use i18n for savings text
+            const savingsText = window.t ? window.t('landing.calculator_savings').replace('{amount}', Math.round(savings)) : 'Vous économisez ' + Math.round(savings) + ' € !';
+            document.getElementById('savings').textContent = savingsText;
           }
           
           // Initial calculation
@@ -427,6 +430,11 @@ app.get('/', (c) => {
               const key = el.getAttribute('data-i18n')
               el.textContent = window.t(key)
             })
+            
+            // Recalculate price after translations loaded (Landing page only)
+            if (typeof calculatePrice === 'function') {
+              calculatePrice()
+            }
           })
         </script>
     </body>
@@ -1746,6 +1754,11 @@ app.get('/voyageur', (c) => {
               const key = el.getAttribute('data-i18n')
               el.textContent = window.t(key)
             })
+            
+            // Recalculate price after translations loaded (Landing page only)
+            if (typeof calculatePrice === 'function') {
+              calculatePrice()
+            }
           })
         </script>
     </body>
@@ -2519,6 +2532,11 @@ app.get('/expediteur', (c) => {
               const key = el.getAttribute('data-i18n')
               el.textContent = window.t(key)
             })
+            
+            // Recalculate price after translations loaded (Landing page only)
+            if (typeof calculatePrice === 'function') {
+              calculatePrice()
+            }
           })
         </script>
     </body>
