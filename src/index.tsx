@@ -4222,6 +4222,362 @@ function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
+// ============================================================================
+// MATCHING APIs - Algorithme Intelligent
+// ============================================================================
+
+/**
+ * Calculer le score de compatibilité entre un colis et un trajet (0-100)
+ */
+function calculateMatchScore(packageData: any, tripData: any): number {
+  let score = 0
+  
+  // 1. Compatibilité dates (30 points max)
+  const packageDate = new Date(packageData.preferred_date)
+  const tripDate = new Date(tripData.departure_date)
+  const daysDiff = Math.abs((packageDate.getTime() - tripDate.getTime()) / (1000 * 60 * 60 * 24))
+  
+  if (daysDiff === 0) {
+    score += 30 // Même jour = parfait
+  } else if (daysDiff <= 2 && packageData.flexible_dates) {
+    score += 25 // ±2 jours avec flexibilité
+  } else if (daysDiff <= 2) {
+    score += 20 // ±2 jours sans flexibilité
+  } else if (daysDiff <= 7) {
+    score += 10 // Même semaine
+  }
+  
+  // 2. Compatibilité aéroports origine/destination (25 points max)
+  const originMatch = packageData.origin_city === tripData.departure_city || packageData.origin_city === tripData.origin_city
+  const destMatch = packageData.destination_city === tripData.arrival_city || packageData.destination_city === tripData.destination_city
+  
+  if (originMatch && destMatch) {
+    score += 25 // Trajet exact
+  } else if (originMatch || destMatch) {
+    score += 15 // Au moins une ville correspond
+  }
+  
+  // 3. Compatibilité poids (20 points max)
+  const availableWeight = tripData.available_weight - (tripData.reserved_weight || 0)
+  const packageWeight = packageData.weight
+  
+  if (packageWeight <= availableWeight) {
+    const ratio = packageWeight / availableWeight
+    if (ratio <= 0.5) {
+      score += 20 // Largement suffisant
+    } else if (ratio <= 0.8) {
+      score += 15 // Bon ratio
+    } else {
+      score += 10 // Juste suffisant
+    }
+  } else {
+    score += 0 // Poids insuffisant
+  }
+  
+  // 4. Compatibilité prix (15 points max)
+  const proposedPricePerKg = packageData.budget / packageData.weight
+  const requestedPricePerKg = tripData.price_per_kg
+  
+  if (proposedPricePerKg >= requestedPricePerKg) {
+    const ratio = proposedPricePerKg / requestedPricePerKg
+    if (ratio >= 1.2) {
+      score += 15 // Paie plus que demandé
+    } else if (ratio >= 1.0) {
+      score += 12 // Paie exactement
+    } else {
+      score += 8 // Paie un peu moins
+    }
+  }
+  
+  // 5. Rating utilisateur (10 points max)
+  const travelerRating = tripData.traveler_rating || 0
+  if (travelerRating >= 4.5) {
+    score += 10
+  } else if (travelerRating >= 4.0) {
+    score += 8
+  } else if (travelerRating >= 3.5) {
+    score += 5
+  } else if (travelerRating > 0) {
+    score += 3
+  }
+  
+  return Math.min(Math.round(score), 100)
+}
+
+/**
+ * API: POST /api/matches/trips-for-package
+ * Trouver les trajets compatibles pour un colis donné
+ */
+app.post('/api/matches/trips-for-package', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    await initExchangeTables(DB)
+    
+    const body = await c.req.json()
+    const {
+      origin_city,
+      destination_city,
+      weight,
+      budget,
+      preferred_date,
+      flexible_dates = false,
+      min_rating = 0,
+      kyc_verified_only = false
+    } = body
+    
+    // Validation
+    if (!origin_city || !destination_city || !weight || !budget || !preferred_date) {
+      return c.json({ error: 'Champs obligatoires manquants' }, 400)
+    }
+    
+    // Récupérer tous les trajets actifs
+    const tripsResult = await DB.prepare(`
+      SELECT 
+        t.*,
+        u.name as traveler_name,
+        u.email as traveler_email,
+        u.kyc_status,
+        u.rating as traveler_rating
+      FROM trips t
+      LEFT JOIN users u ON t.user_id = u.id
+      WHERE t.status = 'active'
+        AND t.departure_city = ?
+        AND t.arrival_city = ?
+        AND (t.available_weight - COALESCE(t.reserved_weight, 0)) >= ?
+      ORDER BY t.departure_date ASC
+    `).bind(origin_city, destination_city, weight).all()
+    
+    if (!tripsResult.results || tripsResult.results.length === 0) {
+      return c.json({ 
+        matches: [],
+        total: 0,
+        message: 'Aucun trajet trouvé pour ces critères'
+      })
+    }
+    
+    // Préparer les données du colis pour le scoring
+    const packageData = {
+      origin_city,
+      destination_city,
+      weight,
+      budget,
+      preferred_date,
+      flexible_dates
+    }
+    
+    // Calculer le score pour chaque trajet
+    const matches = tripsResult.results
+      .map((trip: any) => {
+        const score = calculateMatchScore(packageData, trip)
+        
+        // Appliquer les filtres
+        if (kyc_verified_only && trip.kyc_status !== 'VERIFIED') {
+          return null
+        }
+        if (trip.traveler_rating < min_rating) {
+          return null
+        }
+        
+        // Calculer les détails financiers
+        const pricePerKg = trip.price_per_kg
+        const totalPrice = pricePerKg * weight
+        const commission = totalPrice * 0.12
+        const travelerEarns = totalPrice - commission
+        const savings = (28 * weight) - totalPrice // vs DHL
+        
+        return {
+          trip_id: trip.id,
+          score,
+          traveler: {
+            id: trip.user_id,
+            name: trip.traveler_name,
+            rating: trip.traveler_rating || 0,
+            kyc_status: trip.kyc_status
+          },
+          trip: {
+            origin_city: trip.departure_city,
+            destination_city: trip.arrival_city,
+            departure_date: trip.departure_date,
+            arrival_date: trip.arrival_date,
+            available_weight: trip.available_weight - (trip.reserved_weight || 0),
+            price_per_kg: trip.price_per_kg,
+            flexible_dates: trip.flexible_dates,
+            flight_number: trip.flight_number
+          },
+          pricing: {
+            price_per_kg: pricePerKg,
+            total_price: Math.round(totalPrice * 100) / 100,
+            commission: Math.round(commission * 100) / 100,
+            traveler_earns: Math.round(travelerEarns * 100) / 100,
+            savings: Math.round(savings * 100) / 100,
+            savings_percent: Math.round((savings / (28 * weight)) * 100)
+          },
+          compatibility: {
+            date_match: score >= 20,
+            route_match: score >= 40,
+            weight_ok: score >= 50,
+            price_ok: score >= 60
+          }
+        }
+      })
+      .filter((match: any) => match !== null)
+      .sort((a: any, b: any) => b.score - a.score) // Trier par score décroissant
+    
+    return c.json({
+      matches,
+      total: matches.length,
+      package_details: packageData,
+      filters: {
+        min_rating,
+        kyc_verified_only
+      }
+    })
+    
+  } catch (error: any) {
+    console.error('Error finding trips for package:', error)
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+/**
+ * API: POST /api/matches/packages-for-trip
+ * Trouver les colis compatibles pour un trajet donné
+ */
+app.post('/api/matches/packages-for-trip', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    await initExchangeTables(DB)
+    
+    const body = await c.req.json()
+    const {
+      origin_city,
+      destination_city,
+      available_weight,
+      price_per_kg,
+      departure_date,
+      flexible_dates = false,
+      min_budget = 0
+    } = body
+    
+    // Validation
+    if (!origin_city || !destination_city || !available_weight || !price_per_kg || !departure_date) {
+      return c.json({ error: 'Champs obligatoires manquants' }, 400)
+    }
+    
+    // Récupérer tous les colis publiés
+    const packagesResult = await DB.prepare(`
+      SELECT 
+        p.*,
+        u.name as sender_name,
+        u.email as sender_email,
+        u.kyc_status,
+        u.rating as sender_rating
+      FROM packages p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.status = 'published'
+        AND p.departure_city = ?
+        AND p.arrival_city = ?
+        AND p.weight <= ?
+      ORDER BY p.created_at DESC
+    `).bind(origin_city, destination_city, available_weight).all()
+    
+    if (!packagesResult.results || packagesResult.results.length === 0) {
+      return c.json({ 
+        matches: [],
+        total: 0,
+        message: 'Aucun colis trouvé pour ce trajet'
+      })
+    }
+    
+    // Préparer les données du trajet pour le scoring
+    const tripData = {
+      origin_city,
+      destination_city,
+      available_weight,
+      price_per_kg,
+      departure_date,
+      flexible_dates,
+      traveler_rating: 5.0 // Valeur par défaut
+    }
+    
+    // Calculer le score pour chaque colis
+    const matches = packagesResult.results
+      .map((pkg: any) => {
+        const score = calculateMatchScore(pkg, tripData)
+        
+        // Appliquer filtres
+        if (pkg.budget < min_budget) {
+          return null
+        }
+        
+        // Calculer les détails financiers
+        const totalPrice = price_per_kg * pkg.weight
+        const commission = totalPrice * 0.12
+        const travelerEarns = totalPrice - commission
+        const senderPays = totalPrice
+        const savings = (28 * pkg.weight) - senderPays
+        
+        return {
+          package_id: pkg.id,
+          score,
+          sender: {
+            id: pkg.user_id,
+            name: pkg.sender_name,
+            rating: pkg.sender_rating || 0,
+            kyc_status: pkg.kyc_status
+          },
+          package: {
+            title: pkg.title,
+            content: pkg.content,
+            weight: pkg.weight,
+            dimensions: pkg.dimensions,
+            budget: pkg.budget,
+            preferred_date: pkg.preferred_date,
+            flexible_dates: pkg.flexible_dates,
+            photo_url: pkg.photo_url
+          },
+          pricing: {
+            sender_pays: Math.round(senderPays * 100) / 100,
+            traveler_earns: Math.round(travelerEarns * 100) / 100,
+            commission: Math.round(commission * 100) / 100,
+            savings: Math.round(savings * 100) / 100,
+            savings_percent: Math.round((savings / (28 * pkg.weight)) * 100)
+          },
+          compatibility: {
+            date_match: score >= 20,
+            route_match: score >= 40,
+            weight_ok: true,
+            budget_ok: pkg.budget >= (price_per_kg * pkg.weight)
+          }
+        }
+      })
+      .filter((match: any) => match !== null)
+      .sort((a: any, b: any) => b.score - a.score)
+    
+    return c.json({
+      matches,
+      total: matches.length,
+      trip_details: {
+        origin_city,
+        destination_city,
+        available_weight,
+        price_per_kg,
+        departure_date,
+        flexible_dates
+      },
+      filters: {
+        min_budget
+      }
+    })
+    
+  } catch (error: any) {
+    console.error('Error finding packages for trip:', error)
+    return c.json({ error: error.message }, 500)
+  }
+})
+
 /**
  * API: POST /api/exchanges/request
  * Créer une demande d'échange de colis (Expéditeur → Voyageur)
