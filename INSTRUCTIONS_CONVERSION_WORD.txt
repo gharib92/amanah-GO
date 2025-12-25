@@ -1,0 +1,83 @@
+═══════════════════════════════════════════════════════════════
+📄 INSTRUCTIONS POUR CONVERTIR EN WORD (DOCX)
+═══════════════════════════════════════════════════════════════
+
+Vous avez 2 fichiers disponibles :
+
+1. RECAP_MAITRISE_PRODUIT_AMANAH_GO.html (20 KB)
+   → Document HTML stylé, prêt pour impression A4
+
+2. RECAP_MAITRISE_PRODUIT_AMANAH_GO.md (9.1 KB)
+   → Document Markdown pour conversion Word
+
+═══════════════════════════════════════════════════════════════
+MÉTHODE 1 : CONVERSION EN LIGNE (RECOMMANDÉ)
+═══════════════════════════════════════════════════════════════
+
+1. Aller sur : https://cloudconvert.com/md-to-docx
+2. Upload le fichier : RECAP_MAITRISE_PRODUIT_AMANAH_GO.md
+3. Cliquer "Convert"
+4. Télécharger le fichier .docx
+
+OU
+
+1. Aller sur : https://www.markdowntoword.com/
+2. Coller le contenu du fichier .md
+3. Cliquer "Convert"
+4. Télécharger le Word
+
+═══════════════════════════════════════════════════════════════
+MÉTHODE 2 : AVEC PANDOC (SI INSTALLÉ)
+═══════════════════════════════════════════════════════════════
+
+Si vous avez Pandoc installé sur votre ordinateur :
+
+pandoc RECAP_MAITRISE_PRODUIT_AMANAH_GO.md \
+  -o RECAP_MAITRISE_PRODUIT_AMANAH_GO.docx \
+  --reference-doc=template.docx
+
+═══════════════════════════════════════════════════════════════
+MÉTHODE 3 : COPIER-COLLER DIRECT DANS WORD
+═══════════════════════════════════════════════════════════════
+
+1. Ouvrir le fichier HTML dans un navigateur
+2. Sélectionner tout (Ctrl+A)
+3. Copier (Ctrl+C)
+4. Ouvrir Word
+5. Coller (Ctrl+V)
+6. Word préservera la mise en forme !
+
+═══════════════════════════════════════════════════════════════
+MÉTHODE 4 : WORD ONLINE (MICROSOFT 365)
+═══════════════════════════════════════════════════════════════
+
+1. Ouvrir Word Online (office.com)
+2. Nouveau document
+3. Ouvrir le fichier .html ou copier le contenu .md
+4. Enregistrer au format .docx
+
+═══════════════════════════════════════════════════════════════
+📥 TÉLÉCHARGER LES FICHIERS
+═══════════════════════════════════════════════════════════════
+
+Les fichiers sont disponibles dans :
+/home/user/webapp/
+
+- RECAP_MAITRISE_PRODUIT_AMANAH_GO.html
+- RECAP_MAITRISE_PRODUIT_AMANAH_GO.md
+
+Vous pouvez les télécharger depuis l'interface de votre IDE.
+
+═══════════════════════════════════════════════════════════════
+✅ RECOMMANDATION
+═══════════════════════════════════════════════════════════════
+
+La MÉTHODE 3 (Copier-Coller HTML → Word) est la plus simple
+et préserve parfaitement la mise en forme professionnelle !
+
+1. Ouvrez RECAP_MAITRISE_PRODUIT_AMANAH_GO.html dans Chrome
+2. Ctrl+A puis Ctrl+C
+3. Dans Word : Ctrl+V
+4. Enregistrez !
+
+═══════════════════════════════════════════════════════════════
