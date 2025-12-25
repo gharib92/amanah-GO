@@ -297,14 +297,14 @@ app.get('/test-i18n', (c) => {
             
             return \`
               <div class="lang-switcher">
-                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                <button class="lang-switcher-minimal" id="langSwitcherBtn" title="\${current.name}">
                   <span class="lang-flag-only">\${current.flag}</span>
                 </button>
                 
                 <div class="lang-switcher-dropdown" id="langDropdown">
                   \${languages.map(lang => \`
                     <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
-                         onclick="switchLanguage('\${lang.code}')">
+                         data-lang="\${lang.code}">
                       <span class="lang-flag">\${lang.flag}</span>
                       <span>\${lang.name}</span>
                       \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
@@ -315,9 +315,31 @@ app.get('/test-i18n', (c) => {
             \`
           }
           
+          function attachLanguageSwitcherEvents(container) {
+            // Attach click event to the button
+            const btn = container.querySelector('#langSwitcherBtn')
+            if (btn) {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation()
+                toggleLangDropdown()
+              })
+            }
+            
+            // Attach click events to language options
+            const options = container.querySelectorAll('.lang-option')
+            options.forEach(option => {
+              option.addEventListener('click', () => {
+                const lang = option.getAttribute('data-lang')
+                if (lang) switchLanguage(lang)
+              })
+            })
+          }
+          
           function toggleLangDropdown() {
-            const dropdown = document.getElementById('langDropdown')
-            dropdown.classList.toggle('show')
+            const dropdowns = document.querySelectorAll('#langDropdown')
+            dropdowns.forEach(dropdown => {
+              dropdown.classList.toggle('show')
+            })
           }
           
           function switchLanguage(lang) {
@@ -347,8 +369,14 @@ app.get('/test-i18n', (c) => {
             const desktopSwitcher = document.getElementById('langSwitcher')
             const mobileSwitcher = document.getElementById('langSwitcherMobile')
             
-            if (desktopSwitcher) desktopSwitcher.innerHTML = switcher
-            if (mobileSwitcher) mobileSwitcher.innerHTML = switcher
+            if (desktopSwitcher) {
+              desktopSwitcher.innerHTML = switcher
+              attachLanguageSwitcherEvents(desktopSwitcher)
+            }
+            if (mobileSwitcher) {
+              mobileSwitcher.innerHTML = switcher
+              attachLanguageSwitcherEvents(mobileSwitcher)
+            }
             
             // Apply translations to all elements with data-i18n attribute
             applyTranslations()
@@ -695,14 +723,14 @@ app.get('/', (c) => {
             
             return \`
               <div class="lang-switcher">
-                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                <button class="lang-switcher-minimal" id="langSwitcherBtn" title="\${current.name}">
                   <span class="lang-flag-only">\${current.flag}</span>
                 </button>
                 
                 <div class="lang-switcher-dropdown" id="langDropdown">
                   \${languages.map(lang => \`
                     <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
-                         onclick="switchLanguage('\${lang.code}')">
+                         data-lang="\${lang.code}">
                       <span class="lang-flag">\${lang.flag}</span>
                       <span>\${lang.name}</span>
                       \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
@@ -713,9 +741,31 @@ app.get('/', (c) => {
             \`
           }
           
+          function attachLanguageSwitcherEvents(container) {
+            // Attach click event to the button
+            const btn = container.querySelector('#langSwitcherBtn')
+            if (btn) {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation()
+                toggleLangDropdown()
+              })
+            }
+            
+            // Attach click events to language options
+            const options = container.querySelectorAll('.lang-option')
+            options.forEach(option => {
+              option.addEventListener('click', () => {
+                const lang = option.getAttribute('data-lang')
+                if (lang) switchLanguage(lang)
+              })
+            })
+          }
+          
           function toggleLangDropdown() {
-            const dropdown = document.getElementById('langDropdown')
-            dropdown.classList.toggle('show')
+            const dropdowns = document.querySelectorAll('#langDropdown')
+            dropdowns.forEach(dropdown => {
+              dropdown.classList.toggle('show')
+            })
           }
           
           function switchLanguage(lang) {
@@ -744,8 +794,14 @@ app.get('/', (c) => {
             const desktopSwitcher = document.getElementById('langSwitcher')
             const mobileSwitcher = document.getElementById('langSwitcherMobile')
             
-            if (desktopSwitcher) desktopSwitcher.innerHTML = switcher
-            if (mobileSwitcher) mobileSwitcher.innerHTML = switcher
+            if (desktopSwitcher) {
+              desktopSwitcher.innerHTML = switcher
+              attachLanguageSwitcherEvents(desktopSwitcher)
+            }
+            if (mobileSwitcher) {
+              mobileSwitcher.innerHTML = switcher
+              attachLanguageSwitcherEvents(mobileSwitcher)
+            }
             
             // Apply translations
             document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -2157,14 +2213,14 @@ app.get('/voyageur', (c) => {
             
             return \`
               <div class="lang-switcher">
-                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                <button class="lang-switcher-minimal" id="langSwitcherBtn" title="\${current.name}">
                   <span class="lang-flag-only">\${current.flag}</span>
                 </button>
                 
                 <div class="lang-switcher-dropdown" id="langDropdown">
                   \${languages.map(lang => \`
                     <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
-                         onclick="switchLanguage('\${lang.code}')">
+                         data-lang="\${lang.code}">
                       <span class="lang-flag">\${lang.flag}</span>
                       <span>\${lang.name}</span>
                       \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
@@ -2175,9 +2231,31 @@ app.get('/voyageur', (c) => {
             \`
           }
           
+          function attachLanguageSwitcherEvents(container) {
+            // Attach click event to the button
+            const btn = container.querySelector('#langSwitcherBtn')
+            if (btn) {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation()
+                toggleLangDropdown()
+              })
+            }
+            
+            // Attach click events to language options
+            const options = container.querySelectorAll('.lang-option')
+            options.forEach(option => {
+              option.addEventListener('click', () => {
+                const lang = option.getAttribute('data-lang')
+                if (lang) switchLanguage(lang)
+              })
+            })
+          }
+          
           function toggleLangDropdown() {
-            const dropdown = document.getElementById('langDropdown')
-            dropdown.classList.toggle('show')
+            const dropdowns = document.querySelectorAll('#langDropdown')
+            dropdowns.forEach(dropdown => {
+              dropdown.classList.toggle('show')
+            })
           }
           
           function switchLanguage(lang) {
@@ -2206,8 +2284,14 @@ app.get('/voyageur', (c) => {
             const desktopSwitcher = document.getElementById('langSwitcher')
             const mobileSwitcher = document.getElementById('langSwitcherMobile')
             
-            if (desktopSwitcher) desktopSwitcher.innerHTML = switcher
-            if (mobileSwitcher) mobileSwitcher.innerHTML = switcher
+            if (desktopSwitcher) {
+              desktopSwitcher.innerHTML = switcher
+              attachLanguageSwitcherEvents(desktopSwitcher)
+            }
+            if (mobileSwitcher) {
+              mobileSwitcher.innerHTML = switcher
+              attachLanguageSwitcherEvents(mobileSwitcher)
+            }
             
             // Apply translations
             document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -2994,14 +3078,14 @@ app.get('/expediteur', (c) => {
             
             return \`
               <div class="lang-switcher">
-                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                <button class="lang-switcher-minimal" id="langSwitcherBtn" title="\${current.name}">
                   <span class="lang-flag-only">\${current.flag}</span>
                 </button>
                 
                 <div class="lang-switcher-dropdown" id="langDropdown">
                   \${languages.map(lang => \`
                     <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
-                         onclick="switchLanguage('\${lang.code}')">
+                         data-lang="\${lang.code}">
                       <span class="lang-flag">\${lang.flag}</span>
                       <span>\${lang.name}</span>
                       \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
@@ -3012,9 +3096,31 @@ app.get('/expediteur', (c) => {
             \`
           }
           
+          function attachLanguageSwitcherEvents(container) {
+            // Attach click event to the button
+            const btn = container.querySelector('#langSwitcherBtn')
+            if (btn) {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation()
+                toggleLangDropdown()
+              })
+            }
+            
+            // Attach click events to language options
+            const options = container.querySelectorAll('.lang-option')
+            options.forEach(option => {
+              option.addEventListener('click', () => {
+                const lang = option.getAttribute('data-lang')
+                if (lang) switchLanguage(lang)
+              })
+            })
+          }
+          
           function toggleLangDropdown() {
-            const dropdown = document.getElementById('langDropdown')
-            dropdown.classList.toggle('show')
+            const dropdowns = document.querySelectorAll('#langDropdown')
+            dropdowns.forEach(dropdown => {
+              dropdown.classList.toggle('show')
+            })
           }
           
           function switchLanguage(lang) {
@@ -3043,8 +3149,14 @@ app.get('/expediteur', (c) => {
             const desktopSwitcher = document.getElementById('langSwitcher')
             const mobileSwitcher = document.getElementById('langSwitcherMobile')
             
-            if (desktopSwitcher) desktopSwitcher.innerHTML = switcher
-            if (mobileSwitcher) mobileSwitcher.innerHTML = switcher
+            if (desktopSwitcher) {
+              desktopSwitcher.innerHTML = switcher
+              attachLanguageSwitcherEvents(desktopSwitcher)
+            }
+            if (mobileSwitcher) {
+              mobileSwitcher.innerHTML = switcher
+              attachLanguageSwitcherEvents(mobileSwitcher)
+            }
             
             // Apply translations
             document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -5573,14 +5685,14 @@ app.get('/search', (c) => {
             
             return \`
               <div class="lang-switcher">
-                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                <button class="lang-switcher-minimal" id="langSwitcherBtn" title="\${current.name}">
                   <span class="lang-flag-only">\${current.flag}</span>
                 </button>
                 
                 <div class="lang-switcher-dropdown" id="langDropdown">
                   \${languages.map(lang => \`
                     <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
-                         onclick="switchLanguage('\${lang.code}')">
+                         data-lang="\${lang.code}">
                       <span class="lang-flag">\${lang.flag}</span>
                       <span>\${lang.name}</span>
                       \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
@@ -5591,9 +5703,31 @@ app.get('/search', (c) => {
             \`
           }
           
+          function attachLanguageSwitcherEvents(container) {
+            // Attach click event to the button
+            const btn = container.querySelector('#langSwitcherBtn')
+            if (btn) {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation()
+                toggleLangDropdown()
+              })
+            }
+            
+            // Attach click events to language options
+            const options = container.querySelectorAll('.lang-option')
+            options.forEach(option => {
+              option.addEventListener('click', () => {
+                const lang = option.getAttribute('data-lang')
+                if (lang) switchLanguage(lang)
+              })
+            })
+          }
+          
           function toggleLangDropdown() {
-            const dropdown = document.getElementById('langDropdown')
-            dropdown.classList.toggle('show')
+            const dropdowns = document.querySelectorAll('#langDropdown')
+            dropdowns.forEach(dropdown => {
+              dropdown.classList.toggle('show')
+            })
           }
           
           function switchLanguage(lang) {
@@ -5865,14 +5999,14 @@ app.get('/results', (c) => {
             
             return \`
               <div class="lang-switcher">
-                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                <button class="lang-switcher-minimal" id="langSwitcherBtn" title="\${current.name}">
                   <span class="lang-flag-only">\${current.flag}</span>
                 </button>
                 
                 <div class="lang-switcher-dropdown" id="langDropdown">
                   \${languages.map(lang => \`
                     <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
-                         onclick="switchLanguage('\${lang.code}')">
+                         data-lang="\${lang.code}">
                       <span class="lang-flag">\${lang.flag}</span>
                       <span>\${lang.name}</span>
                       \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
@@ -5883,9 +6017,31 @@ app.get('/results', (c) => {
             \`
           }
           
+          function attachLanguageSwitcherEvents(container) {
+            // Attach click event to the button
+            const btn = container.querySelector('#langSwitcherBtn')
+            if (btn) {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation()
+                toggleLangDropdown()
+              })
+            }
+            
+            // Attach click events to language options
+            const options = container.querySelectorAll('.lang-option')
+            options.forEach(option => {
+              option.addEventListener('click', () => {
+                const lang = option.getAttribute('data-lang')
+                if (lang) switchLanguage(lang)
+              })
+            })
+          }
+          
           function toggleLangDropdown() {
-            const dropdown = document.getElementById('langDropdown')
-            dropdown.classList.toggle('show')
+            const dropdowns = document.querySelectorAll('#langDropdown')
+            dropdowns.forEach(dropdown => {
+              dropdown.classList.toggle('show')
+            })
           }
           
           function switchLanguage(lang) {
