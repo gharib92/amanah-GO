@@ -283,7 +283,59 @@ app.get('/test-i18n', (c) => {
         </div>
 
         <script src="/static/i18n.js?v=3"></script>
-        <script src="/static/lang-switcher.js?v=3"></script>
+        <script>
+          // Language Switcher Component (inline for immediate availability)
+          function createLanguageSwitcher() {
+            const currentLang = window.i18n?.getCurrentLang() || 'fr'
+            const languages = [
+              { code: 'fr', name: 'Français', flag: '🇫🇷' },
+              { code: 'ar', name: 'العربية', flag: '🇲🇦' },
+              { code: 'en', name: 'English', flag: '🇬🇧' }
+            ]
+            
+            const current = languages.find(l => l.code === currentLang) || languages[0]
+            
+            return \`
+              <div class="lang-switcher">
+                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                  <span class="lang-flag-only">\${current.flag}</span>
+                </button>
+                
+                <div class="lang-switcher-dropdown" id="langDropdown">
+                  \${languages.map(lang => \`
+                    <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
+                         onclick="switchLanguage('\${lang.code}')">
+                      <span class="lang-flag">\${lang.flag}</span>
+                      <span>\${lang.name}</span>
+                      \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
+                    </div>
+                  \`).join('')}
+                </div>
+              </div>
+            \`
+          }
+          
+          function toggleLangDropdown() {
+            const dropdown = document.getElementById('langDropdown')
+            dropdown.classList.toggle('show')
+          }
+          
+          function switchLanguage(lang) {
+            if (window.i18n) {
+              window.i18n.setLanguage(lang)
+            }
+          }
+          
+          // Close dropdown when clicking outside
+          document.addEventListener('click', function(event) {
+            const switcher = document.querySelector('.lang-switcher')
+            const dropdown = document.getElementById('langDropdown')
+            
+            if (switcher && dropdown && !switcher.contains(event.target)) {
+              dropdown.classList.remove('show')
+            }
+          })
+        </script>
         <script>
           // Wait for i18n to load
           window.addEventListener('DOMContentLoaded', async () => {
@@ -629,12 +681,71 @@ app.get('/', (c) => {
         </script>
 
         <script src="/static/i18n.js?v=3"></script>
-        <script src="/static/lang-switcher.js?v=3"></script>
+        <script>
+          // Language Switcher Component (inline for immediate availability)
+          function createLanguageSwitcher() {
+            const currentLang = window.i18n?.getCurrentLang() || 'fr'
+            const languages = [
+              { code: 'fr', name: 'Français', flag: '🇫🇷' },
+              { code: 'ar', name: 'العربية', flag: '🇲🇦' },
+              { code: 'en', name: 'English', flag: '🇬🇧' }
+            ]
+            
+            const current = languages.find(l => l.code === currentLang) || languages[0]
+            
+            return \`
+              <div class="lang-switcher">
+                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                  <span class="lang-flag-only">\${current.flag}</span>
+                </button>
+                
+                <div class="lang-switcher-dropdown" id="langDropdown">
+                  \${languages.map(lang => \`
+                    <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
+                         onclick="switchLanguage('\${lang.code}')">
+                      <span class="lang-flag">\${lang.flag}</span>
+                      <span>\${lang.name}</span>
+                      \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
+                    </div>
+                  \`).join('')}
+                </div>
+              </div>
+            \`
+          }
+          
+          function toggleLangDropdown() {
+            const dropdown = document.getElementById('langDropdown')
+            dropdown.classList.toggle('show')
+          }
+          
+          function switchLanguage(lang) {
+            if (window.i18n) {
+              window.i18n.setLanguage(lang)
+            }
+          }
+          
+          // Close dropdown when clicking outside
+          document.addEventListener('click', function(event) {
+            const switcher = document.querySelector('.lang-switcher')
+            const dropdown = document.getElementById('langDropdown')
+            
+            if (switcher && dropdown && !switcher.contains(event.target)) {
+              dropdown.classList.remove('show')
+            }
+          })
+        </script>
         <script>
           // Initialize i18n and inject language switcher
           window.addEventListener('DOMContentLoaded', async () => {
             await window.i18n.init()
-            document.getElementById('langSwitcher').innerHTML = createLanguageSwitcher()
+            
+            // Inject language switcher for both desktop and mobile
+            const switcher = createLanguageSwitcher()
+            const desktopSwitcher = document.getElementById('langSwitcher')
+            const mobileSwitcher = document.getElementById('langSwitcherMobile')
+            
+            if (desktopSwitcher) desktopSwitcher.innerHTML = switcher
+            if (mobileSwitcher) mobileSwitcher.innerHTML = switcher
             
             // Apply translations
             document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -2032,12 +2143,71 @@ app.get('/voyageur', (c) => {
         </script>
 
         <script src="/static/i18n.js?v=3"></script>
-        <script src="/static/lang-switcher.js?v=3"></script>
+        <script>
+          // Language Switcher Component (inline for immediate availability)
+          function createLanguageSwitcher() {
+            const currentLang = window.i18n?.getCurrentLang() || 'fr'
+            const languages = [
+              { code: 'fr', name: 'Français', flag: '🇫🇷' },
+              { code: 'ar', name: 'العربية', flag: '🇲🇦' },
+              { code: 'en', name: 'English', flag: '🇬🇧' }
+            ]
+            
+            const current = languages.find(l => l.code === currentLang) || languages[0]
+            
+            return \`
+              <div class="lang-switcher">
+                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                  <span class="lang-flag-only">\${current.flag}</span>
+                </button>
+                
+                <div class="lang-switcher-dropdown" id="langDropdown">
+                  \${languages.map(lang => \`
+                    <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
+                         onclick="switchLanguage('\${lang.code}')">
+                      <span class="lang-flag">\${lang.flag}</span>
+                      <span>\${lang.name}</span>
+                      \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
+                    </div>
+                  \`).join('')}
+                </div>
+              </div>
+            \`
+          }
+          
+          function toggleLangDropdown() {
+            const dropdown = document.getElementById('langDropdown')
+            dropdown.classList.toggle('show')
+          }
+          
+          function switchLanguage(lang) {
+            if (window.i18n) {
+              window.i18n.setLanguage(lang)
+            }
+          }
+          
+          // Close dropdown when clicking outside
+          document.addEventListener('click', function(event) {
+            const switcher = document.querySelector('.lang-switcher')
+            const dropdown = document.getElementById('langDropdown')
+            
+            if (switcher && dropdown && !switcher.contains(event.target)) {
+              dropdown.classList.remove('show')
+            }
+          })
+        </script>
         <script>
           // Initialize i18n and inject language switcher
           window.addEventListener('DOMContentLoaded', async () => {
             await window.i18n.init()
-            document.getElementById('langSwitcher').innerHTML = createLanguageSwitcher()
+            
+            // Inject language switcher for both desktop and mobile
+            const switcher = createLanguageSwitcher()
+            const desktopSwitcher = document.getElementById('langSwitcher')
+            const mobileSwitcher = document.getElementById('langSwitcherMobile')
+            
+            if (desktopSwitcher) desktopSwitcher.innerHTML = switcher
+            if (mobileSwitcher) mobileSwitcher.innerHTML = switcher
             
             // Apply translations
             document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -2810,12 +2980,71 @@ app.get('/expediteur', (c) => {
         </script>
 
         <script src="/static/i18n.js?v=3"></script>
-        <script src="/static/lang-switcher.js?v=3"></script>
+        <script>
+          // Language Switcher Component (inline for immediate availability)
+          function createLanguageSwitcher() {
+            const currentLang = window.i18n?.getCurrentLang() || 'fr'
+            const languages = [
+              { code: 'fr', name: 'Français', flag: '🇫🇷' },
+              { code: 'ar', name: 'العربية', flag: '🇲🇦' },
+              { code: 'en', name: 'English', flag: '🇬🇧' }
+            ]
+            
+            const current = languages.find(l => l.code === currentLang) || languages[0]
+            
+            return \`
+              <div class="lang-switcher">
+                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                  <span class="lang-flag-only">\${current.flag}</span>
+                </button>
+                
+                <div class="lang-switcher-dropdown" id="langDropdown">
+                  \${languages.map(lang => \`
+                    <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
+                         onclick="switchLanguage('\${lang.code}')">
+                      <span class="lang-flag">\${lang.flag}</span>
+                      <span>\${lang.name}</span>
+                      \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
+                    </div>
+                  \`).join('')}
+                </div>
+              </div>
+            \`
+          }
+          
+          function toggleLangDropdown() {
+            const dropdown = document.getElementById('langDropdown')
+            dropdown.classList.toggle('show')
+          }
+          
+          function switchLanguage(lang) {
+            if (window.i18n) {
+              window.i18n.setLanguage(lang)
+            }
+          }
+          
+          // Close dropdown when clicking outside
+          document.addEventListener('click', function(event) {
+            const switcher = document.querySelector('.lang-switcher')
+            const dropdown = document.getElementById('langDropdown')
+            
+            if (switcher && dropdown && !switcher.contains(event.target)) {
+              dropdown.classList.remove('show')
+            }
+          })
+        </script>
         <script>
           // Initialize i18n and inject language switcher
           window.addEventListener('DOMContentLoaded', async () => {
             await window.i18n.init()
-            document.getElementById('langSwitcher').innerHTML = createLanguageSwitcher()
+            
+            // Inject language switcher for both desktop and mobile
+            const switcher = createLanguageSwitcher()
+            const desktopSwitcher = document.getElementById('langSwitcher')
+            const mobileSwitcher = document.getElementById('langSwitcherMobile')
+            
+            if (desktopSwitcher) desktopSwitcher.innerHTML = switcher
+            if (mobileSwitcher) mobileSwitcher.innerHTML = switcher
             
             // Apply translations
             document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -5330,7 +5559,59 @@ app.get('/search', (c) => {
         <!-- JavaScript -->
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n.js?v=3"></script>
-        <script src="/static/lang-switcher.js?v=3"></script>
+        <script>
+          // Language Switcher Component (inline for immediate availability)
+          function createLanguageSwitcher() {
+            const currentLang = window.i18n?.getCurrentLang() || 'fr'
+            const languages = [
+              { code: 'fr', name: 'Français', flag: '🇫🇷' },
+              { code: 'ar', name: 'العربية', flag: '🇲🇦' },
+              { code: 'en', name: 'English', flag: '🇬🇧' }
+            ]
+            
+            const current = languages.find(l => l.code === currentLang) || languages[0]
+            
+            return \`
+              <div class="lang-switcher">
+                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                  <span class="lang-flag-only">\${current.flag}</span>
+                </button>
+                
+                <div class="lang-switcher-dropdown" id="langDropdown">
+                  \${languages.map(lang => \`
+                    <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
+                         onclick="switchLanguage('\${lang.code}')">
+                      <span class="lang-flag">\${lang.flag}</span>
+                      <span>\${lang.name}</span>
+                      \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
+                    </div>
+                  \`).join('')}
+                </div>
+              </div>
+            \`
+          }
+          
+          function toggleLangDropdown() {
+            const dropdown = document.getElementById('langDropdown')
+            dropdown.classList.toggle('show')
+          }
+          
+          function switchLanguage(lang) {
+            if (window.i18n) {
+              window.i18n.setLanguage(lang)
+            }
+          }
+          
+          // Close dropdown when clicking outside
+          document.addEventListener('click', function(event) {
+            const switcher = document.querySelector('.lang-switcher')
+            const dropdown = document.getElementById('langDropdown')
+            
+            if (switcher && dropdown && !switcher.contains(event.target)) {
+              dropdown.classList.remove('show')
+            }
+          })
+        </script>
         <script>
             // Toggle between search types
             const btnSearchTrips = document.getElementById('btnSearchTrips')
@@ -5570,7 +5851,59 @@ app.get('/results', (c) => {
         <!-- JavaScript -->
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/i18n.js?v=3"></script>
-        <script src="/static/lang-switcher.js?v=3"></script>
+        <script>
+          // Language Switcher Component (inline for immediate availability)
+          function createLanguageSwitcher() {
+            const currentLang = window.i18n?.getCurrentLang() || 'fr'
+            const languages = [
+              { code: 'fr', name: 'Français', flag: '🇫🇷' },
+              { code: 'ar', name: 'العربية', flag: '🇲🇦' },
+              { code: 'en', name: 'English', flag: '🇬🇧' }
+            ]
+            
+            const current = languages.find(l => l.code === currentLang) || languages[0]
+            
+            return \`
+              <div class="lang-switcher">
+                <button class="lang-switcher-minimal" onclick="toggleLangDropdown()" id="langSwitcherBtn" title="\${current.name}">
+                  <span class="lang-flag-only">\${current.flag}</span>
+                </button>
+                
+                <div class="lang-switcher-dropdown" id="langDropdown">
+                  \${languages.map(lang => \`
+                    <div class="lang-option \${lang.code === currentLang ? 'active' : ''}" 
+                         onclick="switchLanguage('\${lang.code}')">
+                      <span class="lang-flag">\${lang.flag}</span>
+                      <span>\${lang.name}</span>
+                      \${lang.code === currentLang ? '<i class="fas fa-check ml-auto text-blue-600"></i>' : ''}
+                    </div>
+                  \`).join('')}
+                </div>
+              </div>
+            \`
+          }
+          
+          function toggleLangDropdown() {
+            const dropdown = document.getElementById('langDropdown')
+            dropdown.classList.toggle('show')
+          }
+          
+          function switchLanguage(lang) {
+            if (window.i18n) {
+              window.i18n.setLanguage(lang)
+            }
+          }
+          
+          // Close dropdown when clicking outside
+          document.addEventListener('click', function(event) {
+            const switcher = document.querySelector('.lang-switcher')
+            const dropdown = document.getElementById('langDropdown')
+            
+            if (switcher && dropdown && !switcher.contains(event.target)) {
+              dropdown.classList.remove('show')
+            }
+          })
+        </script>
         <script>
             let allResults = []
             let searchType = ''
