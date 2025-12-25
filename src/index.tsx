@@ -1,14 +1,70 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-workers'
+import { jwt } from 'hono/jwt'
+import { sign, verify } from 'hono/jwt'
+import * as bcrypt from 'bcryptjs'
 
 // Types pour Cloudflare Bindings
 type Bindings = {
   DB: D1Database;
   R2: R2Bucket;
+  JWT_SECRET: string;
 }
 
-const app = new Hono<{ Bindings: Bindings }>()
+// Types pour le contexte avec user authentifié
+type Variables = {
+  user: {
+    id: number;
+    email: string;
+    name: string;
+    role: string;
+  }
+}
+
+const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
+
+// JWT Secret (fallback pour dev, utiliser variable d'environnement en prod)
+const JWT_SECRET = 'amanah-go-secret-key-change-in-production'
+const JWT_EXPIRATION = '7d' // 7 jours
+
+// Middleware JWT pour routes protégées
+const authMiddleware = async (c: any, next: any) => {
+  try {
+    const authHeader = c.req.header('Authorization')
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Token manquant' }, 401)
+    }
+    
+    const token = authHeader.substring(7)
+    const secret = c.env.JWT_SECRET || JWT_SECRET
+    
+    const payload: any = await verify(token, secret)
+    
+    if (!payload || !payload.id) {
+      return c.json({ error: 'Token invalide' }, 401)
+    }
+    
+    // Charger les infos user depuis DB
+    const { DB } = c.env
+    const userResult: any = await DB.prepare('SELECT id, email, name, kyc_status, phone, rating FROM users WHERE id = ?')
+      .bind(payload.id)
+      .first()
+    
+    if (!userResult) {
+      return c.json({ error: 'Utilisateur non trouvé' }, 401)
+    }
+    
+    // Stocker user dans le contexte
+    c.set('user', userResult)
+    
+    await next()
+  } catch (error: any) {
+    console.error('Auth middleware error:', error)
+    return c.json({ error: 'Token invalide ou expiré' }, 401)
+  }
+}
 
 // Enable CORS pour API
 app.use('/api/*', cors())
@@ -745,9 +801,8 @@ app.post('/api/auth/signup', async (c) => {
       return c.json({ success: false, error: 'Cet email est déjà utilisé' }, 400)
     }
     
-    // TODO: Hasher le mot de passe avec bcrypt
-    // Pour l'instant, on stocke en clair (à ne JAMAIS faire en production)
-    const passwordHash = password // UNSAFE - À remplacer par bcrypt.hash()
+    // Hash le mot de passe avec bcrypt
+    const passwordHash = await bcrypt.hash(password, 10)
     
     // Créer l'utilisateur
     const userId = crypto.randomUUID()
@@ -756,13 +811,32 @@ app.post('/api/auth/signup', async (c) => {
       VALUES (?, ?, ?, ?, ?, 'PENDING', datetime('now'))
     `).bind(userId, email, name, phone, passwordHash).run()
     
+    // Générer JWT token
+    const secret = c.env.JWT_SECRET || JWT_SECRET
+    const token = await sign(
+      {
+        id: userId,
+        email,
+        name,
+        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+      },
+      secret
+    )
+    
     return c.json({ 
       success: true, 
-      user_id: userId,
-      message: 'Compte créé avec succès. Veuillez vérifier votre profil.'
+      user: {
+        id: userId,
+        email,
+        name,
+        phone,
+        kyc_status: 'PENDING'
+      },
+      token,
+      message: 'Compte créé avec succès'
     })
     
-  } catch (error) {
+  } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500)
   }
 })
@@ -1005,18 +1079,30 @@ app.post('/api/auth/login', async (c) => {
     }
     
     // Trouver l'utilisateur
-    const user = await DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first()
+    const user: any = await DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first()
     
     if (!user) {
       return c.json({ success: false, error: 'Email ou mot de passe incorrect' }, 401)
     }
     
-    // TODO: Vérifier avec bcrypt.compare()
-    if (user.password_hash !== password) { // UNSAFE - À remplacer
+    // Vérifier le mot de passe avec bcrypt
+    const passwordMatch = await bcrypt.compare(password, user.password_hash)
+    
+    if (!passwordMatch) {
       return c.json({ success: false, error: 'Email ou mot de passe incorrect' }, 401)
     }
     
-    // TODO: Créer un token JWT
+    // Générer JWT token
+    const secret = c.env.JWT_SECRET || JWT_SECRET
+    const token = await sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+      },
+      secret
+    )
     
     return c.json({ 
       success: true, 
@@ -1024,13 +1110,62 @@ app.post('/api/auth/login', async (c) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        kyc_status: user.kyc_status
+        phone: user.phone,
+        kyc_status: user.kyc_status,
+        rating: user.rating
       },
+      token,
       message: 'Connexion réussie'
     })
     
-  } catch (error) {
+  } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * API: GET /api/auth/me
+ * Récupérer le profil de l'utilisateur connecté (route protégée)
+ */
+app.get('/api/auth/me', authMiddleware, async (c) => {
+  const user = c.get('user')
+  
+  return c.json({
+    success: true,
+    user
+  })
+})
+
+/**
+ * API: POST /api/auth/verify-token
+ * Vérifier la validité d'un token
+ */
+app.post('/api/auth/verify-token', async (c) => {
+  try {
+    const { token } = await c.req.json()
+    
+    if (!token) {
+      return c.json({ valid: false, error: 'Token manquant' }, 400)
+    }
+    
+    const secret = c.env.JWT_SECRET || JWT_SECRET
+    const payload = await verify(token, secret)
+    
+    if (!payload || !payload.id) {
+      return c.json({ valid: false, error: 'Token invalide' }, 401)
+    }
+    
+    return c.json({ 
+      valid: true,
+      user: {
+        id: payload.id,
+        email: payload.email,
+        name: payload.name
+      }
+    })
+    
+  } catch (error: any) {
+    return c.json({ valid: false, error: 'Token invalide ou expiré' }, 401)
   }
 })
 
@@ -3080,7 +3215,7 @@ app.get('/expediteur/publier-colis', (c) => {
 // ==========================================
 
 // Create new trip
-app.post('/api/trips', async (c) => {
+app.post('/api/trips', authMiddleware, async (c) => {
   const { DB } = c.env
   
   try {
@@ -3363,7 +3498,7 @@ app.get('/api/users/:user_id/trips', async (c) => {
 // ==========================================
 
 // Create new package
-app.post('/api/packages', async (c) => {
+app.post('/api/packages', authMiddleware, async (c) => {
   const { DB } = c.env
   
   try {
@@ -4582,7 +4717,7 @@ app.post('/api/matches/packages-for-trip', async (c) => {
  * API: POST /api/exchanges/request
  * Créer une demande d'échange de colis (Expéditeur → Voyageur)
  */
-app.post('/api/exchanges/request', async (c) => {
+app.post('/api/exchanges/request', authMiddleware, async (c) => {
   const { DB } = c.env
   
   try {

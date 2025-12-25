@@ -21,7 +21,9 @@
     "git:commit": "git add . && git commit -m"
   },
   "dependencies": {
-    "hono": "^4.11.1"
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "hono": "^4.11.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251217.0",
