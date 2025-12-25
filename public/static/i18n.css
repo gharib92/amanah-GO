@@ -113,8 +113,9 @@
 .lang-switcher-dropdown {
   position: absolute;
   top: calc(100% + 0.5rem);
-  right: 0;
-  min-width: 150px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 180px;
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
@@ -124,8 +125,9 @@
 }
 
 [dir="rtl"] .lang-switcher-dropdown {
-  right: auto;
-  left: 0;
+  /* Centering works the same in RTL */
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .lang-switcher-dropdown.show {
@@ -135,14 +137,24 @@
 .lang-option {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: background 0.2s;
+  white-space: nowrap;
 }
 
 .lang-option:hover {
   background: #f3f4f6;
+}
+
+.lang-option:first-child {
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.lang-option:last-child {
+  border-radius: 0 0 0.5rem 0.5rem;
 }
 
 .lang-option.active {
@@ -152,5 +164,15 @@
 }
 
 .lang-flag {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.lang-option > span:nth-child(2) {
+  flex: 1;
+  text-align: left;
+}
+
+.lang-option > i {
+  margin-left: auto;
 }
