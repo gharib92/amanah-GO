@@ -290,8 +290,13 @@ app.get('/test-i18n', (c) => {
             // Initialize i18n first
             await window.i18n.init()
             
-            // Inject language switcher
-            document.getElementById('langSwitcher').innerHTML = createLanguageSwitcher()
+            // Inject language switcher for both desktop and mobile
+            const switcher = createLanguageSwitcher()
+            const desktopSwitcher = document.getElementById('langSwitcher')
+            const mobileSwitcher = document.getElementById('langSwitcherMobile')
+            
+            if (desktopSwitcher) desktopSwitcher.innerHTML = switcher
+            if (mobileSwitcher) mobileSwitcher.innerHTML = switcher
             
             // Apply translations to all elements with data-i18n attribute
             applyTranslations()
