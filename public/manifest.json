@@ -1,0 +1,111 @@
+{
+  "name": "Amanah GO - Transport Collaboratif France ↔ Maroc",
+  "short_name": "Amanah GO",
+  "description": "Plateforme de transport collaboratif de colis entre la France et le Maroc. Voyagez malin, envoyez futé !",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/static/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["travel", "business", "logistics"],
+  "lang": "fr",
+  "dir": "auto",
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "/static/screenshots/screenshot1.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "label": "Page d'accueil Amanah GO"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Publier un trajet",
+      "short_name": "Trajet",
+      "description": "Publier un nouveau trajet",
+      "url": "/voyageur/publier-trajet",
+      "icons": [
+        {
+          "src": "/static/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Publier un colis",
+      "short_name": "Colis",
+      "description": "Publier un nouveau colis",
+      "url": "/expediteur/publier-colis",
+      "icons": [
+        {
+          "src": "/static/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Rechercher",
+      "short_name": "Recherche",
+      "description": "Rechercher un trajet ou colis",
+      "url": "/search",
+      "icons": [
+        {
+          "src": "/static/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

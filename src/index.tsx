@@ -72,6 +72,104 @@ app.use('/api/*', cors())
 // Serve static files
 app.use('/static/*', serveStatic({ root: './public' }))
 
+// Serve PWA manifest
+app.get('/manifest.json', (c) => {
+  return c.json({
+    name: "Amanah GO - Transport Collaboratif France ↔ Maroc",
+    short_name: "Amanah GO",
+    description: "Plateforme de transport collaboratif de colis entre la France et le Maroc. Voyagez malin, envoyez futé !",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#ffffff",
+    theme_color: "#2563eb",
+    orientation: "portrait-primary",
+    scope: "/",
+    icons: [
+      { src: "/static/icons/icon-72x72.png", sizes: "72x72", type: "image/png", purpose: "any maskable" },
+      { src: "/static/icons/icon-96x96.png", sizes: "96x96", type: "image/png", purpose: "any maskable" },
+      { src: "/static/icons/icon-128x128.png", sizes: "128x128", type: "image/png", purpose: "any maskable" },
+      { src: "/static/icons/icon-144x144.png", sizes: "144x144", type: "image/png", purpose: "any maskable" },
+      { src: "/static/icons/icon-152x152.png", sizes: "152x152", type: "image/png", purpose: "any maskable" },
+      { src: "/static/icons/icon-192x192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+      { src: "/static/icons/icon-384x384.png", sizes: "384x384", type: "image/png", purpose: "any maskable" },
+      { src: "/static/icons/icon-512x512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+    ],
+    categories: ["travel", "business", "logistics"],
+    lang: "fr",
+    dir: "auto",
+    prefer_related_applications: false,
+    shortcuts: [
+      { name: "Publier un trajet", short_name: "Trajet", description: "Publier un nouveau trajet", url: "/voyageur/publier-trajet", icons: [{ src: "/static/icons/icon-192x192.png", sizes: "192x192" }] },
+      { name: "Publier un colis", short_name: "Colis", description: "Publier un nouveau colis", url: "/expediteur/publier-colis", icons: [{ src: "/static/icons/icon-192x192.png", sizes: "192x192" }] },
+      { name: "Rechercher", short_name: "Recherche", description: "Rechercher un trajet ou colis", url: "/search", icons: [{ src: "/static/icons/icon-192x192.png", sizes: "192x192" }] }
+    ]
+  })
+})
+
+// Serve Service Worker
+app.get('/sw.js', (c) => {
+  const swContent = `// Service Worker pour Amanah GO PWA
+const CACHE_NAME = 'amanah-go-v1';
+const RUNTIME_CACHE = 'amanah-go-runtime';
+
+const PRECACHE_URLS = [
+  '/',
+  '/voyageur',
+  '/expediteur',
+  '/search',
+  '/static/i18n.js',
+  '/static/lang-switcher.js',
+  '/static/locales/fr.json'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
+  );
+});`;
+  
+  return c.text(swContent, 200, {
+    'Content-Type': 'application/javascript',
+    'Service-Worker-Allowed': '/'
+  })
+})
+
 // ==========================================
 // TEST I18N
 // ==========================================
@@ -222,6 +320,25 @@ app.get('/', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Amanah GO - Transport Collaboratif France ↔ Maroc</title>
+        
+        <!-- PWA Meta Tags -->
+        <meta name="description" content="Plateforme de transport collaboratif de colis entre la France et le Maroc. Voyagez malin, envoyez futé !">
+        <meta name="theme-color" content="#2563eb">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="Amanah GO">
+        
+        <!-- Manifest -->
+        <link rel="manifest" href="/manifest.json">
+        
+        <!-- Icons -->
+        <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+        <link rel="apple-touch-icon" href="/static/icons/icon-180x180.png">
+        <link rel="icon" sizes="192x192" href="/static/icons/icon-192x192.png">
+        <link rel="icon" sizes="512x512" href="/static/icons/icon-512x512.png">
+        
+        <!-- Styles -->
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
@@ -6155,6 +6272,9 @@ app.get('/prohibited-items', (c) => {
         <!-- JavaScript -->
         <script src="/static/i18n.js?v=3"></script>
         <script src="/static/lang-switcher.js?v=3"></script>
+        
+        <!-- PWA Script -->
+        <script src="/static/pwa.js"></script>
     </body>
     </html>
   `)
