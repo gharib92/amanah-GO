@@ -359,39 +359,72 @@ app.get('/', (c) => {
         <!-- Header -->
         <nav class="bg-white shadow-sm sticky top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center py-4">
+                <div class="flex justify-between items-center py-3">
                     <!-- Logo -->
-                    <div class="flex items-center space-x-3">
-                        <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-14 w-auto">
-                        <span class="text-xl font-bold text-gray-900">Amanah GO</span>
+                    <div class="flex items-center space-x-2">
+                        <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-10 sm:h-12 w-auto">
+                        <span class="text-lg sm:text-xl font-bold text-gray-900">Amanah GO</span>
                     </div>
                     
-                    <!-- Navigation Links (Center) -->
-                    <div class="hidden md:flex items-center space-x-8">
-                        <a href="#comment-ca-marche" class="text-gray-700 hover:text-blue-600 transition-colors font-medium" data-i18n="nav.how_it_works">Comment ça marche</a>
-                        <a href="#securite" class="text-gray-700 hover:text-blue-600 transition-colors font-medium" data-i18n="nav.security">Sécurité</a>
-                        <a href="#tarifs" class="text-gray-700 hover:text-blue-600 transition-colors font-medium" data-i18n="nav.pricing">Tarifs</a>
-                        <a href="/prohibited-items" class="text-red-600 hover:text-red-700 transition-colors font-bold flex items-center" data-i18n="nav.prohibited_items">
-                            <i class="fas fa-ban mr-1"></i>Liste Noire
+                    <!-- Desktop Navigation -->
+                    <div class="hidden lg:flex items-center space-x-6">
+                        <a href="#comment-ca-marche" class="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium" data-i18n="nav.how_it_works">Comment ça marche</a>
+                        <a href="#securite" class="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium" data-i18n="nav.security">Sécurité</a>
+                        <a href="#tarifs" class="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium" data-i18n="nav.pricing">Tarifs</a>
+                        <a href="/prohibited-items" class="text-red-600 hover:text-red-700 transition-colors text-sm font-bold flex items-center" data-i18n="nav.prohibited_items">
+                            <i class="fas fa-ban mr-1 text-xs"></i>Liste Noire
                         </a>
                     </div>
                     
                     <!-- Right Section: Language + Buttons -->
-                    <div class="flex items-center space-x-5">
-                        <!-- Language Switcher with balanced spacing -->
-                        <div id="langSwitcher" class="px-4"></div>
-                        
-                        <!-- Auth Buttons -->
-                        <button onclick="window.location.href='/login'" class="text-blue-600 hover:text-blue-800 font-medium px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors">
+                    <div class="hidden sm:flex items-center space-x-2 sm:space-x-3">
+                        <div id="langSwitcher" class="px-2"></div>
+                        <button onclick="window.location.href='/login'" class="text-blue-600 hover:text-blue-800 font-medium px-2 sm:px-3 py-1.5 text-sm rounded-lg hover:bg-blue-50 transition-colors">
                             <span data-i18n="common.login">Connexion</span>
                         </button>
-                        <button onclick="window.location.href='/signup'" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-sm">
+                        <button onclick="window.location.href='/signup'" class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 text-sm rounded-lg font-medium transition-colors shadow-sm">
                             <span data-i18n="common.signup">Inscription</span>
                         </button>
+                    </div>
+                    
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn" class="sm:hidden p-2 rounded-lg hover:bg-gray-100">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Mobile Menu -->
+                <div id="mobile-menu" class="hidden sm:hidden pb-4 border-t mt-2 pt-3">
+                    <div class="flex flex-col space-y-3">
+                        <div id="langSwitcherMobile" class="pb-2 border-b"></div>
+                        <a href="#comment-ca-marche" class="text-gray-700 hover:text-blue-600 font-medium py-2" data-i18n="nav.how_it_works">Comment ça marche</a>
+                        <a href="#securite" class="text-gray-700 hover:text-blue-600 font-medium py-2" data-i18n="nav.security">Sécurité</a>
+                        <a href="#tarifs" class="text-gray-700 hover:text-blue-600 font-medium py-2" data-i18n="nav.pricing">Tarifs</a>
+                        <a href="/prohibited-items" class="text-red-600 hover:text-red-700 font-bold py-2 flex items-center" data-i18n="nav.prohibited_items">
+                            <i class="fas fa-ban mr-2"></i>Liste Noire
+                        </a>
+                        <div class="flex flex-col space-y-2 pt-2 border-t">
+                            <button onclick="window.location.href='/login'" class="text-blue-600 hover:bg-blue-50 font-medium px-4 py-2 rounded-lg text-left">
+                                <span data-i18n="common.login">Connexion</span>
+                            </button>
+                            <button onclick="window.location.href='/signup'" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">
+                                <span data-i18n="common.signup">Inscription</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </nav>
+        
+        <script>
+            // Mobile menu toggle
+            document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+                const menu = document.getElementById('mobile-menu');
+                menu?.classList.toggle('hidden');
+            });
+        </script>
 
         <!-- Hero Section -->
         <section class="gradient-bg text-white py-20">
