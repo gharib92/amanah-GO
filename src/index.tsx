@@ -25,6 +25,23 @@ const inMemoryDB = {
   bookings: new Map<string, any>()
 }
 
+// Liste d'aéroports populaires France ↔ Maroc
+const AIRPORTS = [
+  { id: 1, iata_code: 'CDG', name: 'Aéroport Charles de Gaulle', city: 'Paris', country: 'France', latitude: 49.0097, longitude: 2.5479, active: 1 },
+  { id: 2, iata_code: 'ORY', name: 'Aéroport d\'Orly', city: 'Paris', country: 'France', latitude: 48.7233, longitude: 2.3794, active: 1 },
+  { id: 3, iata_code: 'CMN', name: 'Aéroport Mohammed V', city: 'Casablanca', country: 'Maroc', latitude: 33.3675, longitude: -7.5898, active: 1 },
+  { id: 4, iata_code: 'RAK', name: 'Aéroport Marrakech Menara', city: 'Marrakech', country: 'Maroc', latitude: 31.6069, longitude: -8.0363, active: 1 },
+  { id: 5, iata_code: 'FEZ', name: 'Aéroport Fès-Saïss', city: 'Fès', country: 'Maroc', latitude: 33.9273, longitude: -4.9780, active: 1 },
+  { id: 6, iata_code: 'TNG', name: 'Aéroport Tanger Ibn Battouta', city: 'Tanger', country: 'Maroc', latitude: 35.7269, longitude: -5.9169, active: 1 },
+  { id: 7, iata_code: 'AGA', name: 'Aéroport Agadir Al Massira', city: 'Agadir', country: 'Maroc', latitude: 30.3250, longitude: -9.4131, active: 1 },
+  { id: 8, iata_code: 'MRS', name: 'Aéroport Marseille Provence', city: 'Marseille', country: 'France', latitude: 43.4394, longitude: 5.2214, active: 1 },
+  { id: 9, iata_code: 'LYS', name: 'Aéroport Lyon-Saint Exupéry', city: 'Lyon', country: 'France', latitude: 45.7256, longitude: 5.0811, active: 1 },
+  { id: 10, iata_code: 'NCE', name: 'Aéroport Nice Côte d\'Azur', city: 'Nice', country: 'France', latitude: 43.6584, longitude: 7.2159, active: 1 },
+  { id: 11, iata_code: 'TLS', name: 'Aéroport Toulouse-Blagnac', city: 'Toulouse', country: 'France', latitude: 43.6291, longitude: 1.3638, active: 1 },
+  { id: 12, iata_code: 'NTE', name: 'Aéroport Nantes Atlantique', city: 'Nantes', country: 'France', latitude: 47.1532, longitude: -1.6108, active: 1 },
+  { id: 13, iata_code: 'BOD', name: 'Aéroport Bordeaux-Mérignac', city: 'Bordeaux', country: 'France', latitude: 44.8283, longitude: -0.7156, active: 1 }
+]
+
 const app = new Hono<{ Variables: Variables }>()
 
 // JWT Secret (fallback pour dev, utiliser variable d'environnement en prod)
@@ -914,41 +931,40 @@ app.get('/api/packages', async (c) => {
 
 // Search airports (autocomplete)
 app.get('/api/airports/search', async (c) => {
-  const { DB } = c.env
-  const query = c.req.query('q') || ''
+  const query = (c.req.query('q') || '').toLowerCase()
   
   if (query.length < 2) {
     return c.json({ success: true, airports: [] })
   }
   
   try {
-    const { results } = await DB.prepare(`
-      SELECT id, iata_code, name, city, country, latitude, longitude
-      FROM airports
-      WHERE active = 1
-      AND (
-        city LIKE ? 
-        OR name LIKE ? 
-        OR iata_code LIKE ?
+    // Filtrer les aéroports selon la requête
+    const results = AIRPORTS.filter(airport => {
+      return (
+        airport.city.toLowerCase().includes(query) ||
+        airport.name.toLowerCase().includes(query) ||
+        airport.iata_code.toLowerCase().includes(query) ||
+        airport.country.toLowerCase().includes(query)
       )
-      ORDER BY 
-        CASE 
-          WHEN city LIKE ? THEN 1
-          WHEN iata_code LIKE ? THEN 2
-          ELSE 3
-        END,
-        city ASC
-      LIMIT 10
-    `).bind(
-      `%${query}%`,
-      `%${query}%`,
-      `${query.toUpperCase()}%`,
-      `${query}%`,
-      `${query.toUpperCase()}%`
-    ).all()
+    })
+    .sort((a, b) => {
+      // Priorité : ville commence par query > code commence par query > autres
+      const aStartsCity = a.city.toLowerCase().startsWith(query)
+      const bStartsCity = b.city.toLowerCase().startsWith(query)
+      const aStartsCode = a.iata_code.toLowerCase().startsWith(query)
+      const bStartsCode = b.iata_code.toLowerCase().startsWith(query)
+      
+      if (aStartsCity && !bStartsCity) return -1
+      if (!aStartsCity && bStartsCity) return 1
+      if (aStartsCode && !bStartsCode) return -1
+      if (!aStartsCode && bStartsCode) return 1
+      
+      return a.city.localeCompare(b.city)
+    })
+    .slice(0, 10) // Limiter à 10 résultats
     
     return c.json({ success: true, airports: results })
-  } catch (error) {
+  } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500)
   }
 })
