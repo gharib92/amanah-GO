@@ -5,13 +5,6 @@ import { jwt } from 'hono/jwt'
 import { sign, verify } from 'hono/jwt'
 import * as bcrypt from 'bcryptjs'
 
-// Types pour Cloudflare Bindings
-type Bindings = {
-  DB: D1Database;
-  R2: R2Bucket;
-  JWT_SECRET: string;
-}
-
 // Types pour le contexte avec user authentifié
 type Variables = {
   user: {
@@ -22,7 +15,7 @@ type Variables = {
   }
 }
 
-const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
+const app = new Hono<{ Variables: Variables }>()
 
 // JWT Secret (fallback pour dev, utiliser variable d'environnement en prod)
 const JWT_SECRET = 'amanah-go-secret-key-change-in-production'
