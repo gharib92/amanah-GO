@@ -277,7 +277,6 @@ app.get('/test-i18n', (c) => {
 
         <script src="/static/auth.js"></script>
         <script src="/static/auth-ui.js"></script>
-        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
@@ -716,7 +715,6 @@ app.get('/', (c) => {
 
         <script src="/static/auth.js"></script>
         <script src="/static/auth-ui.js"></script>
-        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
@@ -5702,7 +5700,6 @@ app.get('/search', (c) => {
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/auth.js"></script>
         <script src="/static/auth-ui.js"></script>
-        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
@@ -6019,7 +6016,6 @@ app.get('/results', (c) => {
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/auth.js"></script>
         <script src="/static/auth-ui.js"></script>
-        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
@@ -6835,7 +6831,6 @@ app.get('/prohibited-items', (c) => {
         <!-- JavaScript -->
         <script src="/static/auth.js"></script>
         <script src="/static/auth-ui.js"></script>
-        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script src="/static/lang-switcher.js?v=3"></script>
         
