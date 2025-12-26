@@ -15,6 +15,16 @@ type Variables = {
   }
 }
 
+// ==========================================
+// IN-MEMORY DATABASE (pour développement)
+// ==========================================
+const inMemoryDB = {
+  users: new Map<string, any>(),
+  trips: new Map<string, any>(),
+  packages: new Map<string, any>(),
+  bookings: new Map<string, any>()
+}
+
 const app = new Hono<{ Variables: Variables }>()
 
 // JWT Secret (fallback pour dev, utiliser variable d'environnement en prod)
@@ -1110,8 +1120,6 @@ app.get('/api/flights/:flightNumber', async (c) => {
 
 // Signup
 app.post('/api/auth/signup', async (c) => {
-  const { DB } = c.env
-  
   try {
     const { name, email, phone, password } = await c.req.json()
     
@@ -1125,8 +1133,8 @@ app.post('/api/auth/signup', async (c) => {
     }
     
     // Vérifier si l'email existe déjà
-    const existing = await DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()
-    if (existing) {
+    const existingUser = Array.from(inMemoryDB.users.values()).find(u => u.email === email)
+    if (existingUser) {
       return c.json({ success: false, error: 'Cet email est déjà utilisé' }, 400)
     }
     
@@ -1135,13 +1143,22 @@ app.post('/api/auth/signup', async (c) => {
     
     // Créer l'utilisateur
     const userId = crypto.randomUUID()
-    await DB.prepare(`
-      INSERT INTO users (id, email, name, phone, password_hash, kyc_status, created_at)
-      VALUES (?, ?, ?, ?, ?, 'PENDING', datetime('now'))
-    `).bind(userId, email, name, phone, passwordHash).run()
+    const user = {
+      id: userId,
+      email,
+      name,
+      phone,
+      password_hash: passwordHash,
+      kyc_status: 'PENDING',
+      rating: 0,
+      reviews_count: 0,
+      created_at: new Date().toISOString()
+    }
+    
+    inMemoryDB.users.set(userId, user)
     
     // Générer JWT token
-    const secret = c.env.JWT_SECRET || JWT_SECRET
+    const secret = c.env?.JWT_SECRET || JWT_SECRET
     const token = await sign(
       {
         id: userId,
@@ -1397,8 +1414,6 @@ app.post('/api/auth/verify-kyc', async (c) => {
 
 // Login
 app.post('/api/auth/login', async (c) => {
-  const { DB } = c.env
-  
   try {
     const { email, password } = await c.req.json()
     
@@ -1408,7 +1423,7 @@ app.post('/api/auth/login', async (c) => {
     }
     
     // Trouver l'utilisateur
-    const user: any = await DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first()
+    const user = Array.from(inMemoryDB.users.values()).find(u => u.email === email)
     
     if (!user) {
       return c.json({ success: false, error: 'Email ou mot de passe incorrect' }, 401)
@@ -1422,7 +1437,7 @@ app.post('/api/auth/login', async (c) => {
     }
     
     // Générer JWT token
-    const secret = c.env.JWT_SECRET || JWT_SECRET
+    const secret = c.env?.JWT_SECRET || JWT_SECRET
     const token = await sign(
       {
         id: user.id,
