@@ -275,6 +275,9 @@ app.get('/test-i18n', (c) => {
             </div>
         </div>
 
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
+        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
@@ -457,12 +460,22 @@ app.get('/', (c) => {
                     <!-- Right Section: Language + Buttons -->
                     <div class="hidden sm:flex items-center space-x-2 sm:space-x-3">
                         <div id="langSwitcher" class="px-2"></div>
-                        <button onclick="window.location.href='/login'" class="text-blue-600 hover:text-blue-800 font-medium px-2 sm:px-3 py-1.5 text-sm rounded-lg hover:bg-blue-50 transition-colors">
+                        <button data-auth="login" onclick="window.location.href='/login'" class="text-blue-600 hover:text-blue-800 font-medium px-2 sm:px-3 py-1.5 text-sm rounded-lg hover:bg-blue-50 transition-colors">
                             <span data-i18n="common.login">Connexion</span>
                         </button>
-                        <button onclick="window.location.href='/signup'" class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 text-sm rounded-lg font-medium transition-colors shadow-sm">
+                        <button data-auth="signup" onclick="window.location.href='/signup'" class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 text-sm rounded-lg font-medium transition-colors shadow-sm">
                             <span data-i18n="common.signup">Inscription</span>
                         </button>
+                        <div data-auth="user-menu" class="hidden items-center space-x-2">
+                            <span class="text-gray-700">
+                                <i class="fas fa-user-circle mr-1"></i>
+                                <span data-auth="user-name"></span>
+                            </span>
+                            <button data-auth="logout" class="text-red-600 hover:text-red-700 font-medium px-2 py-1.5 text-sm rounded-lg hover:bg-red-50 transition-colors">
+                                <i class="fas fa-sign-out-alt mr-1"></i>
+                                <span data-i18n="common.logout">Déconnexion</span>
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- Mobile Menu Button -->
@@ -701,6 +714,9 @@ app.get('/', (c) => {
           calculatePrice();
         </script>
 
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
+        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
@@ -1785,29 +1801,34 @@ app.get('/login', (c) => {
             </div>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
         <script>
+          // Rediriger si déjà connecté
+          auth.redirectIfAuthenticated();
+          
           document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
             
-            try {
-              const response = await axios.post('/api/auth/login', {
-                email, password
-              });
-              
-              if (response.data.success) {
-                // Rediriger selon le statut KYC
-                if (response.data.user.kyc_status === 'VERIFIED') {
-                  window.location.href = '/dashboard';
-                } else {
-                  window.location.href = '/verify-profile?user_id=' + response.data.user.id;
-                }
-              }
-            } catch (error) {
-              showError(error.response?.data?.error || 'Email ou mot de passe incorrect');
+            // Désactiver le bouton pendant la requête
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Connexion...';
+            
+            const result = await auth.login(email, password);
+            
+            if (result.success) {
+              // Récupérer le paramètre redirect
+              const params = new URLSearchParams(window.location.search);
+              const redirect = params.get('redirect') || '/voyageur';
+              window.location.href = redirect;
+            } else {
+              showError(result.error);
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> Se connecter';
             }
           });
           
@@ -1956,8 +1977,12 @@ app.get('/signup', (c) => {
             </div>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
         <script>
+          // Rediriger si déjà connecté
+          auth.redirectIfAuthenticated();
+          
           document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -1966,6 +1991,7 @@ app.get('/signup', (c) => {
             const phone = document.getElementById('phone').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
             
             // Validation
             if (password !== confirmPassword) {
@@ -1978,17 +2004,19 @@ app.get('/signup', (c) => {
               return;
             }
             
-            try {
-              const response = await axios.post('/api/auth/signup', {
-                name, email, phone, password
-              });
-              
-              if (response.data.success) {
-                // Rediriger vers la page de vérification
-                window.location.href = '/verify-profile?user_id=' + response.data.user_id;
-              }
-            } catch (error) {
-              showError(error.response?.data?.error || 'Erreur lors de l\\'inscription');
+            // Désactiver le bouton
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Création du compte...';
+            
+            const result = await auth.signup(email, password, name, phone);
+            
+            if (result.success) {
+              // Redirection vers la page voyageur
+              window.location.href = '/voyageur';
+            } else {
+              showError(result.error);
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<i class="fas fa-user-plus mr-2"></i> Créer mon compte';
             }
           });
           
@@ -2029,6 +2057,9 @@ app.get('/voyageur', (c) => {
                         <i class="fas fa-user-circle mr-2"></i>
                         <span id="userName">Utilisateur</span>
                     </span>
+                    <button data-auth="logout" class="text-red-600 hover:text-red-700 transition-colors" title="Se déconnecter">
+                        <i class="fas fa-sign-out-alt mr-2"></i><span data-i18n="common.logout">Déconnexion</span>
+                    </button>
                     <a href="/prohibited-items" class="text-red-600 hover:text-red-700 transition-colors font-bold" title="Produits interdits">
                         <i class="fas fa-ban mr-2"></i><span data-i18n="nav.prohibited_items">Liste Noire</span>
                     </a>
@@ -2191,6 +2222,9 @@ app.get('/voyageur', (c) => {
           loadStats()
         </script>
 
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
+        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
@@ -3056,6 +3090,9 @@ app.get('/expediteur', (c) => {
           loadStats()
         </script>
 
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
+        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
@@ -5663,6 +5700,9 @@ app.get('/search', (c) => {
 
         <!-- JavaScript -->
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
+        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
@@ -5977,6 +6017,9 @@ app.get('/results', (c) => {
 
         <!-- JavaScript -->
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
+        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
@@ -6790,6 +6833,9 @@ app.get('/prohibited-items', (c) => {
         </div>
 
         <!-- JavaScript -->
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
+        <script src="/static/protected-page.js"></script>
         <script src="/static/i18n.js?v=3"></script>
         <script src="/static/lang-switcher.js?v=3"></script>
         
