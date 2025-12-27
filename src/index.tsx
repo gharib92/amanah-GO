@@ -4,6 +4,7 @@ import { serveStatic } from 'hono/cloudflare-workers'
 import { jwt } from 'hono/jwt'
 import { sign, verify } from 'hono/jwt'
 import * as bcrypt from 'bcryptjs'
+import Stripe from 'stripe'
 
 // Types pour le contexte avec user authentifié
 type Variables = {
@@ -43,6 +44,18 @@ const AIRPORTS = [
 ]
 
 const app = new Hono<{ Variables: Variables }>()
+
+// Initialisation Stripe
+let stripe: Stripe | null = null
+function getStripe(c: any): Stripe {
+  if (!stripe) {
+    const stripeKey = c.env?.STRIPE_SECRET_KEY || 'sk_test_51Six5P8I2rvObHIX81X7cUPNOGIVkiOOnCl9IGyds7oFxMdcYUELFyGsMMrkEryx0Nds2sSn189C3eZFOiF8z9cC00VT8KkLC5'
+    stripe = new Stripe(stripeKey, {
+      apiVersion: '2025-12-15.clover',
+    })
+  }
+  return stripe
+}
 
 // JWT Secret (fallback pour dev, utiliser variable d'environnement en prod)
 const JWT_SECRET = 'amanah-go-secret-key-change-in-production'
@@ -1131,6 +1144,135 @@ app.get('/api/flights/:flightNumber', async (c) => {
 })
 
 // ==========================================
+// STRIPE CONNECT API ROUTES
+// ==========================================
+
+// Route 1: Créer un compte Stripe Connect (onboarding voyageur)
+app.post('/api/stripe/connect/onboard', authMiddleware, async (c) => {
+  try {
+    const stripe = getStripe(c)
+    const user = c.get('user')
+
+    // Vérifier si l'utilisateur a déjà un compte Connect
+    const existingUser = inMemoryDB.users.get(user.email)
+    if (existingUser?.stripe_account_id) {
+      return c.json({ 
+        success: false, 
+        error: 'Vous avez déjà un compte Stripe Connect' 
+      }, 400)
+    }
+
+    // Créer un compte Stripe Connect
+    const account = await stripe.accounts.create({
+      type: 'express',
+      country: 'FR', // France par défaut (adapter selon le pays de l'utilisateur)
+      email: user.email,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      business_type: 'individual',
+      metadata: {
+        user_id: user.id.toString(),
+        user_email: user.email,
+        platform: 'amanah-go'
+      }
+    })
+
+    // Sauvegarder l'account_id dans la DB
+    existingUser.stripe_account_id = account.id
+    inMemoryDB.users.set(user.email, existingUser)
+
+    // Créer un lien d'onboarding
+    const accountLink = await stripe.accountLinks.create({
+      account: account.id,
+      refresh_url: `${c.req.header('origin') || 'http://localhost:3000'}/voyageur/stripe-connect?refresh=true`,
+      return_url: `${c.req.header('origin') || 'http://localhost:3000'}/voyageur/stripe-connect?success=true`,
+      type: 'account_onboarding',
+    })
+
+    return c.json({
+      success: true,
+      account_id: account.id,
+      onboarding_url: accountLink.url
+    })
+  } catch (error: any) {
+    console.error('Stripe Connect onboarding error:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message || 'Erreur lors de la création du compte Stripe' 
+    }, 500)
+  }
+})
+
+// Route 2: Obtenir le lien vers le dashboard Stripe
+app.get('/api/stripe/connect/dashboard', authMiddleware, async (c) => {
+  try {
+    const stripe = getStripe(c)
+    const user = c.get('user')
+
+    const existingUser = inMemoryDB.users.get(user.email)
+    if (!existingUser?.stripe_account_id) {
+      return c.json({ 
+        success: false, 
+        error: 'Vous devez d\'abord créer un compte Stripe Connect' 
+      }, 400)
+    }
+
+    // Créer un lien vers le dashboard Express
+    const loginLink = await stripe.accounts.createLoginLink(existingUser.stripe_account_id)
+
+    return c.json({
+      success: true,
+      dashboard_url: loginLink.url
+    })
+  } catch (error: any) {
+    console.error('Stripe dashboard link error:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message || 'Erreur lors de la création du lien dashboard' 
+    }, 500)
+  }
+})
+
+// Route 3: Vérifier le statut du compte Connect
+app.get('/api/stripe/connect/status', authMiddleware, async (c) => {
+  try {
+    const stripe = getStripe(c)
+    const user = c.get('user')
+
+    const existingUser = inMemoryDB.users.get(user.email)
+    if (!existingUser?.stripe_account_id) {
+      return c.json({ 
+        success: true,
+        connected: false,
+        charges_enabled: false,
+        payouts_enabled: false
+      })
+    }
+
+    // Récupérer le compte
+    const account = await stripe.accounts.retrieve(existingUser.stripe_account_id)
+
+    return c.json({
+      success: true,
+      connected: true,
+      account_id: account.id,
+      charges_enabled: account.charges_enabled,
+      payouts_enabled: account.payouts_enabled,
+      details_submitted: account.details_submitted,
+      requirements: account.requirements
+    })
+  } catch (error: any) {
+    console.error('Stripe status error:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message || 'Erreur lors de la vérification du statut' 
+    }, 500)
+  }
+})
+
+// ==========================================
 // AUTH API ROUTES
 // ==========================================
 
@@ -2117,7 +2259,7 @@ app.get('/voyageur', (c) => {
             </div>
 
             <!-- Quick Actions -->
-            <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <div class="grid md:grid-cols-4 gap-6 mb-8">
                 <a href="/voyageur/publier-trajet" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-blue-100 rounded-full p-4 group-hover:bg-blue-600 transition-colors">
@@ -2138,6 +2280,17 @@ app.get('/voyageur', (c) => {
                     </div>
                     <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="traveler.my_trips">Mes Trajets</h3>
                     <p class="text-gray-600" data-i18n="traveler.my_trips_desc">Consultez et gérez tous vos trajets publiés</p>
+                </a>
+
+                <a href="/voyageur/stripe-connect" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-orange-100 rounded-full p-4 group-hover:bg-orange-600 transition-colors">
+                            <i class="fas fa-credit-card text-2xl text-orange-600 group-hover:text-white"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-orange-600 transition-colors"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Stripe Connect</h3>
+                    <p class="text-gray-600">Configurez votre compte pour recevoir des paiements</p>
                 </a>
 
                 <a href="/verify-profile" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
@@ -2361,6 +2514,145 @@ app.get('/voyageur', (c) => {
             }
           })
         </script>
+    </body>
+    </html>
+  `)
+})
+
+// Page Stripe Connect - Configuration du compte voyageur
+app.get('/voyageur/stripe-connect', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Configuration Stripe - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/i18n.css?v=3" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-10">
+                        <h1 class="text-xl font-bold text-gray-900">Configuration Stripe</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-gray-700" id="userName"></span>
+                        <a href="/voyageur" class="text-blue-600 hover:text-blue-700">
+                            <i class="fas fa-arrow-left mr-2"></i>Retour
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-8 max-w-4xl">
+            <!-- Explication Stripe Connect -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">
+                    <i class="fas fa-credit-card text-blue-600 mr-3"></i>
+                    Stripe Connect - Recevez vos paiements
+                </h2>
+                <p class="text-gray-700 mb-4">
+                    Pour recevoir des paiements de la part des expéditeurs, vous devez créer un compte Stripe Connect.
+                </p>
+                
+                <div class="grid md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <i class="fas fa-shield-alt text-blue-600 text-2xl mb-2"></i>
+                        <h3 class="font-semibold text-gray-900 mb-1">Sécurisé</h3>
+                        <p class="text-sm text-gray-600">Stripe est utilisé par des millions d'entreprises dans le monde</p>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4">
+                        <i class="fas fa-bolt text-green-600 text-2xl mb-2"></i>
+                        <h3 class="font-semibold text-gray-900 mb-1">Rapide</h3>
+                        <p class="text-sm text-gray-600">Configuration en 5 minutes avec votre pièce d'identité</p>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-4">
+                        <i class="fas fa-university text-purple-600 text-2xl mb-2"></i>
+                        <h3 class="font-semibold text-gray-900 mb-1">Virements auto</h3>
+                        <p class="text-sm text-gray-600">Recevez l'argent directement sur votre compte bancaire</p>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-900 mb-2">Comment ça marche ?</h3>
+                    <ol class="space-y-2 text-gray-700">
+                        <li class="flex items-start">
+                            <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-sm">1</span>
+                            <span>Vous publiez un trajet avec le poids disponible et le prix par kg</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-sm">2</span>
+                            <span>Un expéditeur réserve et paie (ex: 50€ pour 10kg)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-sm">3</span>
+                            <span>Amanah GO retient 12% de commission (6€)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-sm">4</span>
+                            <span>Après livraison confirmée, vous recevez 44€ (88%) sur votre compte Stripe</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-sm">5</span>
+                            <span>Stripe vire l'argent automatiquement sur votre compte bancaire</span>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Statut du compte Stripe -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">Statut de votre compte</h2>
+                <div id="stripe-status">
+                    <div class="text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600">Chargement du statut...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-4">
+                <button 
+                    id="onboard-btn"
+                    onclick="startOnboarding()"
+                    style="display: none;"
+                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg transition-colors">
+                    <i class="fas fa-plus mr-2"></i>Créer mon compte Stripe
+                </button>
+                
+                <button 
+                    id="dashboard-btn"
+                    onclick="openDashboard()"
+                    style="display: none;"
+                    class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-lg transition-colors">
+                    <i class="fas fa-external-link-alt mr-2"></i>Voir mon dashboard Stripe
+                </button>
+            </div>
+
+            <!-- Note importante -->
+            <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p class="text-sm text-gray-700">
+                    <i class="fas fa-info-circle text-yellow-600 mr-2"></i>
+                    <strong>Note :</strong> Vous devrez fournir une pièce d'identité valide et un RIB pour finaliser votre inscription Stripe. 
+                    C'est une exigence légale pour lutter contre la fraude et le blanchiment d'argent.
+                </p>
+            </div>
+        </main>
+
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
+        <script src="/static/protected-page.js"></script>
+        <script src="/static/stripe-connect.js"></script>
+        <script src="/static/i18n.js?v=3"></script>
     </body>
     </html>
   `)

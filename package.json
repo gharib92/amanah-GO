@@ -23,7 +23,8 @@
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
-    "hono": "^4.11.2"
+    "hono": "^4.11.2",
+    "stripe": "^20.1.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251217.0",
