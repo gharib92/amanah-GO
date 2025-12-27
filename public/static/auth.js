@@ -64,6 +64,11 @@ async function apiRequest(url, options = {}) {
     return null
   }
   
+  // Return JSON if response is OK
+  if (response.ok) {
+    return await response.json()
+  }
+  
   return response
 }
 
