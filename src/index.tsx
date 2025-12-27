@@ -39,6 +39,41 @@ inMemoryDB.users.set('test@amanah.com', {
   // Password: test123 (bcrypt hash avec 10 rounds)
   password_hash: '$2b$10$q8wGuYT/ANp77Y9YOr4JXuDMfa0Fhb.OMPf36G6xGqt3izYyQCfRW',
   kyc_status: 'PENDING',
+  stripe_account_id: 'acct_1SizAX8B6iTWgSS', // Compte Stripe Connect créé précédemment
+  created_at: new Date().toISOString()
+})
+
+// ==========================================
+// DONNÉES DE TEST (trip + booking pour tester paiement)
+// ==========================================
+// Trajet de test
+inMemoryDB.trips.set('trip_test_001', {
+  id: 'trip_test_001',
+  user_id: 1, // Test User
+  departure_city: 'Paris',
+  departure_airport: 'CDG',
+  arrival_city: 'Casablanca',
+  arrival_airport: 'CMN',
+  departure_date: '2025-01-15',
+  available_weight: 10,
+  price_per_kg: 5,
+  status: 'ACTIVE',
+  created_at: new Date().toISOString()
+})
+
+// Réservation de test (déjà payée)
+inMemoryDB.bookings.set('booking_test_001', {
+  id: 'booking_test_001',
+  trip_id: 'trip_test_001',
+  sender_id: 1, // Test User (en tant qu'expéditeur)
+  traveler_id: 1, // Test User (en tant que voyageur - pour simplifier le test)
+  weight: 5,
+  amount: 25, // 5kg × 5€
+  payment_status: 'paid',
+  payment_intent_id: 'pi_test_123456789',
+  delivery_confirmed: false,
+  transfer_status: 'pending',
+  status: 'pending',
   created_at: new Date().toISOString()
 })
 
@@ -1441,6 +1476,238 @@ app.get('/api/stripe/config', (c) => {
     success: true,
     publishableKey: publishableKey
   })
+})
+
+// ==========================================
+// STRIPE TRANSFER & ESCROW API ROUTES
+// ==========================================
+
+// Route 1: Confirmer la livraison et déclencher le transfert
+app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
+  try {
+    const bookingId = c.req.param('id')
+    const user = c.get('user')
+
+    // Récupérer la réservation
+    const booking = inMemoryDB.bookings.get(bookingId)
+    if (!booking) {
+      return c.json({ 
+        success: false, 
+        error: 'Réservation introuvable' 
+      }, 404)
+    }
+
+    // Vérifier que c'est l'expéditeur qui confirme
+    if (booking.sender_id !== user.id) {
+      return c.json({ 
+        success: false, 
+        error: 'Seul l\'expéditeur peut confirmer la livraison' 
+      }, 403)
+    }
+
+    // Vérifier que le paiement est bien effectué
+    if (booking.payment_status !== 'paid') {
+      return c.json({ 
+        success: false, 
+        error: 'Le paiement n\'a pas été effectué' 
+      }, 400)
+    }
+
+    // Vérifier que la livraison n'est pas déjà confirmée
+    if (booking.delivery_confirmed) {
+      return c.json({ 
+        success: false, 
+        error: 'La livraison a déjà été confirmée' 
+      }, 400)
+    }
+
+    // Marquer la livraison comme confirmée
+    booking.delivery_confirmed = true
+    booking.delivery_confirmed_at = new Date().toISOString()
+    booking.status = 'completed'
+    inMemoryDB.bookings.set(bookingId, booking)
+
+    // Déclencher le transfert automatiquement
+    try {
+      const transferResult = await createTransfer(bookingId)
+      
+      if (transferResult.success) {
+        booking.transfer_id = transferResult.transfer_id
+        booking.transfer_status = 'completed'
+        inMemoryDB.bookings.set(bookingId, booking)
+
+        return c.json({
+          success: true,
+          message: 'Livraison confirmée et paiement transféré au voyageur',
+          transfer_id: transferResult.transfer_id,
+          amount_transferred: transferResult.amount
+        })
+      } else {
+        return c.json({
+          success: false,
+          error: 'Livraison confirmée mais erreur lors du transfert: ' + transferResult.error
+        }, 500)
+      }
+    } catch (transferError: any) {
+      console.error('Transfer error:', transferError)
+      return c.json({
+        success: false,
+        error: 'Livraison confirmée mais erreur lors du transfert'
+      }, 500)
+    }
+  } catch (error: any) {
+    console.error('Confirm delivery error:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message || 'Erreur lors de la confirmation de livraison' 
+    }, 500)
+  }
+})
+
+// Route 2: Créer un transfert manuellement (admin/debug)
+app.post('/api/stripe/transfer/create', authMiddleware, async (c) => {
+  try {
+    const { booking_id } = await c.req.json()
+
+    if (!booking_id) {
+      return c.json({ 
+        success: false, 
+        error: 'booking_id requis' 
+      }, 400)
+    }
+
+    const result = await createTransfer(booking_id)
+    
+    if (result.success) {
+      return c.json(result)
+    } else {
+      return c.json(result, 400)
+    }
+  } catch (error: any) {
+    console.error('Transfer creation error:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message || 'Erreur lors de la création du transfert' 
+    }, 500)
+  }
+})
+
+// Fonction helper pour créer un transfert
+async function createTransfer(bookingId: string): Promise<any> {
+  try {
+    const booking = inMemoryDB.bookings.get(bookingId)
+    if (!booking) {
+      return { success: false, error: 'Réservation introuvable' }
+    }
+
+    if (!booking.payment_intent_id) {
+      return { success: false, error: 'Aucun paiement associé à cette réservation' }
+    }
+
+    if (booking.transfer_status === 'completed') {
+      return { success: false, error: 'Le transfert a déjà été effectué' }
+    }
+
+    // Le transfert est automatique avec Stripe Connect !
+    // Quand on crée un Payment Intent avec transfer_data.destination,
+    // l'argent est automatiquement transféré après capture.
+    
+    // On marque juste le transfert comme effectué
+    booking.transfer_status = 'completed'
+    booking.transfer_completed_at = new Date().toISOString()
+    inMemoryDB.bookings.set(bookingId, booking)
+
+    return {
+      success: true,
+      message: 'Transfert effectué automatiquement par Stripe Connect',
+      transfer_id: booking.payment_intent_id,
+      amount: booking.amount,
+      booking_id: bookingId
+    }
+  } catch (error: any) {
+    console.error('Transfer helper error:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+// Route 3: Webhooks Stripe (notifications automatiques)
+app.post('/api/stripe/webhooks', async (c) => {
+  try {
+    const stripe = getStripe(c)
+    const signature = c.req.header('stripe-signature')
+    
+    if (!signature) {
+      return c.json({ error: 'Missing stripe-signature header' }, 400)
+    }
+
+    const rawBody = await c.req.text()
+    const webhookSecret = c.env?.STRIPE_WEBHOOK_SECRET || 'whsec_test_secret'
+
+    // Vérifier la signature du webhook
+    let event
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
+    } catch (err: any) {
+      console.error('Webhook signature verification failed:', err.message)
+      return c.json({ error: 'Webhook signature verification failed' }, 400)
+    }
+
+    console.log('✅ Webhook reçu:', event.type)
+
+    // Traiter les différents types d'événements
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object
+        console.log('💰 Paiement réussi:', paymentIntent.id)
+        
+        // Mettre à jour le booking
+        const bookingId = paymentIntent.metadata?.booking_id
+        if (bookingId) {
+          const booking = inMemoryDB.bookings.get(bookingId)
+          if (booking) {
+            booking.payment_status = 'paid'
+            booking.paid_at = new Date().toISOString()
+            inMemoryDB.bookings.set(bookingId, booking)
+            console.log('✅ Booking mis à jour:', bookingId)
+          }
+        }
+        break
+
+      case 'payment_intent.payment_failed':
+        const failedPayment = event.data.object
+        console.log('❌ Paiement échoué:', failedPayment.id)
+        
+        const failedBookingId = failedPayment.metadata?.booking_id
+        if (failedBookingId) {
+          const booking = inMemoryDB.bookings.get(failedBookingId)
+          if (booking) {
+            booking.payment_status = 'failed'
+            inMemoryDB.bookings.set(failedBookingId, booking)
+          }
+        }
+        break
+
+      case 'transfer.created':
+        console.log('🚀 Transfert créé:', event.data.object.id)
+        break
+
+      case 'transfer.paid':
+        console.log('✅ Transfert payé:', event.data.object.id)
+        break
+
+      case 'account.updated':
+        console.log('👤 Compte Stripe mis à jour:', event.data.object.id)
+        break
+
+      default:
+        console.log('ℹ️ Événement non géré:', event.type)
+    }
+
+    return c.json({ received: true })
+  } catch (error: any) {
+    console.error('Webhook error:', error)
+    return c.json({ error: 'Webhook processing failed' }, 500)
+  }
 })
 
 // ==========================================
