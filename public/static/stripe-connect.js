@@ -7,16 +7,25 @@ let stripeStatus = null
 // Charger le statut du compte Stripe Connect
 async function loadStripeStatus() {
   try {
+    // Vérifier si l'utilisateur est connecté
+    if (!window.auth || !window.auth.isAuthenticated()) {
+      console.log('Utilisateur non connecté, affichage du statut par défaut')
+      updateStripeUI() // Afficher le statut par défaut
+      return
+    }
+
     const response = await window.auth.apiRequest('/api/stripe/connect/status')
     
-    if (response.success) {
+    if (response && response.success !== undefined) {
       stripeStatus = response
       updateStripeUI()
     } else {
-      console.error('Erreur lors du chargement du statut Stripe:', response.error)
+      console.error('Réponse API invalide:', response)
+      updateStripeUI() // Afficher le statut par défaut
     }
   } catch (error) {
     console.error('Erreur lors du chargement du statut Stripe:', error)
+    updateStripeUI() // Afficher le statut par défaut
   }
 }
 
@@ -101,7 +110,48 @@ function updateStripeUI() {
 
 // Démarrer l'onboarding Stripe Connect
 async function startOnboarding() {
+  // Vérifier si l'utilisateur est connecté
+  if (!window.auth || !window.auth.isAuthenticated()) {
+    alert('Vous devez être connecté pour créer un compte Stripe.\n\nConnectez-vous avec : test@amanah.com / test123')
+    window.location.href = '/login?redirect=/voyageur/stripe-connect'
+    return
+  }
+
   const btn = document.getElementById('onboard-btn')
+  btn.disabled = true
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Redirection...'
+  
+  try {
+    const response = await window.auth.apiRequest('/api/stripe/connect/onboard', {
+      method: 'POST'
+    })
+    
+    if (response && response.success && response.onboarding_url) {
+      // Rediriger vers Stripe
+      window.location.href = response.onboarding_url
+    } else {
+      alert('Erreur: ' + (response?.error || 'Impossible de créer le compte Stripe'))
+      btn.disabled = false
+      btn.innerHTML = '<i class="fas fa-plus mr-2"></i>Créer mon compte Stripe'
+    }
+  } catch (error) {
+    console.error('Erreur onboarding:', error)
+    alert('Erreur lors de la création du compte Stripe')
+    btn.disabled = false
+    btn.innerHTML = '<i class="fas fa-plus mr-2"></i>Créer mon compte Stripe'
+  }
+}
+
+// Ouvrir le dashboard Stripe
+async function openDashboard() {
+  // Vérifier si l'utilisateur est connecté
+  if (!window.auth || !window.auth.isAuthenticated()) {
+    alert('Vous devez être connecté pour accéder au dashboard Stripe.')
+    window.location.href = '/login?redirect=/voyageur/stripe-connect'
+    return
+  }
+
+  const btn = document.getElementById('dashboard-btn')
   btn.disabled = true
   btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Redirection...'
   
