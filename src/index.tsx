@@ -2650,7 +2650,6 @@ app.get('/voyageur/stripe-connect', (c) => {
 
         <script src="/static/auth.js"></script>
         <script src="/static/auth-ui.js"></script>
-        <script src="/static/protected-page.js"></script>
         <script src="/static/stripe-connect.js"></script>
         <script src="/static/i18n.js?v=3"></script>
     </body>
