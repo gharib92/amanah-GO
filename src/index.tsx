@@ -26,6 +26,22 @@ const inMemoryDB = {
   bookings: new Map<string, any>()
 }
 
+// ==========================================
+// COMPTE TEST PERMANENT (toujours disponible)
+// ==========================================
+// Ce compte existe TOUJOURS, même après restart du serveur
+// Email: test@amanah.com | Password: test123
+inMemoryDB.users.set('test@amanah.com', {
+  id: 1,
+  email: 'test@amanah.com',
+  name: 'Test User',
+  phone: '+33612345678',
+  // Password: test123 (bcrypt hash avec 10 rounds)
+  password_hash: '$2b$10$q8wGuYT/ANp77Y9YOr4JXuDMfa0Fhb.OMPf36G6xGqt3izYyQCfRW',
+  kyc_status: 'PENDING',
+  created_at: new Date().toISOString()
+})
+
 // Liste d'aéroports populaires France ↔ Maroc
 const AIRPORTS = [
   { id: 1, iata_code: 'CDG', name: 'Aéroport Charles de Gaulle', city: 'Paris', country: 'France', latitude: 49.0097, longitude: 2.5479, active: 1 },
