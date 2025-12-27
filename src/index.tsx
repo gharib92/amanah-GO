@@ -1294,6 +1294,156 @@ app.get('/api/stripe/connect/status', authMiddleware, async (c) => {
 })
 
 // ==========================================
+// STRIPE PAYMENT API ROUTES
+// ==========================================
+
+// Route 1: Créer un Payment Intent pour un expéditeur
+app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
+  try {
+    const stripe = getStripe(c)
+    const user = c.get('user')
+    const { booking_id, amount, currency = 'eur' } = await c.req.json()
+
+    // Validation
+    if (!booking_id || !amount || amount <= 0) {
+      return c.json({ 
+        success: false, 
+        error: 'booking_id et amount sont requis' 
+      }, 400)
+    }
+
+    // Récupérer la réservation (booking)
+    const booking = inMemoryDB.bookings.get(booking_id)
+    if (!booking) {
+      return c.json({ 
+        success: false, 
+        error: 'Réservation introuvable' 
+      }, 404)
+    }
+
+    // Récupérer le trajet (trip) pour obtenir le voyageur
+    const trip = inMemoryDB.trips.get(booking.trip_id)
+    if (!trip) {
+      return c.json({ 
+        success: false, 
+        error: 'Trajet introuvable' 
+      }, 404)
+    }
+
+    // Récupérer le voyageur (traveler)
+    const travelerEmail = Array.from(inMemoryDB.users.values()).find(u => u.id === trip.user_id)?.email
+    if (!travelerEmail) {
+      return c.json({ 
+        success: false, 
+        error: 'Voyageur introuvable' 
+      }, 404)
+    }
+
+    const traveler = inMemoryDB.users.get(travelerEmail)
+    if (!traveler?.stripe_account_id) {
+      return c.json({ 
+        success: false, 
+        error: 'Le voyageur n\'a pas configuré son compte Stripe' 
+      }, 400)
+    }
+
+    // Calculer la commission (12%)
+    const amountCents = Math.round(amount * 100) // Convertir en centimes
+    const applicationFee = Math.round(amountCents * 0.12) // 12% commission
+
+    // Créer le Payment Intent avec Stripe Connect
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountCents,
+      currency: currency,
+      application_fee_amount: applicationFee,
+      transfer_data: {
+        destination: traveler.stripe_account_id,
+      },
+      metadata: {
+        booking_id: booking_id,
+        trip_id: trip.id,
+        sender_id: user.id.toString(),
+        traveler_id: traveler.id.toString(),
+        platform: 'amanah-go'
+      },
+      description: `Paiement pour trajet ${trip.departure_city} → ${trip.arrival_city}`
+    })
+
+    // Sauvegarder le payment_intent_id dans la réservation
+    booking.payment_intent_id = paymentIntent.id
+    booking.payment_status = 'pending'
+    inMemoryDB.bookings.set(booking_id, booking)
+
+    return c.json({
+      success: true,
+      client_secret: paymentIntent.client_secret,
+      payment_intent_id: paymentIntent.id,
+      amount: amount,
+      application_fee: applicationFee / 100, // Retourner en euros
+      traveler_amount: (amountCents - applicationFee) / 100 // Montant pour le voyageur
+    })
+  } catch (error: any) {
+    console.error('Payment Intent creation error:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message || 'Erreur lors de la création du paiement' 
+    }, 500)
+  }
+})
+
+// Route 2: Confirmer un paiement
+app.post('/api/stripe/payment/confirm', authMiddleware, async (c) => {
+  try {
+    const stripe = getStripe(c)
+    const { payment_intent_id } = await c.req.json()
+
+    if (!payment_intent_id) {
+      return c.json({ 
+        success: false, 
+        error: 'payment_intent_id requis' 
+      }, 400)
+    }
+
+    // Récupérer le Payment Intent depuis Stripe
+    const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
+
+    // Mettre à jour le statut de la réservation
+    const booking_id = paymentIntent.metadata.booking_id
+    if (booking_id) {
+      const booking = inMemoryDB.bookings.get(booking_id)
+      if (booking) {
+        booking.payment_status = paymentIntent.status === 'succeeded' ? 'paid' : 'failed'
+        booking.payment_intent_id = payment_intent_id
+        inMemoryDB.bookings.set(booking_id, booking)
+      }
+    }
+
+    return c.json({
+      success: true,
+      status: paymentIntent.status,
+      amount: paymentIntent.amount / 100,
+      currency: paymentIntent.currency
+    })
+  } catch (error: any) {
+    console.error('Payment confirmation error:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message || 'Erreur lors de la confirmation du paiement' 
+    }, 500)
+  }
+})
+
+// Route 3: Obtenir la clé publique Stripe (pour le frontend)
+app.get('/api/stripe/config', (c) => {
+  const publishableKey = c.env?.STRIPE_PUBLISHABLE_KEY || 'pk_test_51Six5P8I2rvObHIX4ofMRLVkfDmb2tzQkzqxOJIPcp1c4s2CR9lBbkZPEAcfDLW5P3rVYspbpCBVeNanTr8lz6s800t7NEw7EZ'
+  
+  return c.json({
+    success: true,
+    publishableKey: publishableKey
+  })
+})
+
+// ==========================================
 // AUTH API ROUTES
 // ==========================================
 
@@ -5891,6 +6041,156 @@ app.get('/api/meeting-places', async (c) => {
       error: error.message 
     }, 500)
   }
+})
+
+// ==========================================
+// PAGE: PAIEMENT STRIPE
+// ==========================================
+
+app.get('/expediteur/payer', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Paiement Sécurisé - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <script src="https://js.stripe.com/v3/"></script>
+    </head>
+    <body class="bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-10">
+                        <h1 class="text-xl font-bold text-gray-900">Paiement Sécurisé</h1>
+                    </div>
+                    <a href="/expediteur" class="text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-times text-xl"></i>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-8 max-w-2xl">
+            <!-- Formulaire de paiement -->
+            <div id="payment-form-container" class="bg-white rounded-lg shadow-lg p-8">
+                <!-- Sécurité Stripe -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-start">
+                        <i class="fas fa-shield-alt text-blue-600 text-2xl mr-3"></i>
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-1">Paiement 100% sécurisé</h3>
+                            <p class="text-sm text-gray-700">
+                                Vos informations bancaires sont protégées par Stripe, 
+                                leader mondial des paiements en ligne.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Détails du paiement -->
+                <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 class="font-semibold text-gray-900 mb-4">Détail du paiement</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Montant total</span>
+                            <span class="font-semibold" id="amount-total">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Commission plateforme (12%)</span>
+                            <span class="text-gray-600" id="amount-fee">--</span>
+                        </div>
+                        <div class="border-t border-gray-300 pt-2 mt-2"></div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-900 font-semibold">Le voyageur reçoit (88%)</span>
+                            <span class="text-green-600 font-bold" id="amount-traveler">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulaire -->
+                <form id="payment-form" class="space-y-6">
+                    <!-- Nom sur la carte -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Nom sur la carte *
+                        </label>
+                        <input 
+                            type="text" 
+                            id="cardholder-name"
+                            required
+                            placeholder="JEAN DUPONT"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    <!-- Carte bancaire (Stripe Element) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Informations de carte *
+                        </label>
+                        <div id="card-element" class="p-4 border border-gray-300 rounded-lg bg-white"></div>
+                        <div id="card-errors" class="hidden text-red-600 text-sm mt-2"></div>
+                    </div>
+
+                    <!-- Carte de test -->
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p class="text-sm text-gray-700">
+                            <i class="fas fa-info-circle text-yellow-600 mr-2"></i>
+                            <strong>Mode TEST :</strong> Utilisez la carte 
+                            <code class="bg-yellow-100 px-2 py-1 rounded">4242 4242 4242 4242</code>
+                            avec n'importe quelle date future et CVV.
+                        </p>
+                    </div>
+
+                    <!-- Bouton de paiement -->
+                    <button 
+                        type="submit"
+                        id="submit-payment"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-lock mr-2"></i>Payer maintenant
+                    </button>
+
+                    <!-- Note de sécurité -->
+                    <p class="text-xs text-center text-gray-500">
+                        <i class="fas fa-lock mr-1"></i>
+                        Connexion sécurisée SSL. Vos informations sont cryptées.
+                    </p>
+                </form>
+            </div>
+
+            <!-- Message de succès (caché par défaut) -->
+            <div id="payment-success" class="hidden bg-white rounded-lg shadow-lg p-8 text-center">
+                <div class="mb-6">
+                    <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check text-green-600 text-4xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Paiement réussi !</h2>
+                    <p class="text-gray-600">
+                        Votre paiement a été traité avec succès. 
+                        Le voyageur recevra les fonds après livraison confirmée.
+                    </p>
+                </div>
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <p class="text-sm text-gray-700">
+                        <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+                        Redirection automatique dans 3 secondes...
+                    </p>
+                </div>
+            </div>
+        </main>
+
+        <script src="/static/auth.js"></script>
+        <script src="/static/auth-ui.js"></script>
+        <script src="/static/stripe-payment.js"></script>
+    </body>
+    </html>
+  `)
 })
 
 // ==========================================
