@@ -98,11 +98,12 @@ const app = new Hono<{ Variables: Variables }>()
 
 // Initialisation Stripe
 let stripe: Stripe | null = null
-function getStripe(c: any): Stripe {
+function getStripe(c: any): Stripe | null {
   if (!stripe) {
     const stripeKey = c.env?.STRIPE_SECRET_KEY
     if (!stripeKey) {
-      throw new Error('STRIPE_SECRET_KEY is not configured')
+      console.warn('STRIPE_SECRET_KEY is not configured - Stripe features will be disabled')
+      return null
     }
     stripe = new Stripe(stripeKey, {
       apiVersion: '2025-12-15.clover',
@@ -1210,6 +1211,9 @@ app.get('/api/flights/:flightNumber', async (c) => {
 app.post('/api/stripe/connect/onboard', authMiddleware, async (c) => {
   try {
     const stripe = getStripe(c)
+    if (!stripe) {
+      return c.json({ success: false, error: 'Stripe is not configured' }, 500)
+    }
     const user = c.get('user')
 
     // Vérifier si l'utilisateur a déjà un compte Connect
@@ -1268,6 +1272,9 @@ app.post('/api/stripe/connect/onboard', authMiddleware, async (c) => {
 app.get('/api/stripe/connect/dashboard', authMiddleware, async (c) => {
   try {
     const stripe = getStripe(c)
+    if (!stripe) {
+      return c.json({ success: false, error: 'Stripe is not configured' }, 500)
+    }
     const user = c.get('user')
 
     const existingUser = inMemoryDB.users.get(user.email)
