@@ -95,18 +95,23 @@ const authMiddleware = async (c: any, next: any) => {
       return c.json({ error: 'Token invalide' }, 401)
     }
     
-    // Charger les infos user depuis DB
-    const { DB } = c.env
-    const userResult: any = await DB.prepare('SELECT id, email, name, kyc_status, phone, rating FROM users WHERE id = ?')
-      .bind(payload.id)
-      .first()
+    // Charger les infos user depuis inMemoryDB
+    const users = Array.from(inMemoryDB.users.values())
+    const userResult = users.find(u => u.id === payload.id)
     
     if (!userResult) {
       return c.json({ error: 'Utilisateur non trouvé' }, 401)
     }
     
     // Stocker user dans le contexte
-    c.set('user', userResult)
+    c.set('user', {
+      id: userResult.id,
+      email: userResult.email,
+      name: userResult.name,
+      phone: userResult.phone,
+      kyc_status: userResult.kyc_status,
+      role: 'user'
+    })
     
     await next()
   } catch (error: any) {
