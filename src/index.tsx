@@ -100,7 +100,10 @@ const app = new Hono<{ Variables: Variables }>()
 let stripe: Stripe | null = null
 function getStripe(c: any): Stripe {
   if (!stripe) {
-    const stripeKey = c.env?.STRIPE_SECRET_KEY || 'sk_test_51Six5P8I2rvObHIX81X7cUPNOGIVkiOOnCl9IGyds7oFxMdcYUELFyGsMMrkEryx0Nds2sSn189C3eZFOiF8z9cC00VT8KkLC5'
+    const stripeKey = c.env?.STRIPE_SECRET_KEY
+    if (!stripeKey) {
+      throw new Error('STRIPE_SECRET_KEY is not configured')
+    }
     stripe = new Stripe(stripeKey, {
       apiVersion: '2025-12-15.clover',
     })
