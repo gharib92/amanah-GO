@@ -230,9 +230,12 @@ async function submitPackage(event) {
     document.getElementById('submitBtn').disabled = true;
     document.getElementById('submitBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Publication en cours...';
     
-    const response = await axios.post('/api/packages', formData);
+    const response = await window.auth.apiRequest('/api/packages', {
+      method: 'POST',
+      body: JSON.stringify(formData)
+    });
     
-    if (response.data.success) {
+    if (response.success) {
       showNotification('success', 'Colis publié avec succès !');
       
       // Redirect after 2 seconds
@@ -240,14 +243,14 @@ async function submitPackage(event) {
         window.location.href = '/expediteur/mes-colis';
       }, 2000);
     } else {
-      showNotification('error', response.data.error || 'Erreur lors de la publication');
+      showNotification('error', response.error || 'Erreur lors de la publication');
       document.getElementById('submitBtn').disabled = false;
       document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Publier mon colis';
     }
     
   } catch (error) {
     console.error('Erreur publication colis:', error);
-    showNotification('error', error.response?.data?.error || 'Erreur lors de la publication');
+    showNotification('error', error.message || 'Erreur lors de la publication');
     document.getElementById('submitBtn').disabled = false;
     document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Publier mon colis';
   }

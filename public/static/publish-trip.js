@@ -208,9 +208,12 @@ async function submitTrip(event) {
     document.getElementById('submitBtn').disabled = true;
     document.getElementById('submitBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Publication en cours...';
     
-    const response = await axios.post('/api/trips', formData);
+    const response = await window.auth.apiRequest('/api/trips', {
+      method: 'POST',
+      body: JSON.stringify(formData)
+    });
     
-    if (response.data.success) {
+    if (response.success) {
       showNotification('success', 'Trajet publié avec succès !');
       
       // Redirect after 2 seconds
@@ -218,14 +221,14 @@ async function submitTrip(event) {
         window.location.href = '/voyageur/mes-trajets';
       }, 2000);
     } else {
-      showNotification('error', response.data.error || 'Erreur lors de la publication');
+      showNotification('error', response.error || 'Erreur lors de la publication');
       document.getElementById('submitBtn').disabled = false;
       document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Publier mon trajet';
     }
     
   } catch (error) {
     console.error('Erreur publication trajet:', error);
-    showNotification('error', error.response?.data?.error || 'Erreur lors de la publication');
+    showNotification('error', error.message || 'Erreur lors de la publication');
     document.getElementById('submitBtn').disabled = false;
     document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Publier mon trajet';
   }
