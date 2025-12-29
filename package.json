@@ -21,6 +21,7 @@
     "git:commit": "git add . && git commit -m"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.7",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
     "hono": "^4.11.2",
