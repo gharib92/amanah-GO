@@ -64,12 +64,8 @@ async function apiRequest(url, options = {}) {
     return null
   }
   
-  // Return JSON if response is OK
-  if (response.ok) {
-    return await response.json()
-  }
-  
-  return response
+  // Toujours retourner le JSON, même en cas d'erreur
+  return await response.json()
 }
 
 // ==========================================

@@ -31,10 +31,23 @@ async function checkAuth() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  checkAuth();
-  initializeAutocomplete();
-  initializeFlightNumber();
-  calculateTotalEarnings();
+  // Wait for auth.js to load
+  if (!window.auth) {
+    console.error('auth.js not loaded!');
+    setTimeout(() => {
+      if (window.auth) {
+        checkAuth();
+        initializeAutocomplete();
+        initializeFlightNumber();
+        calculateTotalEarnings();
+      }
+    }, 500);
+  } else {
+    checkAuth();
+    initializeAutocomplete();
+    initializeFlightNumber();
+    calculateTotalEarnings();
+  }
 });
 
 // Airport autocomplete
