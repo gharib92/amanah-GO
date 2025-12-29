@@ -2437,15 +2437,25 @@ app.get('/login', (c) => {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Connexion...';
             
+            console.log('🔍 Login attempt:', email);
+            
             const result = await auth.login(email, password);
             
-            if (result.success) {
+            console.log('🔍 Login result:', result);
+            
+            if (result && result.success) {
+              console.log('✅ Login success! Token:', result.token?.substring(0, 20) + '...');
+              console.log('✅ User:', result.user);
+              
               // Récupérer le paramètre redirect
               const params = new URLSearchParams(window.location.search);
               const redirect = params.get('redirect') || '/voyageur';
+              
+              console.log('🔀 Redirecting to:', redirect);
               window.location.href = redirect;
             } else {
-              showError(result.error);
+              console.error('❌ Login failed:', result?.error || 'Unknown error');
+              showError(result?.error || 'Erreur de connexion');
               submitBtn.disabled = false;
               submitBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> Se connecter';
             }
@@ -4207,6 +4217,7 @@ app.get('/voyageur/publier-trajet', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth.js"></script>
         <script src="/static/publish-trip.js"></script>
     </body>
     </html>
@@ -4498,6 +4509,7 @@ app.get('/expediteur/publier-colis', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth.js"></script>
         <script src="/static/publish-package.js"></script>
     </body>
     </html>

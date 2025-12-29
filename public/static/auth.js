@@ -96,23 +96,32 @@ async function signup(email, password, name, phone) {
 
 async function login(email, password) {
   try {
+    console.log('🔐 auth.login called:', email)
+    
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     })
     
-    const data = await response.json()
+    console.log('📡 Response status:', response.status, response.ok)
     
-    if (response.ok) {
+    const data = await response.json()
+    console.log('📦 Response data:', data)
+    
+    if (response.ok && data.token) {
+      console.log('✅ Saving token:', data.token.substring(0, 20) + '...')
       saveToken(data.token)
       saveUser(data.user)
-      return { success: true, user: data.user }
+      console.log('✅ Token saved, localStorage check:', !!getToken())
+      return { success: true, user: data.user, token: data.token }
     } else {
+      console.error('❌ Login failed:', data.error)
       return { success: false, error: data.error || 'Email ou mot de passe incorrect' }
     }
   } catch (error) {
-    return { success: false, error: 'Erreur réseau' }
+    console.error('❌ Network error:', error)
+    return { success: false, error: 'Erreur réseau: ' + error.message }
   }
 }
 
