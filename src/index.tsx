@@ -7345,50 +7345,145 @@ app.get('/api/matches/trips-for-package', async (c) => {
     
     const { results } = await DB.prepare(sql).bind(...params).all()
     
-    // Calculate match score for each trip
+    // Calculate match score for each trip (Algorithm Score 0-100)
     const tripsWithScore = results.map(trip => {
       let score = 100
+      let details = []
       
-      // Score based on available weight (prefer trips with just enough space)
+      // 1. Score based on available weight (prefer trips with just enough space)
       const weightDiff = trip.available_weight - weight
-      if (weightDiff === 0) score += 20 // Perfect match
-      else if (weightDiff < 5) score += 10 // Close match
-      else if (weightDiff > 20) score -= 5 // Too much space (might wait for bigger package)
+      const weightRatio = weight / trip.available_weight
+      if (weightDiff === 0) {
+        score += 20 // Perfect match
+        details.push('Poids parfait: +20')
+      } else if (weightDiff < 5) {
+        score += 10 // Close match
+        details.push('Poids proche: +10')
+      } else if (weightRatio > 0.7) {
+        score += 15 // Good capacity use
+        details.push('Bonne capacité: +15')
+      } else if (weightRatio > 0.5) {
+        score += 10
+        details.push('Capacité OK: +10')
+      } else if (weightRatio < 0.2) {
+        score -= 5 // Package too small for capacity
+        details.push('Colis trop petit: -5')
+      }
       
-      // Score based on price (lower is better)
+      // 2. Score based on price (lower is better)
       const priceRatio = trip.price_per_kg / maxPrice
-      if (priceRatio < 0.5) score += 15 // Great price
-      else if (priceRatio < 0.7) score += 10
-      else if (priceRatio < 0.9) score += 5
+      if (priceRatio < 0.5) {
+        score += 15 // Great price (< 50% of max)
+        details.push('Prix excellent: +15')
+      } else if (priceRatio < 0.7) {
+        score += 10 // Good price
+        details.push('Bon prix: +10')
+      } else if (priceRatio < 0.9) {
+        score += 5 // Fair price
+        details.push('Prix correct: +5')
+      } else if (priceRatio > 0.95) {
+        score -= 5 // Almost at max budget
+        details.push('Prix limite: -5')
+      }
       
-      // Score based on traveler reputation
-      if (trip.traveler_kyc === 'VERIFIED') score += 15
-      if (trip.traveler_rating >= 4.5) score += 10
-      else if (trip.traveler_rating >= 4.0) score += 5
-      if (trip.traveler_total_trips > 10) score += 5
+      // 3. Score based on traveler reputation (Trust & Safety)
+      if (trip.traveler_kyc === 'VERIFIED') {
+        score += 15
+        details.push('KYC vérifié: +15')
+      } else {
+        score -= 10
+        details.push('KYC non vérifié: -10')
+      }
       
-      // Score based on date proximity
+      if (trip.traveler_rating >= 4.8) {
+        score += 15 // Excellent rating
+        details.push('Rating excellent: +15')
+      } else if (trip.traveler_rating >= 4.5) {
+        score += 10
+        details.push('Bon rating: +10')
+      } else if (trip.traveler_rating >= 4.0) {
+        score += 5
+        details.push('Rating OK: +5')
+      } else if (trip.traveler_rating < 3.5) {
+        score -= 10 // Low rating
+        details.push('Rating faible: -10')
+      }
+      
+      if (trip.traveler_total_trips > 20) {
+        score += 10 // Very experienced
+        details.push('Très expérimenté: +10')
+      } else if (trip.traveler_total_trips > 10) {
+        score += 5
+        details.push('Expérimenté: +5')
+      } else if (trip.traveler_total_trips < 2) {
+        score -= 5 // New traveler
+        details.push('Nouveau: -5')
+      }
+      
+      // 4. Score based on date proximity
       if (departureDate) {
         const tripDate = new Date(trip.departure_date)
         const targetDate = new Date(departureDate)
-        const daysDiff = Math.abs((tripDate - targetDate) / (1000 * 60 * 60 * 24))
-        if (daysDiff === 0) score += 15 // Same day
-        else if (daysDiff === 1) score += 10 // 1 day diff
-        else if (daysDiff <= 2) score += 5 // 2 days diff
+        const daysDiff = Math.abs((tripDate.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24))
+        
+        if (daysDiff === 0) {
+          score += 15 // Same day
+          details.push('Même jour: +15')
+        } else if (daysDiff === 1) {
+          score += 10 // 1 day diff
+          details.push('1 jour écart: +10')
+        } else if (daysDiff <= 2) {
+          score += 5 // 2 days diff
+          details.push('2 jours écart: +5')
+        } else if (daysDiff > 7) {
+          score -= 5 // Too far in future
+          details.push('Date éloignée: -5')
+        }
+        
+        // Bonus for flexible dates
+        if (trip.flexible_dates) {
+          score += 5
+          details.push('Dates flexibles: +5')
+        }
+      }
+      
+      // 5. Bonus for quick response (trip created recently)
+      const createdAt = new Date(trip.created_at)
+      const now = new Date()
+      const hoursSinceCreated = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60)
+      if (hoursSinceCreated < 24) {
+        score += 5 // Recently posted
+        details.push('Trajet récent: +5')
+      }
+      
+      // 6. Bonus for complete profile
+      if (trip.traveler_avatar) {
+        score += 3
+        details.push('Profil photo: +3')
+      }
+      if (trip.flight_number) {
+        score += 3
+        details.push('N° vol fourni: +3')
       }
       
       // Calculate estimated cost
       const estimatedCost = (weight * trip.price_per_kg).toFixed(2)
       const platformFee = (estimatedCost * 0.12).toFixed(2)
       const totalCost = (parseFloat(estimatedCost) + parseFloat(platformFee)).toFixed(2)
+      const savings = maxPrice > trip.price_per_kg 
+        ? ((maxPrice - trip.price_per_kg) * weight).toFixed(2)
+        : '0.00'
       
       return {
         ...trip,
-        match_score: Math.min(score, 100), // Cap at 100
+        match_score: Math.min(Math.max(score, 0), 100), // Cap between 0-100
+        score_details: details,
         estimated_cost: estimatedCost,
         platform_fee: platformFee,
         total_cost: totalCost,
-        match_quality: score >= 90 ? 'excellent' : score >= 75 ? 'good' : score >= 60 ? 'fair' : 'low'
+        potential_savings: savings,
+        match_quality: score >= 90 ? 'excellent' : score >= 75 ? 'good' : score >= 60 ? 'fair' : 'low',
+        recommendation: score >= 90 ? 'Fortement recommandé' : score >= 75 ? 'Bon choix' : score >= 60 ? 'À considérer' : 'Vérifier alternatives'
       }
     })
     
@@ -7474,54 +7569,153 @@ app.get('/api/matches/packages-for-trip', async (c) => {
     
     const { results } = await DB.prepare(sql).bind(...params).all()
     
-    // Calculate match score for each package
+    // Calculate match score for each package (Algorithm Score 0-100)
     const packagesWithScore = results.map(pkg => {
       let score = 100
+      let details = []
       
-      // Score based on weight (prefer packages that use more capacity)
+      // 1. Score based on weight (prefer packages that use more capacity)
       const weightRatio = pkg.weight / availableWeight
-      if (weightRatio > 0.8) score += 20 // Great use of capacity
-      else if (weightRatio > 0.5) score += 15
-      else if (weightRatio > 0.3) score += 10
-      else if (weightRatio < 0.1) score -= 5 // Too small
+      if (weightRatio > 0.8) {
+        score += 20 // Great use of capacity (80%+)
+        details.push('Excellente capacité: +20')
+      } else if (weightRatio > 0.6) {
+        score += 15 // Good capacity use
+        details.push('Bonne capacité: +15')
+      } else if (weightRatio > 0.4) {
+        score += 10 // Fair capacity use
+        details.push('Capacité OK: +10')
+      } else if (weightRatio > 0.2) {
+        score += 5 // Low capacity use
+        details.push('Faible capacité: +5')
+      } else {
+        score -= 5 // Too small, not worth it
+        details.push('Trop petit: -5')
+      }
       
-      // Score based on budget vs price
+      // 2. Score based on budget vs price
       if (pricePerKg > 0) {
         const estimatedPrice = pkg.weight * pricePerKg
         const budgetRatio = pkg.budget / estimatedPrice
-        if (budgetRatio >= 1.2) score += 15 // Good margin
-        else if (budgetRatio >= 1.0) score += 10
-        else if (budgetRatio >= 0.9) score += 5
-        else if (budgetRatio < 0.8) score -= 10 // Budget too low
+        if (budgetRatio >= 1.3) {
+          score += 20 // Excellent margin (30%+ above cost)
+          details.push('Marge excellente: +20')
+        } else if (budgetRatio >= 1.15) {
+          score += 15 // Good margin
+          details.push('Bonne marge: +15')
+        } else if (budgetRatio >= 1.0) {
+          score += 10 // Fair margin
+          details.push('Marge OK: +10')
+        } else if (budgetRatio >= 0.9) {
+          score += 5 // Tight budget
+          details.push('Budget serré: +5')
+        } else {
+          score -= 10 // Budget too low
+          details.push('Budget insuffisant: -10')
+        }
       }
       
-      // Score based on shipper reputation
-      if (pkg.shipper_kyc === 'VERIFIED') score += 15
-      if (pkg.shipper_rating >= 4.5) score += 10
-      else if (pkg.shipper_rating >= 4.0) score += 5
-      if (pkg.shipper_total_packages > 5) score += 5
+      // 3. Score based on shipper reputation (Trust & Safety)
+      if (pkg.shipper_kyc === 'VERIFIED') {
+        score += 15
+        details.push('KYC vérifié: +15')
+      } else {
+        score -= 10
+        details.push('KYC non vérifié: -10')
+      }
       
-      // Score based on date compatibility
+      if (pkg.shipper_rating >= 4.8) {
+        score += 15 // Excellent rating
+        details.push('Rating excellent: +15')
+      } else if (pkg.shipper_rating >= 4.5) {
+        score += 10
+        details.push('Bon rating: +10')
+      } else if (pkg.shipper_rating >= 4.0) {
+        score += 5
+        details.push('Rating OK: +5')
+      } else if (pkg.shipper_rating < 3.5) {
+        score -= 10 // Low rating
+        details.push('Rating faible: -10')
+      }
+      
+      if (pkg.shipper_total_packages > 10) {
+        score += 10 // Experienced shipper
+        details.push('Expéditeur expérimenté: +10')
+      } else if (pkg.shipper_total_packages > 5) {
+        score += 5
+        details.push('Expérience OK: +5')
+      } else if (pkg.shipper_total_packages < 2) {
+        score -= 3 // New shipper
+        details.push('Nouveau: -3')
+      }
+      
+      // 4. Score based on date compatibility
       if (departureDate && pkg.preferred_date) {
         const pkgDate = new Date(pkg.preferred_date)
         const tripDate = new Date(departureDate)
-        const daysDiff = Math.abs((pkgDate - tripDate) / (1000 * 60 * 60 * 24))
-        if (daysDiff === 0) score += 15 // Same day
-        else if (daysDiff === 1) score += 10
-        else if (daysDiff <= 2) score += 5
-        if (pkg.flexible_dates) score += 5 // Flexible dates bonus
+        const daysDiff = Math.abs((pkgDate.getTime() - tripDate.getTime()) / (1000 * 60 * 60 * 24))
+        
+        if (daysDiff === 0) {
+          score += 15 // Same day
+          details.push('Même jour: +15')
+        } else if (daysDiff === 1) {
+          score += 10 // 1 day diff
+          details.push('1 jour écart: +10')
+        } else if (daysDiff <= 2) {
+          score += 5 // 2 days diff
+          details.push('2 jours écart: +5')
+        } else if (daysDiff > 7) {
+          score -= 3 // Date too far
+          details.push('Date éloignée: -3')
+        }
+        
+        // Bonus for flexible dates
+        if (pkg.flexible_dates) {
+          score += 5
+          details.push('Dates flexibles: +5')
+        }
+      }
+      
+      // 5. Bonus for package with photos (transparency)
+      if (pkg.photos && pkg.photos.length > 0) {
+        score += 5
+        details.push(`${pkg.photos.length} photo(s): +5`)
+      }
+      
+      // 6. Bonus for detailed content declaration
+      if (pkg.content_declaration && pkg.content_declaration.length > 50) {
+        score += 3
+        details.push('Description détaillée: +3')
+      }
+      
+      // 7. Bonus for recently posted
+      const createdAt = new Date(pkg.created_at)
+      const now = new Date()
+      const hoursSinceCreated = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60)
+      if (hoursSinceCreated < 24) {
+        score += 5
+        details.push('Colis récent: +5')
+      } else if (hoursSinceCreated > 168) { // 7 days
+        score -= 3
+        details.push('Colis ancien: -3')
       }
       
       // Calculate potential earnings
       const potentialEarnings = pricePerKg > 0 
         ? (pkg.weight * pricePerKg * 0.88).toFixed(2) // After 12% commission
         : null
+      const platformCommission = pricePerKg > 0 
+        ? (pkg.weight * pricePerKg * 0.12).toFixed(2)
+        : null
       
       return {
         ...pkg,
-        match_score: Math.min(score, 100),
+        match_score: Math.min(Math.max(score, 0), 100), // Cap between 0-100
+        score_details: details,
         potential_earnings: potentialEarnings,
-        match_quality: score >= 90 ? 'excellent' : score >= 75 ? 'good' : score >= 60 ? 'fair' : 'low'
+        platform_commission: platformCommission,
+        match_quality: score >= 90 ? 'excellent' : score >= 75 ? 'good' : score >= 60 ? 'fair' : 'low',
+        recommendation: score >= 90 ? 'Fortement recommandé' : score >= 75 ? 'Bon choix' : score >= 60 ? 'À considérer' : 'Vérifier alternatives'
       }
     })
     
