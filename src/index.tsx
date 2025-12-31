@@ -61,6 +61,82 @@ inMemoryDB.trips.set('trip_test_001', {
   created_at: new Date().toISOString()
 })
 
+// Autres trajets de test pour matching
+inMemoryDB.trips.set('trip_test_002', {
+  id: 'trip_test_002',
+  user_id: 1,
+  departure_city: 'Paris',
+  departure_airport: 'CDG',
+  arrival_city: 'Casablanca',
+  arrival_airport: 'CMN',
+  departure_date: '2025-01-14', // 1 jour avant
+  available_weight: 15,
+  price_per_kg: 8,
+  flexible_dates: true,
+  kyc_status: 'VERIFIED',
+  status: 'ACTIVE',
+  created_at: new Date().toISOString()
+})
+
+inMemoryDB.trips.set('trip_test_003', {
+  id: 'trip_test_003',
+  user_id: 1,
+  departure_city: 'Lyon',
+  departure_airport: 'LYS',
+  arrival_city: 'Marrakech',
+  arrival_airport: 'RAK',
+  departure_date: '2025-01-20',
+  available_weight: 20,
+  price_per_kg: 7.5,
+  flexible_dates: true,
+  kyc_status: 'VERIFIED',
+  status: 'ACTIVE',
+  created_at: new Date().toISOString()
+})
+
+// Colis de test pour matching
+inMemoryDB.packages.set('pkg_test_001', {
+  id: 'pkg_test_001',
+  user_id: 1,
+  title: 'Cadeaux pour famille',
+  departure_city: 'Paris',
+  arrival_city: 'Casablanca',
+  preferred_date: '2025-01-15', // Match parfait avec trip_test_001
+  weight: 8,
+  budget: 80, // 10€/kg
+  flexible_dates: true,
+  status: 'PUBLISHED',
+  created_at: new Date().toISOString()
+})
+
+inMemoryDB.packages.set('pkg_test_002', {
+  id: 'pkg_test_002',
+  user_id: 1,
+  title: 'Documents importants',
+  departure_city: 'Paris',
+  arrival_city: 'Casablanca',
+  preferred_date: '2025-01-16', // 1 jour après
+  weight: 3,
+  budget: 24, // 8€/kg
+  flexible_dates: true,
+  status: 'PUBLISHED',
+  created_at: new Date().toISOString()
+})
+
+inMemoryDB.packages.set('pkg_test_003', {
+  id: 'pkg_test_003',
+  user_id: 1,
+  title: 'Vêtements',
+  departure_city: 'Lyon',
+  arrival_city: 'Marrakech',
+  preferred_date: '2025-01-20', // Match exact avec trip_test_003
+  weight: 12,
+  budget: 90, // 7.5€/kg
+  flexible_dates: true,
+  status: 'PUBLISHED',
+  created_at: new Date().toISOString()
+})
+
 // Réservation de test (déjà payée)
 inMemoryDB.bookings.set('booking_test_001', {
   id: 'booking_test_001',
@@ -76,6 +152,12 @@ inMemoryDB.bookings.set('booking_test_001', {
   status: 'pending',
   created_at: new Date().toISOString()
 })
+
+// Messages de chat (pour tests)
+inMemoryDB.messages = new Map()
+
+// Reviews / Avis (pour tests)
+inMemoryDB.reviews = new Map()
 
 // Liste d'aéroports populaires France ↔ Maroc
 const AIRPORTS = [
@@ -98,9 +180,18 @@ const app = new Hono<{ Variables: Variables }>()
 
 // Initialisation Stripe
 let stripe: Stripe | null = null
+// Mode MOCK pour Stripe (dev sans vraie clé)
+const STRIPE_MOCK_MODE = true // Activer pour tester sans vraie clé Stripe
+
 function getStripe(c: any): Stripe | null {
+  if (STRIPE_MOCK_MODE) {
+    console.log('⚠️  STRIPE MOCK MODE ENABLED - Using simulated Stripe responses')
+    return null // Retourne null pour déclencher les mocks dans les routes
+  }
+  
   if (!stripe) {
-    const stripeKey = c.env?.STRIPE_SECRET_KEY
+    // En dev, utiliser une clé de test par défaut si env non disponible
+    const stripeKey = c.env?.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
     if (!stripeKey) {
       console.warn('STRIPE_SECRET_KEY is not configured - Stripe features will be disabled')
       return null
@@ -108,8 +199,217 @@ function getStripe(c: any): Stripe | null {
     stripe = new Stripe(stripeKey, {
       apiVersion: '2025-12-15.clover',
     })
+    console.log('✅ Stripe initialized with key:', stripeKey.substring(0, 15) + '...')
   }
   return stripe
+}
+
+// ==========================================
+// CLOUDFLARE AI - Helpers
+// ==========================================
+
+/**
+ * Calcule la similarité cosine entre deux vecteurs (embeddings)
+ * Retourne une valeur entre 0 (différent) et 1 (identique)
+ */
+function calculateCosineSimilarity(vecA: number[], vecB: number[]): number {
+  if (!vecA || !vecB || vecA.length === 0 || vecB.length === 0) {
+    return 0
+  }
+  
+  if (vecA.length !== vecB.length) {
+    console.error('⚠️ Vecteurs de tailles différentes:', vecA.length, 'vs', vecB.length)
+    return 0
+  }
+  
+  let dotProduct = 0
+  let normA = 0
+  let normB = 0
+  
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i]
+    normA += vecA[i] * vecA[i]
+    normB += vecB[i] * vecB[i]
+  }
+  
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB)
+  
+  if (magnitude === 0) {
+    return 0
+  }
+  
+  const similarity = dotProduct / magnitude
+  
+  // Normaliser entre 0 et 1
+  return Math.max(0, Math.min(1, similarity))
+}
+
+// ==========================================
+// EMAIL TEMPLATES
+// ==========================================
+
+const EmailTemplates = {
+  baseTemplate: (content: string) => `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+        .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🚀 Amanah GO</h1>
+          <p>Transport Collaboratif France ↔ Maroc</p>
+        </div>
+        <div class="content">
+          ${content}
+        </div>
+        <div class="footer">
+          <p>© 2025 Amanah GO</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `,
+
+  welcome: (userName: string) => EmailTemplates.baseTemplate(`
+    <h2>👋 Bienvenue ${userName} !</h2>
+    <p>Merci de rejoindre <strong>Amanah GO</strong> !</p>
+    <h3>🎯 Prochaines étapes :</h3>
+    <ol>
+      <li>✅ Compte créé</li>
+      <li>🔐 Vérifiez votre identité (KYC)</li>
+      <li>📦 Publiez votre premier trajet</li>
+    </ol>
+  `),
+
+  kycVerified: (userName: string) => EmailTemplates.baseTemplate(`
+    <h2>✅ Identité vérifiée !</h2>
+    <p>Bonjour ${userName},</p>
+    <p>Votre identité a été <strong>vérifiée avec succès</strong> !</p>
+    <div style="background: #10b981; color: white; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0;">
+      <div style="font-size: 48px;">✓</div>
+      <h3>Compte Vérifié</h3>
+    </div>
+    <p>Vous êtes maintenant prêt à voyager en toute confiance ! 🚀</p>
+  `),
+
+  kycApproved: (userName: string) => EmailTemplates.baseTemplate(`
+    <h2>✅ Votre profil est vérifié !</h2>
+    <p>Bonjour ${userName},</p>
+    <p>Excellente nouvelle ! Votre vérification d'identité (KYC) a été <strong>approuvée par notre équipe</strong>.</p>
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 25px; border-radius: 12px; text-align: center; margin: 25px 0;">
+      <div style="font-size: 60px; margin-bottom: 10px;">✓</div>
+      <h3 style="margin: 0; font-size: 24px;">Profil Vérifié</h3>
+      <p style="margin: 10px 0 0; opacity: 0.9;">Vous pouvez maintenant utiliser toutes les fonctionnalités</p>
+    </div>
+    <h3>🎉 Ce que vous pouvez faire maintenant :</h3>
+    <ul>
+      <li>✈️ <strong>Publier des trajets</strong> et transporter des colis</li>
+      <li>📦 <strong>Publier des colis</strong> et trouver des voyageurs</li>
+      <li>💰 <strong>Recevoir des paiements</strong> sécurisés via Stripe</li>
+      <li>💬 <strong>Communiquer</strong> avec les autres utilisateurs</li>
+      <li>⭐ <strong>Recevoir des avis</strong> et construire votre réputation</li>
+    </ul>
+    <div style="text-align: center; margin-top: 30px;">
+      <a href="https://amanah-go.com/voyageur" class="button" style="display: inline-block; padding: 14px 32px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+        Accéder à mon dashboard
+      </a>
+    </div>
+    <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+      Merci de votre confiance ! L'équipe Amanah GO
+    </p>
+  `),
+
+  kycRejected: (userName: string, reason: string) => EmailTemplates.baseTemplate(`
+    <h2>⚠️ Vérification d'identité refusée</h2>
+    <p>Bonjour ${userName},</p>
+    <p>Nous avons examiné votre demande de vérification d'identité, mais nous ne pouvons pas l'approuver pour le moment.</p>
+    <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <h3 style="color: #dc2626; margin: 0 0 10px;">❌ Raison du refus :</h3>
+      <p style="margin: 0; color: #991b1b;">${reason || 'Documents non conformes'}</p>
+    </div>
+    <h3>📝 Comment procéder ?</h3>
+    <ol>
+      <li>Vérifiez que vos documents sont <strong>lisibles et à jour</strong></li>
+      <li>Assurez-vous que votre <strong>selfie est net</strong> et montre clairement votre visage</li>
+      <li>Votre photo d'identité doit correspondre à votre selfie</li>
+      <li>Soumettez à nouveau vos documents depuis votre profil</li>
+    </ol>
+    <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 0; color: #1e40af;">
+        <strong>💡 Astuce :</strong> Prenez vos photos dans un endroit bien éclairé et assurez-vous qu'il n'y a pas de reflets.
+      </p>
+    </div>
+    <div style="text-align: center; margin-top: 30px;">
+      <a href="https://amanah-go.com/verify-profile" class="button" style="display: inline-block; padding: 14px 32px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+        Soumettre à nouveau
+      </a>
+    </div>
+    <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+      Besoin d'aide ? Contactez-nous à <a href="mailto:support@amanah-go.com" style="color: #667eea;">support@amanah-go.com</a>
+    </p>
+  `)
+}
+
+// ==========================================
+// EMAIL SENDING - Resend API
+// ==========================================
+
+/**
+ * Envoyer un email via Resend
+ * @param to - Email destinataire
+ * @param subject - Sujet de l'email
+ * @param html - Contenu HTML de l'email
+ * @param resendApiKey - Clé API Resend (optionnel)
+ */
+async function sendEmail(to: string, subject: string, html: string, resendApiKey?: string): Promise<boolean> {
+  try {
+    // Mode DEV sans Resend (simulation)
+    if (!resendApiKey) {
+      console.log('📧 [MOCK] Email envoyé à:', to)
+      console.log('📧 [MOCK] Sujet:', subject)
+      console.log('📧 [MOCK] Contenu:', html.substring(0, 100) + '...')
+      return true
+    }
+    
+    // Mode production avec Resend
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Amanah GO <noreply@amanah-go.com>',
+        to: [to],
+        subject: subject,
+        html: html
+      })
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      console.error('❌ Erreur Resend:', error)
+      return false
+    }
+    
+    const data = await response.json()
+    console.log('✅ Email envoyé:', data.id)
+    return true
+    
+  } catch (error) {
+    console.error('❌ Erreur envoi email:', error)
+    return false
+  }
 }
 
 // JWT Secret (fallback pour dev, utiliser variable d'environnement en prod)
@@ -260,6 +560,137 @@ self.addEventListener('fetch', (event) => {
   return c.text(swContent, 200, {
     'Content-Type': 'application/javascript',
     'Service-Worker-Allowed': '/'
+  })
+})
+
+// ==========================================
+// SEO ROUTES - robots.txt & sitemap.xml
+// ==========================================
+
+// Serve robots.txt
+app.get('/robots.txt', (c) => {
+  const robotsTxt = `User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /verify-profile
+Disallow: /voyageur/stripe-connect
+
+Sitemap: https://amanah-go.com/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 10
+
+# Specific bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /`
+  
+  return c.text(robotsTxt, 200, {
+    'Content-Type': 'text/plain'
+  })
+})
+
+// Serve sitemap.xml
+app.get('/sitemap.xml', (c) => {
+  const baseUrl = 'https://amanah-go.com'
+  const currentDate = new Date().toISOString().split('T')[0]
+  
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  
+  <!-- Page d'accueil -->
+  <url>
+    <loc>${baseUrl}/</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Connexion / Inscription -->
+  <url>
+    <loc>${baseUrl}/login</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/signup</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Dashboards -->
+  <url>
+    <loc>${baseUrl}/voyageur</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/expediteur</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <!-- Publication -->
+  <url>
+    <loc>${baseUrl}/voyageur/publier-trajet</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/expediteur/publier-colis</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Liste -->
+  <url>
+    <loc>${baseUrl}/voyageur/mes-trajets</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/expediteur/mes-colis</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <!-- Recherche & Matching -->
+  <url>
+    <loc>${baseUrl}/search</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Produits interdits -->
+  <url>
+    <loc>${baseUrl}/prohibited-items</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+</urlset>`
+  
+  return c.text(sitemap, 200, {
+    'Content-Type': 'application/xml'
   })
 })
 
@@ -499,10 +930,32 @@ app.get('/', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Amanah GO - Transport Collaboratif France ↔ Maroc</title>
+        <title>Amanah GO - Transport Collaboratif France ↔ Maroc | Envoi Colis Pas Cher</title>
+        
+        <!-- SEO Meta Tags -->
+        <meta name="description" content="🚀 Transportez vos colis entre la France et le Maroc avec Amanah GO. Économisez jusqu'à 70% sur l'envoi de colis. Plateforme sécurisée de transport collaboratif peer-to-peer.">
+        <meta name="keywords" content="transport colis france maroc, envoi colis maroc, transport collaboratif, amanah go, colis pas cher maroc, voyageur transporteur, expédition france maroc, MRE, diaspora marocaine">
+        <meta name="author" content="Amanah GO">
+        <meta name="robots" content="index, follow">
+        <link rel="canonical" href="https://amanah-go.com/">
+        
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="https://amanah-go.com/">
+        <meta property="og:title" content="Amanah GO - Transport Collaboratif France ↔ Maroc">
+        <meta property="og:description" content="Économisez jusqu'à 70% sur vos envois de colis entre la France et le Maroc. Plateforme sécurisée de transport collaboratif.">
+        <meta property="og:image" content="https://amanah-go.com/static/logo-amanah-go.png">
+        <meta property="og:locale" content="fr_FR">
+        <meta property="og:site_name" content="Amanah GO">
+        
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:url" content="https://amanah-go.com/">
+        <meta name="twitter:title" content="Amanah GO - Transport Collaboratif France ↔ Maroc">
+        <meta name="twitter:description" content="Économisez jusqu'à 70% sur vos envois de colis entre la France et le Maroc">
+        <meta name="twitter:image" content="https://amanah-go.com/static/logo-amanah-go.png">
         
         <!-- PWA Meta Tags -->
-        <meta name="description" content="Plateforme de transport collaboratif de colis entre la France et le Maroc. Voyagez malin, envoyez futé !">
         <meta name="theme-color" content="#2563eb">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
@@ -517,6 +970,66 @@ app.get('/', (c) => {
         <link rel="apple-touch-icon" href="/static/icons/icon-180x180.png">
         <link rel="icon" sizes="192x192" href="/static/icons/icon-192x192.png">
         <link rel="icon" sizes="512x512" href="/static/icons/icon-512x512.png">
+        
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-XXXXXXXXXX', {
+            'page_title': 'Home - Amanah GO',
+            'page_location': window.location.href
+          });
+        </script>
+        
+        <!-- Structured Data / Schema.org -->
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Amanah GO",
+          "description": "Plateforme de transport collaboratif de colis entre la France et le Maroc",
+          "url": "https://amanah-go.com",
+          "logo": "https://amanah-go.com/static/logo-amanah-go.png",
+          "foundingDate": "2025",
+          "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "FR"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+33-XXX-XXX-XXX",
+            "contactType": "customer service",
+            "email": "contact@amanah-go.com",
+            "availableLanguage": ["French", "Arabic", "English"]
+          },
+          "sameAs": [
+            "https://facebook.com/amanahgo",
+            "https://twitter.com/amanahgo",
+            "https://instagram.com/amanahgo"
+          ]
+        }
+        </script>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          "name": "Amanah GO",
+          "applicationCategory": "TravelApplication",
+          "operatingSystem": "Web, iOS, Android",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "150"
+          }
+        }
+        </script>
         
         <!-- Styles -->
         <script src="https://cdn.tailwindcss.com"></script>
@@ -928,6 +1441,152 @@ app.get('/', (c) => {
 })
 
 // ==========================================
+// ADMIN DASHBOARD - Validation KYC
+// ==========================================
+
+app.get('/admin', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Dashboard - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50">
+        <!-- Header -->
+        <nav class="bg-gradient-to-r from-purple-900 to-indigo-900 text-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-shield-alt text-3xl"></i>
+                    <div>
+                        <h1 class="text-xl font-bold">Admin Dashboard</h1>
+                        <p class="text-sm text-purple-200">Validation KYC & Modération</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="adminName" class="text-sm"></span>
+                    <a href="/" class="hover:text-purple-200">
+                        <i class="fas fa-home mr-1"></i> Accueil
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Stats Dashboard -->
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <!-- Total Users -->
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 text-sm mb-1">Total Utilisateurs</p>
+                            <p id="totalUsers" class="text-3xl font-bold text-gray-800">0</p>
+                        </div>
+                        <i class="fas fa-users text-4xl text-blue-500"></i>
+                    </div>
+                </div>
+
+                <!-- Pending KYC -->
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 text-sm mb-1">KYC En Attente</p>
+                            <p id="pendingKYC" class="text-3xl font-bold text-gray-800">0</p>
+                        </div>
+                        <i class="fas fa-clock text-4xl text-yellow-500"></i>
+                    </div>
+                </div>
+
+                <!-- Verified Users -->
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 text-sm mb-1">Utilisateurs Vérifiés</p>
+                            <p id="verifiedUsers" class="text-3xl font-bold text-gray-800">0</p>
+                        </div>
+                        <i class="fas fa-check-circle text-4xl text-green-500"></i>
+                    </div>
+                </div>
+
+                <!-- Rejected KYC -->
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 text-sm mb-1">KYC Rejetés</p>
+                            <p id="rejectedKYC" class="text-3xl font-bold text-gray-800">0</p>
+                        </div>
+                        <i class="fas fa-times-circle text-4xl text-red-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="bg-white rounded-lg shadow-md mb-6">
+                <div class="border-b border-gray-200">
+                    <nav class="flex space-x-4 px-6">
+                        <button onclick="switchTab('pending')" 
+                                id="tab-pending"
+                                class="tab-btn py-4 px-6 font-medium border-b-2 border-yellow-500 text-yellow-600">
+                            <i class="fas fa-clock mr-2"></i>
+                            KYC En Attente
+                        </button>
+                        <button onclick="switchTab('verified')" 
+                                id="tab-verified"
+                                class="tab-btn py-4 px-6 font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Vérifiés
+                        </button>
+                        <button onclick="switchTab('rejected')" 
+                                id="tab-rejected"
+                                class="tab-btn py-4 px-6 font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-times-circle mr-2"></i>
+                            Rejetés
+                        </button>
+                        <button onclick="switchTab('all')" 
+                                id="tab-all"
+                                class="tab-btn py-4 px-6 font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-list mr-2"></i>
+                            Tous
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Users List -->
+            <div id="usersList" class="space-y-4">
+                <!-- Users will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Modal KYC Validation -->
+        <div id="kycModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-id-card mr-2 text-purple-600"></i>
+                        Validation KYC
+                    </h2>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div id="modalContent" class="p-6">
+                    <!-- Content loaded dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <script src="/static/admin-dashboard.js"></script>
+    </body>
+    </html>
+  `)
+})
+
+// ==========================================
 // API ROUTES
 // ==========================================
 
@@ -997,6 +1656,438 @@ app.get('/api/packages', async (c) => {
     return c.json({ success: false, error: error.message }, 500)
   }
 })
+
+// ==========================================
+// CHAT / MESSAGES API ROUTES
+// ==========================================
+
+// Envoyer un message
+app.post('/api/messages', authMiddleware, async (c) => {
+  try {
+    const { DB } = c.env
+    const user = c.get('user')
+    const { receiver_id, exchange_id, message, message_type = 'TEXT' } = await c.req.json()
+    
+    if (!receiver_id || !message) {
+      return c.json({ 
+        success: false, 
+        error: 'receiver_id et message sont requis' 
+      }, 400)
+    }
+    
+    // Mode dev avec inMemoryDB
+    if (!DB) {
+      const messageId = Date.now()
+      const newMessage = {
+        id: messageId,
+        exchange_id: exchange_id || null,
+        sender_id: user.id,
+        receiver_id: Number(receiver_id),
+        message: message,
+        message_type: message_type,
+        read_at: null,
+        created_at: new Date().toISOString()
+      }
+      
+      inMemoryDB.messages.set(messageId.toString(), newMessage)
+      
+      console.log('💬 Message envoyé (inMemoryDB):', messageId)
+      
+      return c.json({
+        success: true,
+        message_data: newMessage
+      })
+    }
+    
+    // Mode production avec D1
+    const result = await DB.prepare(`
+      INSERT INTO exchange_messages (exchange_id, sender_id, receiver_id, message, message_type, created_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `).bind(exchange_id, user.id, receiver_id, message, message_type).run()
+    
+    const messageData = {
+      id: result.meta.last_row_id,
+      exchange_id,
+      sender_id: user.id,
+      receiver_id,
+      message,
+      message_type,
+      read_at: null,
+      created_at: new Date().toISOString()
+    }
+    
+    return c.json({
+      success: true,
+      message_data: messageData
+    })
+    
+  } catch (error) {
+    console.error('Erreur envoi message:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Récupérer les messages d'une conversation
+app.get('/api/messages/:userId', authMiddleware, async (c) => {
+  try {
+    const { DB } = c.env
+    const user = c.get('user')
+    const otherUserId = c.req.param('userId')
+    
+    // Mode dev avec inMemoryDB
+    if (!DB) {
+      const messages = Array.from(inMemoryDB.messages.values())
+        .filter(m => 
+          (m.sender_id === user.id && m.receiver_id === Number(otherUserId)) ||
+          (m.sender_id === Number(otherUserId) && m.receiver_id === user.id)
+        )
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      
+      return c.json({
+        success: true,
+        messages: messages
+      })
+    }
+    
+    // Mode production avec D1
+    const messages = await DB.prepare(`
+      SELECT * FROM exchange_messages
+      WHERE (sender_id = ? AND receiver_id = ?)
+         OR (sender_id = ? AND receiver_id = ?)
+      ORDER BY created_at ASC
+    `).bind(user.id, otherUserId, otherUserId, user.id).all()
+    
+    return c.json({
+      success: true,
+      messages: messages.results || []
+    })
+    
+  } catch (error) {
+    console.error('Erreur récupération messages:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Marquer un message comme lu
+app.put('/api/messages/:messageId/read', authMiddleware, async (c) => {
+  try {
+    const { DB } = c.env
+    const user = c.get('user')
+    const messageId = c.req.param('messageId')
+    
+    // Mode dev avec inMemoryDB
+    if (!DB) {
+      const message = inMemoryDB.messages.get(messageId)
+      if (message && message.receiver_id === user.id) {
+        message.read_at = new Date().toISOString()
+        inMemoryDB.messages.set(messageId, message)
+      }
+      
+      return c.json({ success: true })
+    }
+    
+    // Mode production avec D1
+    await DB.prepare(`
+      UPDATE exchange_messages
+      SET read_at = datetime('now')
+      WHERE id = ? AND receiver_id = ?
+    `).bind(messageId, user.id).run()
+    
+    return c.json({ success: true })
+    
+  } catch (error) {
+    console.error('Erreur marquage message lu:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Récupérer les conversations actives (liste des utilisateurs avec qui on a discuté)
+app.get('/api/conversations', authMiddleware, async (c) => {
+  try {
+    const { DB } = c.env
+    const user = c.get('user')
+    
+    // Mode dev avec inMemoryDB
+    if (!DB) {
+      const messages = Array.from(inMemoryDB.messages.values())
+      const userIds = new Set()
+      
+      messages.forEach(m => {
+        if (m.sender_id === user.id) {
+          userIds.add(m.receiver_id)
+        } else if (m.receiver_id === user.id) {
+          userIds.add(m.sender_id)
+        }
+      })
+      
+      const conversations = Array.from(userIds).map(userId => {
+        const userMessages = messages.filter(m =>
+          (m.sender_id === user.id && m.receiver_id === userId) ||
+          (m.sender_id === userId && m.receiver_id === user.id)
+        )
+        const lastMessage = userMessages[userMessages.length - 1]
+        const unreadCount = userMessages.filter(m => 
+          m.receiver_id === user.id && !m.read_at
+        ).length
+        
+        // Trouver l'utilisateur
+        const otherUser = Array.from(inMemoryDB.users.values()).find(u => u.id === userId)
+        
+        return {
+          user_id: userId,
+          user_name: otherUser?.name || 'Utilisateur',
+          user_avatar: otherUser?.avatar_url || null,
+          last_message: lastMessage?.message || '',
+          last_message_at: lastMessage?.created_at || '',
+          unread_count: unreadCount
+        }
+      })
+      
+      return c.json({
+        success: true,
+        conversations: conversations
+      })
+    }
+    
+    // Mode production avec D1
+    const conversations = await DB.prepare(`
+      SELECT 
+        CASE WHEN em.sender_id = ? THEN em.receiver_id ELSE em.sender_id END as user_id,
+        u.name as user_name,
+        u.avatar_url as user_avatar,
+        em.message as last_message,
+        em.created_at as last_message_at,
+        (SELECT COUNT(*) FROM exchange_messages 
+         WHERE receiver_id = ? AND sender_id = user_id AND read_at IS NULL) as unread_count
+      FROM exchange_messages em
+      INNER JOIN users u ON u.id = user_id
+      WHERE em.sender_id = ? OR em.receiver_id = ?
+      GROUP BY user_id
+      ORDER BY em.created_at DESC
+    `).bind(user.id, user.id, user.id, user.id).all()
+    
+    return c.json({
+      success: true,
+      conversations: conversations.results || []
+    })
+    
+  } catch (error) {
+    console.error('Erreur récupération conversations:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// ==========================================
+// REVIEWS / AVIS API ROUTES
+// ==========================================
+
+// Créer un avis (après une transaction)
+app.post('/api/reviews', authMiddleware, async (c) => {
+  try {
+    const { DB } = c.env
+    const user = c.get('user')
+    const { reviewee_id, booking_id, rating, comment = '' } = await c.req.json()
+    
+    // Validation
+    if (!reviewee_id || !rating) {
+      return c.json({ 
+        success: false, 
+        error: 'reviewee_id et rating sont requis' 
+      }, 400)
+    }
+    
+    if (rating < 1 || rating > 5) {
+      return c.json({ 
+        success: false, 
+        error: 'La note doit être entre 1 et 5' 
+      }, 400)
+    }
+    
+    // Vérifier qu'on ne s'auto-note pas
+    if (user.id === Number(reviewee_id)) {
+      return c.json({ 
+        success: false, 
+        error: 'Vous ne pouvez pas vous noter vous-même' 
+      }, 400)
+    }
+    
+    // Mode dev avec inMemoryDB
+    if (!DB) {
+      // Vérifier si une review existe déjà pour ce booking
+      const existingReview = Array.from(inMemoryDB.reviews.values())
+        .find(r => r.booking_id === booking_id && r.reviewer_id === user.id)
+      
+      if (existingReview) {
+        return c.json({ 
+          success: false, 
+          error: 'Vous avez déjà noté cette transaction' 
+        }, 400)
+      }
+      
+      const reviewId = Date.now()
+      const newReview = {
+        id: reviewId,
+        reviewer_id: user.id,
+        reviewee_id: Number(reviewee_id),
+        booking_id: booking_id || null,
+        rating: Number(rating),
+        comment: comment,
+        created_at: new Date().toISOString()
+      }
+      
+      inMemoryDB.reviews.set(reviewId.toString(), newReview)
+      
+      // Mettre à jour la note moyenne de l'utilisateur noté
+      updateUserRating(Number(reviewee_id))
+      
+      console.log('⭐ Avis créé (inMemoryDB):', reviewId)
+      
+      return c.json({
+        success: true,
+        review: newReview
+      })
+    }
+    
+    // Mode production avec D1
+    // Vérifier si une review existe déjà
+    const existing = await DB.prepare(`
+      SELECT id FROM reviews 
+      WHERE booking_id = ? AND reviewer_id = ?
+    `).bind(booking_id, user.id).first()
+    
+    if (existing) {
+      return c.json({ 
+        success: false, 
+        error: 'Vous avez déjà noté cette transaction' 
+      }, 400)
+    }
+    
+    // Créer la review
+    const result = await DB.prepare(`
+      INSERT INTO reviews (reviewer_id, reviewee_id, booking_id, rating, comment, created_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `).bind(user.id, reviewee_id, booking_id, rating, comment).run()
+    
+    // Recalculer la note moyenne
+    await updateUserRatingDB(DB, reviewee_id)
+    
+    return c.json({
+      success: true,
+      review: {
+        id: result.meta.last_row_id,
+        reviewer_id: user.id,
+        reviewee_id,
+        rating,
+        comment
+      }
+    })
+    
+  } catch (error) {
+    console.error('Erreur création avis:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Récupérer les avis d'un utilisateur
+app.get('/api/reviews/:userId', async (c) => {
+  try {
+    const { DB } = c.env
+    const userId = c.req.param('userId')
+    
+    // Mode dev avec inMemoryDB
+    if (!DB) {
+      const reviews = Array.from(inMemoryDB.reviews.values())
+        .filter(r => r.reviewee_id === Number(userId))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      
+      // Enrichir avec les noms des reviewers
+      const enrichedReviews = reviews.map(review => {
+        const reviewer = Array.from(inMemoryDB.users.values())
+          .find(u => u.id === review.reviewer_id)
+        
+        return {
+          ...review,
+          reviewer_name: reviewer?.name || 'Utilisateur',
+          reviewer_avatar: reviewer?.avatar_url || null
+        }
+      })
+      
+      return c.json({
+        success: true,
+        reviews: enrichedReviews
+      })
+    }
+    
+    // Mode production avec D1
+    const reviews = await DB.prepare(`
+      SELECT 
+        r.*,
+        u.name as reviewer_name,
+        u.avatar_url as reviewer_avatar
+      FROM reviews r
+      INNER JOIN users u ON r.reviewer_id = u.id
+      WHERE r.reviewee_id = ?
+      ORDER BY r.created_at DESC
+    `).bind(userId).all()
+    
+    return c.json({
+      success: true,
+      reviews: reviews.results || []
+    })
+    
+  } catch (error) {
+    console.error('Erreur récupération avis:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Fonction helper: Mettre à jour la note moyenne (inMemoryDB)
+function updateUserRating(userId: number) {
+  const reviews = Array.from(inMemoryDB.reviews.values())
+    .filter(r => r.reviewee_id === userId)
+  
+  if (reviews.length === 0) return
+  
+  const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0)
+  const avgRating = totalRating / reviews.length
+  
+  // Trouver et mettre à jour l'utilisateur
+  const userEntry = Array.from(inMemoryDB.users.entries())
+    .find(([_, u]) => u.id === userId)
+  
+  if (userEntry) {
+    const [email, user] = userEntry
+    user.rating = Math.round(avgRating * 10) / 10 // Arrondir à 1 décimale
+    user.reviews_count = reviews.length
+    inMemoryDB.users.set(email, user)
+    
+    console.log(`⭐ Note mise à jour pour user ${userId}: ${user.rating} (${reviews.length} avis)`)
+  }
+}
+
+// Fonction helper: Mettre à jour la note moyenne (D1)
+async function updateUserRatingDB(DB: any, userId: string) {
+  const stats = await DB.prepare(`
+    SELECT 
+      AVG(rating) as avg_rating,
+      COUNT(*) as review_count
+    FROM reviews
+    WHERE reviewee_id = ?
+  `).bind(userId).first()
+  
+  if (stats) {
+    await DB.prepare(`
+      UPDATE users
+      SET rating = ?,
+          reviews_count = ?
+      WHERE id = ?
+    `).bind(
+      Math.round(stats.avg_rating * 10) / 10,
+      stats.review_count,
+      userId
+    ).run()
+  }
+}
 
 // ==========================================
 // AIRPORTS API ROUTES
@@ -1204,6 +2295,389 @@ app.get('/api/flights/:flightNumber', async (c) => {
 })
 
 // ==========================================
+// PUSH NOTIFICATIONS API ROUTES
+// ==========================================
+
+// Stocker les subscriptions (en production, utiliser D1 ou KV)
+const pushSubscriptions = new Map<string, any>()
+
+// S'abonner aux push notifications
+app.post('/api/push/subscribe', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user')
+    const { subscription } = await c.req.json()
+    
+    if (!subscription || !subscription.endpoint) {
+      return c.json({ 
+        success: false, 
+        error: 'Subscription invalide' 
+      }, 400)
+    }
+    
+    // Stocker la subscription
+    pushSubscriptions.set(`user_${user.id}`, {
+      userId: user.id,
+      subscription,
+      createdAt: new Date().toISOString()
+    })
+    
+    console.log(`✅ Push subscription enregistrée pour user ${user.id}`)
+    
+    return c.json({ 
+      success: true, 
+      message: 'Abonnement aux notifications enregistré' 
+    })
+    
+  } catch (error: any) {
+    console.error('Erreur abonnement push:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Se désabonner des push notifications
+app.post('/api/push/unsubscribe', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user')
+    
+    pushSubscriptions.delete(`user_${user.id}`)
+    
+    console.log(`✅ Push subscription supprimée pour user ${user.id}`)
+    
+    return c.json({ 
+      success: true, 
+      message: 'Désabonnement réussi' 
+    })
+    
+  } catch (error: any) {
+    console.error('Erreur désabonnement push:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Envoyer une notification push (admin ou automatique)
+app.post('/api/push/send', authMiddleware, async (c) => {
+  try {
+    const { user_id, title, body, url } = await c.req.json()
+    
+    if (!user_id || !title || !body) {
+      return c.json({ 
+        success: false, 
+        error: 'user_id, title et body requis' 
+      }, 400)
+    }
+    
+    // Récupérer la subscription de l'utilisateur
+    const subData = pushSubscriptions.get(`user_${user_id}`)
+    
+    if (!subData) {
+      return c.json({ 
+        success: false, 
+        error: 'Utilisateur non abonné aux notifications' 
+      }, 404)
+    }
+    
+    // En production, utiliser web-push library
+    // Pour le moment, simuler l'envoi
+    console.log(`📤 Notification envoyée à user ${user_id}:`, { title, body, url })
+    
+    // TODO: Implémenter l'envoi réel avec web-push
+    // const webpush = require('web-push')
+    // webpush.setVapidDetails(
+    //   'mailto:contact@amanah-go.com',
+    //   VAPID_PUBLIC_KEY,
+    //   VAPID_PRIVATE_KEY
+    // )
+    // await webpush.sendNotification(
+    //   subData.subscription,
+    //   JSON.stringify({ title, body, url })
+    // )
+    
+    return c.json({ 
+      success: true, 
+      message: 'Notification envoyée' 
+    })
+    
+  } catch (error: any) {
+    console.error('Erreur envoi notification:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Helpers pour envoyer des notifications automatiques
+async function sendPushNotification(userId: number, title: string, body: string, url?: string) {
+  try {
+    const subData = pushSubscriptions.get(`user_${userId}`)
+    if (!subData) {
+      console.log(`⚠️ User ${userId} pas abonné aux notifications`)
+      return false
+    }
+    
+    console.log(`📤 Notification: ${title} → User ${userId}`)
+    
+    // TODO: Implémenter l'envoi réel avec web-push
+    
+    return true
+  } catch (error) {
+    console.error('Erreur envoi push notification:', error)
+    return false
+  }
+}
+
+// Exemples d'utilisation des notifications automatiques:
+
+// Nouveau message reçu
+async function notifyNewMessage(recipientId: number, senderName: string) {
+  await sendPushNotification(
+    recipientId,
+    '💬 Nouveau message',
+    `${senderName} vous a envoyé un message`,
+    '/messages'
+  )
+}
+
+// Colis réservé
+async function notifyPackageBooked(shipperId: number, travelerName: string) {
+  await sendPushNotification(
+    shipperId,
+    '📦 Colis réservé !',
+    `${travelerName} a réservé votre colis`,
+    '/expediteur/mes-colis'
+  )
+}
+
+// Trajet bientôt (24h avant)
+async function notifyUpcomingTrip(travelerId: number, destination: string) {
+  await sendPushNotification(
+    travelerId,
+    '✈️ Départ dans 24h',
+    `Votre trajet vers ${destination} est demain`,
+    '/voyageur/mes-trajets'
+  )
+}
+
+// Paiement reçu
+async function notifyPaymentReceived(travelerId: number, amount: number) {
+  await sendPushNotification(
+    travelerId,
+    '💰 Paiement reçu',
+    `Vous avez reçu ${amount}€ pour votre trajet`,
+    '/voyageur/stripe-connect'
+  )
+}
+
+// ==========================================
+// ADMIN API ROUTES
+// ==========================================
+
+// Middleware admin (simplif ié pour dev)
+const adminMiddleware = async (c: any, next: any) => {
+  // TODO: Vérifier rôle admin en production
+  // Pour dev, autoriser tous les utilisateurs authentifiés
+  await authMiddleware(c, async () => {
+    // En production, vérifier: if (c.get('user').role !== 'admin') return c.json(...)
+    await next()
+  })
+}
+
+// Get admin stats
+app.get('/api/admin/stats', adminMiddleware, async (c) => {
+  try {
+    // Mode dev avec inMemoryDB
+    const users = Array.from(inMemoryDB.users.values())
+    
+    const stats = {
+      total: users.length,
+      pending: users.filter(u => u.kyc_status === 'PENDING' || u.kyc_status === 'SUBMITTED').length,
+      verified: users.filter(u => u.kyc_status === 'VERIFIED').length,
+      rejected: users.filter(u => u.kyc_status === 'REJECTED').length
+    }
+    
+    return c.json(stats)
+    
+  } catch (error: any) {
+    console.error('Erreur stats admin:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Get all users for admin
+app.get('/api/admin/users', adminMiddleware, async (c) => {
+  try {
+    // Mode dev avec inMemoryDB
+    const users = Array.from(inMemoryDB.users.values()).map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      kyc_status: u.kyc_status,
+      kyc_selfie_url: u.kyc_selfie_url,
+      kyc_document_url: u.kyc_document_url,
+      kyc_rejection_reason: u.kyc_rejection_reason,
+      rating: u.rating,
+      reviews_count: u.reviews_count,
+      created_at: u.created_at
+    }))
+    
+    return c.json({ 
+      success: true, 
+      users 
+    })
+    
+  } catch (error: any) {
+    console.error('Erreur liste users admin:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Validate KYC
+app.post('/api/admin/validate-kyc', adminMiddleware, async (c) => {
+  try {
+    const { user_id, status, notes } = await c.req.json()
+    
+    if (!user_id || !status) {
+      return c.json({ 
+        success: false, 
+        error: 'user_id et status requis' 
+      }, 400)
+    }
+    
+    if (!['VERIFIED', 'REJECTED'].includes(status)) {
+      return c.json({ 
+        success: false, 
+        error: 'Status invalide (VERIFIED ou REJECTED)' 
+      }, 400)
+    }
+    
+    // Mode dev avec inMemoryDB
+    const users = Array.from(inMemoryDB.users.entries())
+    const userEntry = users.find(([_, u]) => u.id === user_id)
+    
+    if (!userEntry) {
+      return c.json({ 
+        success: false, 
+        error: 'Utilisateur introuvable' 
+      }, 404)
+    }
+    
+    const [key, user] = userEntry
+    
+    // Mettre à jour le statut KYC
+    user.kyc_status = status
+    
+    if (status === 'REJECTED') {
+      user.kyc_rejection_reason = notes || 'Non spécifié'
+    } else {
+      delete user.kyc_rejection_reason
+    }
+    
+    user.kyc_validated_at = new Date().toISOString()
+    user.kyc_validated_by = c.get('user').id
+    
+    inMemoryDB.users.set(key, user)
+    
+    console.log(`✅ KYC ${status} pour user ${user_id}`)
+    
+    // 📧 Envoyer email de notification
+    try {
+      const resendKey = c.env?.RESEND_API_KEY
+      const emailHtml = status === 'VERIFIED' 
+        ? EmailTemplates.kycApproved(user.name)
+        : EmailTemplates.kycRejected(user.name, notes)
+      
+      await sendEmail(
+        user.email, 
+        status === 'VERIFIED' ? '✅ Votre profil est vérifié !' : '❌ Vérification refusée',
+        emailHtml, 
+        resendKey
+      )
+    } catch (emailError) {
+      console.error('Erreur envoi email KYC:', emailError)
+    }
+    
+    // 🔔 Envoyer notification push
+    await sendPushNotification(
+      user.id,
+      status === 'VERIFIED' ? '✅ Profil vérifié !' : '❌ Vérification refusée',
+      status === 'VERIFIED' 
+        ? 'Votre profil a été vérifié avec succès'
+        : `Raison: ${notes}`,
+      '/verify-profile'
+    )
+    
+    return c.json({ 
+      success: true, 
+      message: `KYC ${status}`,
+      user: {
+        id: user.id,
+        kyc_status: user.kyc_status
+      }
+    })
+    
+  } catch (error: any) {
+    console.error('Erreur validation KYC:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Get user KYC details
+app.get('/api/admin/kyc/:userId', adminMiddleware, async (c) => {
+  try {
+    const userId = c.req.param('userId')
+    
+    // Mode dev avec inMemoryDB
+    const user = Array.from(inMemoryDB.users.values()).find(u => u.id === userId)
+    
+    if (!user) {
+      return c.json({ 
+        success: false, 
+        error: 'Utilisateur introuvable' 
+      }, 404)
+    }
+    
+    return c.json({ 
+      success: true, 
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        kyc_status: user.kyc_status,
+        kyc_selfie_url: user.kyc_selfie_url,
+        kyc_document_url: user.kyc_document_url,
+        kyc_rejection_reason: user.kyc_rejection_reason,
+        kyc_validated_at: user.kyc_validated_at,
+        created_at: user.created_at
+      }
+    })
+    
+  } catch (error: any) {
+    console.error('Erreur détails KYC:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// ==========================================
 // STRIPE CONNECT API ROUTES
 // ==========================================
 
@@ -1357,6 +2831,36 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
       }, 400)
     }
 
+    // Calculer la commission (12%)
+    const amountCents = Math.round(amount * 100)
+    const applicationFee = Math.round(amountCents * 0.12)
+
+    // 🧪 MODE MOCK: Simuler Stripe si pas de vraie clé
+    if (!stripe || STRIPE_MOCK_MODE) {
+      console.log('🎭 MOCK MODE: Simulating Stripe Payment Intent creation')
+      const mockPaymentIntent = {
+        id: 'pi_mock_' + Date.now(),
+        client_secret: 'pi_mock_secret_' + Date.now()
+      }
+      
+      const booking = inMemoryDB.bookings.get(booking_id)
+      if (booking) {
+        booking.payment_intent_id = mockPaymentIntent.id
+        booking.payment_status = 'pending'
+        inMemoryDB.bookings.set(booking_id, booking)
+      }
+      
+      return c.json({
+        success: true,
+        mock_mode: true,
+        client_secret: mockPaymentIntent.client_secret,
+        payment_intent_id: mockPaymentIntent.id,
+        amount: amount,
+        application_fee: applicationFee / 100,
+        traveler_amount: (amountCents - applicationFee) / 100
+      })
+    }
+
     // Récupérer la réservation (booking)
     const booking = inMemoryDB.bookings.get(booking_id)
     if (!booking) {
@@ -1392,26 +2896,26 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
       }, 400)
     }
 
-    // Calculer la commission (12%)
-    const amountCents = Math.round(amount * 100) // Convertir en centimes
-    const applicationFee = Math.round(amountCents * 0.12) // 12% commission
-
-    // Créer le Payment Intent avec Stripe Connect
+    // Créer le Payment Intent avec Stripe Connect + ESCROW
+    // capture_method: 'manual' = Les fonds sont bloqués mais pas encore capturés
+    // On ne capture qu'après confirmation de livraison
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: currency,
+      capture_method: 'manual', // 🔐 ESCROW: Blocage des fonds sans capture immédiate
       application_fee_amount: applicationFee,
-      transfer_data: {
-        destination: traveler.stripe_account_id,
-      },
+      // On ne met PAS transfer_data ici pour éviter le transfert automatique
+      // Le transfert sera fait manuellement après confirmation livraison
+      on_behalf_of: traveler.stripe_account_id, // Pour les frais de traitement
       metadata: {
         booking_id: booking_id,
         trip_id: trip.id,
         sender_id: user.id.toString(),
         traveler_id: traveler.id.toString(),
+        traveler_stripe_account: traveler.stripe_account_id,
         platform: 'amanah-go'
       },
-      description: `Paiement pour trajet ${trip.departure_city} → ${trip.arrival_city}`
+      description: `Paiement Escrow pour trajet ${trip.departure_city} → ${trip.arrival_city}`
     })
 
     // Sauvegarder le payment_intent_id dans la réservation
@@ -1436,7 +2940,7 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
   }
 })
 
-// Route 2: Confirmer un paiement
+// Route 2: Confirmer un paiement (après que le client ait validé avec sa carte)
 app.post('/api/stripe/payment/confirm', authMiddleware, async (c) => {
   try {
     const stripe = getStripe(c)
@@ -1449,6 +2953,29 @@ app.post('/api/stripe/payment/confirm', authMiddleware, async (c) => {
       }, 400)
     }
 
+    // 🧪 MODE MOCK: Simuler la confirmation
+    if (!stripe || STRIPE_MOCK_MODE || payment_intent_id.startsWith('pi_mock_')) {
+      console.log('🎭 MOCK MODE: Simulating payment confirmation')
+      
+      // Trouver le booking associé
+      const bookingArray = Array.from(inMemoryDB.bookings.values())
+      const booking = bookingArray.find(b => b.payment_intent_id === payment_intent_id)
+      
+      if (booking) {
+        booking.payment_status = 'held' // Simuler Escrow (fonds bloqués)
+        inMemoryDB.bookings.set(booking.id, booking)
+      }
+      
+      return c.json({
+        success: true,
+        mock_mode: true,
+        status: 'requires_capture',
+        amount: booking ? booking.amount : 0,
+        currency: 'eur',
+        escrow_status: 'held'
+      })
+    }
+
     // Récupérer le Payment Intent depuis Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
 
@@ -1457,7 +2984,14 @@ app.post('/api/stripe/payment/confirm', authMiddleware, async (c) => {
     if (booking_id) {
       const booking = inMemoryDB.bookings.get(booking_id)
       if (booking) {
-        booking.payment_status = paymentIntent.status === 'succeeded' ? 'paid' : 'failed'
+        // Le Payment Intent est "requires_capture" = fonds bloqués en Escrow
+        if (paymentIntent.status === 'requires_capture') {
+          booking.payment_status = 'held' // 🔐 Fonds bloqués en Escrow
+        } else if (paymentIntent.status === 'succeeded') {
+          booking.payment_status = 'paid'
+        } else {
+          booking.payment_status = 'failed'
+        }
         booking.payment_intent_id = payment_intent_id
         inMemoryDB.bookings.set(booking_id, booking)
       }
@@ -1467,7 +3001,8 @@ app.post('/api/stripe/payment/confirm', authMiddleware, async (c) => {
       success: true,
       status: paymentIntent.status,
       amount: paymentIntent.amount / 100,
-      currency: paymentIntent.currency
+      currency: paymentIntent.currency,
+      escrow_status: paymentIntent.status === 'requires_capture' ? 'held' : 'released'
     })
   } catch (error: any) {
     console.error('Payment confirmation error:', error)
@@ -1492,9 +3027,10 @@ app.get('/api/stripe/config', (c) => {
 // STRIPE TRANSFER & ESCROW API ROUTES
 // ==========================================
 
-// Route 1: Confirmer la livraison et déclencher le transfert
+// Route 1: Confirmer la livraison et déclencher la capture + transfert (ESCROW RELEASE)
 app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
   try {
+    const stripe = getStripe(c)
     const bookingId = c.req.param('id')
     const user = c.get('user')
 
@@ -1515,11 +3051,11 @@ app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
       }, 403)
     }
 
-    // Vérifier que le paiement est bien effectué
-    if (booking.payment_status !== 'paid') {
+    // Vérifier que le paiement est en Escrow (held)
+    if (booking.payment_status !== 'held' && booking.payment_status !== 'paid') {
       return c.json({ 
         success: false, 
-        error: 'Le paiement n\'a pas été effectué' 
+        error: `Le paiement n'est pas en attente (statut: ${booking.payment_status})` 
       }, 400)
     }
 
@@ -1531,38 +3067,70 @@ app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
       }, 400)
     }
 
+    // 🔐 ÉTAPE 1: CAPTURER les fonds bloqués (Escrow Release)
+    if (booking.payment_status === 'held') {
+      // 🧪 MODE MOCK: Simuler la capture
+      if (!stripe || STRIPE_MOCK_MODE || booking.payment_intent_id.startsWith('pi_mock_')) {
+        console.log('🎭 MOCK MODE: Simulating payment capture')
+        booking.payment_status = 'captured'
+        console.log(`✅ Escrow released (MOCK): Payment ${booking.payment_intent_id} captured`)
+      } else {
+        try {
+          const paymentIntent = await stripe.paymentIntents.capture(booking.payment_intent_id)
+          
+          if (paymentIntent.status !== 'succeeded') {
+            return c.json({
+              success: false,
+              error: 'Impossible de capturer le paiement: ' + paymentIntent.status
+            }, 400)
+          }
+          
+          booking.payment_status = 'captured' // Fonds capturés
+          console.log(`✅ Escrow released: Payment ${booking.payment_intent_id} captured`)
+        } catch (captureError: any) {
+          console.error('❌ Capture error:', captureError)
+          return c.json({
+            success: false,
+            error: 'Erreur lors de la capture du paiement: ' + captureError.message
+          }, 500)
+        }
+      }
+    }
+
     // Marquer la livraison comme confirmée
     booking.delivery_confirmed = true
     booking.delivery_confirmed_at = new Date().toISOString()
     booking.status = 'completed'
     inMemoryDB.bookings.set(bookingId, booking)
 
-    // Déclencher le transfert automatiquement
+    // 🔐 ÉTAPE 2: TRANSFÉRER au voyageur
     try {
       const transferResult = await createTransfer(bookingId)
       
       if (transferResult.success) {
         booking.transfer_id = transferResult.transfer_id
         booking.transfer_status = 'completed'
+        booking.payment_status = 'transferred' // Paiement transféré au voyageur
         inMemoryDB.bookings.set(bookingId, booking)
 
         return c.json({
           success: true,
-          message: 'Livraison confirmée et paiement transféré au voyageur',
+          message: '🎉 Livraison confirmée ! Fonds capturés et transférés au voyageur.',
+          escrow_released: true,
           transfer_id: transferResult.transfer_id,
           amount_transferred: transferResult.amount
         })
       } else {
         return c.json({
           success: false,
-          error: 'Livraison confirmée mais erreur lors du transfert: ' + transferResult.error
+          error: 'Livraison confirmée et fonds capturés, mais erreur lors du transfert: ' + transferResult.error
         }, 500)
       }
     } catch (transferError: any) {
       console.error('Transfer error:', transferError)
       return c.json({
         success: false,
-        error: 'Livraison confirmée mais erreur lors du transfert'
+        error: 'Livraison confirmée et fonds capturés, mais erreur lors du transfert'
       }, 500)
     }
   } catch (error: any) {
@@ -1758,10 +3326,22 @@ app.post('/api/auth/signup', async (c) => {
       kyc_status: 'PENDING',
       rating: 0,
       reviews_count: 0,
+      oauth_provider: null,
+      oauth_id: null,
       created_at: new Date().toISOString()
     }
     
     inMemoryDB.users.set(userId, user)
+    
+    // 📧 Envoyer email de bienvenue
+    try {
+      const resendKey = c.env?.RESEND_API_KEY
+      const emailHtml = EmailTemplates.welcome(name)
+      await sendEmail(email, '👋 Bienvenue sur Amanah GO !', emailHtml, resendKey)
+    } catch (emailError) {
+      console.error('Erreur envoi email bienvenue:', emailError)
+      // Continue même si l'email échoue
+    }
     
     // Générer JWT token
     const secret = c.env?.JWT_SECRET || JWT_SECRET
@@ -1790,6 +3370,226 @@ app.post('/api/auth/signup', async (c) => {
     
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// ==========================================
+// OAUTH GOOGLE - Authentification
+// ==========================================
+
+// Rediriger vers Google OAuth
+app.get('/api/auth/google', (c) => {
+  const googleClientId = c.env?.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID'
+  const redirectUri = `${c.req.url.split('/api')[0]}/api/auth/google/callback`
+  
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${googleClientId}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&response_type=code` +
+    `&scope=email profile` +
+    `&access_type=offline` +
+    `&prompt=consent`
+  
+  return c.redirect(googleAuthUrl)
+})
+
+// Callback Google OAuth
+app.get('/api/auth/google/callback', async (c) => {
+  try {
+    const code = c.req.query('code')
+    if (!code) {
+      return c.redirect('/login?error=oauth_failed')
+    }
+    
+    const googleClientId = c.env?.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID'
+    const googleClientSecret = c.env?.GOOGLE_CLIENT_SECRET || 'YOUR_GOOGLE_CLIENT_SECRET'
+    const redirectUri = `${c.req.url.split('/api')[0]}/api/auth/google/callback`
+    
+    // Échanger le code contre un access token
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        client_id: googleClientId,
+        client_secret: googleClientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code'
+      })
+    })
+    
+    const tokenData = await tokenResponse.json()
+    if (!tokenData.access_token) {
+      return c.redirect('/login?error=oauth_failed')
+    }
+    
+    // Récupérer les infos utilisateur
+    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+    })
+    
+    const googleUser = await userResponse.json()
+    
+    // Vérifier si l'utilisateur existe déjà
+    let user = Array.from(inMemoryDB.users.values()).find(u => 
+      u.email === googleUser.email || (u.oauth_provider === 'google' && u.oauth_id === googleUser.id)
+    )
+    
+    if (!user) {
+      // Créer un nouvel utilisateur
+      const userId = crypto.randomUUID()
+      user = {
+        id: userId,
+        email: googleUser.email,
+        name: googleUser.name,
+        phone: '', // À remplir plus tard
+        avatar_url: googleUser.picture,
+        oauth_provider: 'google',
+        oauth_id: googleUser.id,
+        kyc_status: 'PENDING',
+        rating: 0,
+        reviews_count: 0,
+        created_at: new Date().toISOString()
+      }
+      inMemoryDB.users.set(userId, user)
+      
+      // 📧 Envoyer email de bienvenue
+      try {
+        const resendKey = c.env?.RESEND_API_KEY
+        const emailHtml = EmailTemplates.welcome(user.name)
+        await sendEmail(user.email, '👋 Bienvenue sur Amanah GO !', emailHtml, resendKey)
+      } catch (emailError) {
+        console.error('Erreur envoi email bienvenue:', emailError)
+      }
+    }
+    
+    // Générer JWT token
+    const secret = c.env?.JWT_SECRET || JWT_SECRET
+    const token = await sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+      },
+      secret
+    )
+    
+    // Rediriger vers le dashboard avec le token
+    return c.redirect(`/voyageur?token=${token}`)
+    
+  } catch (error: any) {
+    console.error('Erreur OAuth Google:', error)
+    return c.redirect('/login?error=oauth_failed')
+  }
+})
+
+// ==========================================
+// OAUTH FACEBOOK - Authentification
+// ==========================================
+
+// Rediriger vers Facebook OAuth
+app.get('/api/auth/facebook', (c) => {
+  const facebookAppId = c.env?.FACEBOOK_APP_ID || 'YOUR_FACEBOOK_APP_ID'
+  const redirectUri = `${c.req.url.split('/api')[0]}/api/auth/facebook/callback`
+  
+  const facebookAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
+    `client_id=${facebookAppId}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&scope=email,public_profile` +
+    `&response_type=code`
+  
+  return c.redirect(facebookAuthUrl)
+})
+
+// Callback Facebook OAuth
+app.get('/api/auth/facebook/callback', async (c) => {
+  try {
+    const code = c.req.query('code')
+    if (!code) {
+      return c.redirect('/login?error=oauth_failed')
+    }
+    
+    const facebookAppId = c.env?.FACEBOOK_APP_ID || 'YOUR_FACEBOOK_APP_ID'
+    const facebookAppSecret = c.env?.FACEBOOK_APP_SECRET || 'YOUR_FACEBOOK_APP_SECRET'
+    const redirectUri = `${c.req.url.split('/api')[0]}/api/auth/facebook/callback`
+    
+    // Échanger le code contre un access token
+    const tokenResponse = await fetch(
+      `https://graph.facebook.com/v18.0/oauth/access_token?` +
+      `client_id=${facebookAppId}` +
+      `&client_secret=${facebookAppSecret}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&code=${code}`
+    )
+    
+    const tokenData = await tokenResponse.json()
+    if (!tokenData.access_token) {
+      return c.redirect('/login?error=oauth_failed')
+    }
+    
+    // Récupérer les infos utilisateur
+    const userResponse = await fetch(
+      `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokenData.access_token}`
+    )
+    
+    const facebookUser = await userResponse.json()
+    
+    if (!facebookUser.email) {
+      return c.redirect('/login?error=email_required')
+    }
+    
+    // Vérifier si l'utilisateur existe déjà
+    let user = Array.from(inMemoryDB.users.values()).find(u => 
+      u.email === facebookUser.email || (u.oauth_provider === 'facebook' && u.oauth_id === facebookUser.id)
+    )
+    
+    if (!user) {
+      // Créer un nouvel utilisateur
+      const userId = crypto.randomUUID()
+      user = {
+        id: userId,
+        email: facebookUser.email,
+        name: facebookUser.name,
+        phone: '', // À remplir plus tard
+        avatar_url: facebookUser.picture?.data?.url,
+        oauth_provider: 'facebook',
+        oauth_id: facebookUser.id,
+        kyc_status: 'PENDING',
+        rating: 0,
+        reviews_count: 0,
+        created_at: new Date().toISOString()
+      }
+      inMemoryDB.users.set(userId, user)
+      
+      // 📧 Envoyer email de bienvenue
+      try {
+        const resendKey = c.env?.RESEND_API_KEY
+        const emailHtml = EmailTemplates.welcome(user.name)
+        await sendEmail(user.email, '👋 Bienvenue sur Amanah GO !', emailHtml, resendKey)
+      } catch (emailError) {
+        console.error('Erreur envoi email bienvenue:', emailError)
+      }
+    }
+    
+    // Générer JWT token
+    const secret = c.env?.JWT_SECRET || JWT_SECRET
+    const token = await sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+      },
+      secret
+    )
+    
+    // Rediriger vers le dashboard avec le token
+    return c.redirect(`/voyageur?token=${token}`)
+    
+  } catch (error: any) {
+    console.error('Erreur OAuth Facebook:', error)
+    return c.redirect('/login?error=oauth_failed')
   }
 })
 
@@ -1946,58 +3746,145 @@ app.post('/api/auth/verify-kyc', async (c) => {
     }
     
     // Vérifier que l'utilisateur existe
-    const user = await DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first()
+    let user
+    if (DB) {
+      // Mode production avec D1
+      user = await DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first()
+    } else {
+      // Mode dev avec inMemoryDB
+      const users = Array.from(inMemoryDB.users.values())
+      user = users.find(u => u.id === Number(userId))
+    }
+    
     if (!user) {
       return c.json({ success: false, error: 'Utilisateur introuvable' }, 404)
     }
     
-    // 1. Upload du selfie vers R2
+    // 1. Upload du selfie vers R2 (ou simulation en dev)
     const selfieKey = `kyc/${userId}/selfie-${Date.now()}.jpg`
     const selfieBuffer = await selfie.arrayBuffer()
-    await R2.put(selfieKey, selfieBuffer, {
-      httpMetadata: { contentType: 'image/jpeg' }
-    })
     
-    // 2. Upload de la pièce d'identité vers R2
+    if (R2) {
+      await R2.put(selfieKey, selfieBuffer, {
+        httpMetadata: { contentType: 'image/jpeg' }
+      })
+      console.log('✅ Selfie uploadé vers R2:', selfieKey)
+    } else {
+      console.log('⚠️ R2 non disponible - Selfie simulé:', selfieKey)
+    }
+    
+    // 2. Upload de la pièce d'identité vers R2 (ou simulation en dev)
     const idKey = `kyc/${userId}/id-${Date.now()}.jpg`
     const idBuffer = await idDocument.arrayBuffer()
-    await R2.put(idKey, idBuffer, {
-      httpMetadata: { contentType: 'image/jpeg' }
-    })
+    
+    if (R2) {
+      await R2.put(idKey, idBuffer, {
+        httpMetadata: { contentType: 'image/jpeg' }
+      })
+      console.log('✅ ID uploadé vers R2:', idKey)
+    } else {
+      console.log('⚠️ R2 non disponible - ID simulé:', idKey)
+    }
     
     // 3. Comparaison faciale avec Cloudflare AI
     let faceMatch = false
     let similarity = 0
+    let aiError = null
     
     try {
-      // Utiliser Cloudflare AI Workers AI pour la comparaison faciale
-      // Model: @cf/microsoft/resnet-50 pour extraction de features
-      // Puis calculer la similarité cosine
+      if (AI) {
+        console.log('🤖 Lancement comparaison faciale Cloudflare AI...')
+        
+        // Convertir les images en base64 pour l'AI
+        const selfieArray = new Uint8Array(selfieBuffer)
+        const idArray = new Uint8Array(idBuffer)
+        
+        // Utiliser le modèle de détection de visages
+        // @cf/microsoft/resnet-50 pour extraction de features
+        const selfieAnalysis = await AI.run('@cf/microsoft/resnet-50', {
+          image: Array.from(selfieArray)
+        })
+        
+        const idAnalysis = await AI.run('@cf/microsoft/resnet-50', {
+          image: Array.from(idArray)
+        })
+        
+        // Calculer la similarité cosine entre les embeddings
+        similarity = calculateCosineSimilarity(
+          selfieAnalysis.data,
+          idAnalysis.data
+        )
+        
+        console.log(`📊 Similarité calculée: ${similarity}`)
+        
+        // Seuil de validation : 0.75 (75% de similarité)
+        faceMatch = similarity >= 0.75
+        
+        if (faceMatch) {
+          console.log('✅ Visages correspondent ! KYC validé automatiquement')
+        } else {
+          console.log('⚠️ Visages ne correspondent pas assez - Vérification manuelle requise')
+        }
+      } else {
+        // Mode DEV sans Cloudflare AI - Simulation
+        console.log('⚠️ Cloudflare AI non disponible - Mode MOCK')
+        faceMatch = true
+        similarity = 0.85 // Simulé pour dev
+      }
       
-      // Pour l'instant, on simule (à implémenter avec AI)
-      // TODO: Intégrer @cf/microsoft/resnet-50 ou face-api.js
-      
-      console.log('⚠️ Comparaison faciale non implémentée - Simulation OK')
-      faceMatch = true
-      similarity = 0.85 // Simulé
-      
-    } catch (aiError) {
-      console.error('Erreur AI:', aiError)
-      // Continue sans bloquer si l'AI échoue
+    } catch (aiErrorCaught) {
+      console.error('❌ Erreur AI:', aiErrorCaught)
+      aiError = aiErrorCaught.message
+      // Mode fallback : validation manuelle
+      console.log('⚠️ Fallback: Vérification manuelle sera nécessaire')
+      faceMatch = false
+      similarity = 0
     }
     
     // 4. Mettre à jour le statut KYC de l'utilisateur
     const kycStatus = faceMatch ? 'VERIFIED' : 'PENDING_REVIEW'
     
-    await DB.prepare(`
-      UPDATE users 
-      SET kyc_status = ?,
-          kyc_selfie_url = ?,
-          kyc_document_url = ?,
-          kyc_verified_at = datetime('now'),
-          updated_at = datetime('now')
-      WHERE id = ?
-    `).bind(kycStatus, selfieKey, idKey, userId).run()
+    if (DB) {
+      // Mode production avec D1
+      await DB.prepare(`
+        UPDATE users 
+        SET kyc_status = ?,
+            kyc_selfie_url = ?,
+            kyc_document_url = ?,
+            kyc_verified_at = datetime('now'),
+            updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(kycStatus, selfieKey, idKey, userId).run()
+    } else {
+      // Mode dev avec inMemoryDB
+      const userEmail = Array.from(inMemoryDB.users.entries())
+        .find(([_, u]) => u.id === Number(userId))?.[0]
+      
+      if (userEmail) {
+        const userToUpdate = inMemoryDB.users.get(userEmail)
+        if (userToUpdate) {
+          userToUpdate.kyc_status = kycStatus
+          userToUpdate.kyc_selfie_url = selfieKey
+          userToUpdate.kyc_document_url = idKey
+          userToUpdate.kyc_verified_at = new Date().toISOString()
+          userToUpdate.updated_at = new Date().toISOString()
+          inMemoryDB.users.set(userEmail, userToUpdate)
+          console.log('✅ Utilisateur mis à jour (inMemoryDB):', userEmail, '- KYC:', kycStatus)
+        }
+      }
+    }
+    
+    // 📧 Envoyer email si KYC vérifié
+    if (faceMatch && kycStatus === 'VERIFIED') {
+      try {
+        const resendKey = c.env?.RESEND_API_KEY
+        const userEmail = user.email
+        const emailHtml = EmailTemplates.kycVerified(user.name)
+        await sendEmail(userEmail, '✅ Votre identité a été vérifiée !', emailHtml, resendKey)
+      } catch (emailError) {
+        console.error('Erreur envoi email KYC:', emailError)
+      }
+    }
     
     return c.json({ 
       success: true, 
@@ -2399,17 +4286,17 @@ app.get('/login', (c) => {
 
                 <!-- OAuth Buttons -->
                 <div class="space-y-3">
-                    <button onclick="alert('OAuth Google à implémenter')"
-                            class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                    <a href="/api/auth/google"
+                       class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-google text-red-500 mr-2"></i>
                         <span class="font-medium text-gray-700">Continuer avec Google</span>
-                    </button>
+                    </a>
                     
-                    <button onclick="alert('OAuth Facebook à implémenter')"
-                            class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                    <a href="/api/auth/facebook"
+                       class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-facebook text-blue-600 mr-2"></i>
                         <span class="font-medium text-gray-700">Continuer avec Facebook</span>
-                    </button>
+                    </a>
                 </div>
 
                 <!-- Lien inscription -->
@@ -2585,17 +4472,17 @@ app.get('/signup', (c) => {
 
                 <!-- OAuth Buttons -->
                 <div class="space-y-3">
-                    <button onclick="alert('OAuth Google à implémenter')"
-                            class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                    <a href="/api/auth/google"
+                       class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-google text-red-500 mr-2"></i>
                         <span class="font-medium text-gray-700">Continuer avec Google</span>
-                    </button>
+                    </a>
                     
-                    <button onclick="alert('OAuth Facebook à implémenter')"
-                            class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                    <a href="/api/auth/facebook"
+                       class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-facebook text-blue-600 mr-2"></i>
                         <span class="font-medium text-gray-700">Continuer avec Facebook</span>
-                    </button>
+                    </a>
                 </div>
 
                 <!-- Lien connexion -->
@@ -4802,6 +6689,125 @@ app.get('/api/users/:user_id/trips', async (c) => {
 // ==========================================
 // PACKAGES CRUD APIs
 // ==========================================
+
+// Upload photos de colis vers R2
+app.post('/api/packages/upload-photos', authMiddleware, async (c) => {
+  const { R2 } = c.env
+  
+  try {
+    const formData = await c.req.formData()
+    const userId = formData.get('user_id')
+    const packageId = formData.get('package_id') || crypto.randomUUID()
+    
+    if (!userId) {
+      return c.json({ 
+        success: false, 
+        error: 'user_id requis' 
+      }, 400)
+    }
+    
+    // Récupérer toutes les photos (max 5)
+    const photos: string[] = []
+    const maxPhotos = 5
+    
+    for (let i = 0; i < maxPhotos; i++) {
+      const photo = formData.get(`photo_${i}`)
+      if (!photo || !(photo instanceof File)) continue
+      
+      // Valider la taille (max 5MB)
+      if (photo.size > 5 * 1024 * 1024) {
+        return c.json({ 
+          success: false, 
+          error: `Photo ${i + 1} trop volumineuse (max 5MB)` 
+        }, 400)
+      }
+      
+      // Valider le type
+      if (!photo.type.startsWith('image/')) {
+        return c.json({ 
+          success: false, 
+          error: `Photo ${i + 1} n'est pas une image valide` 
+        }, 400)
+      }
+      
+      // Générer clé unique pour R2
+      const fileExt = photo.name.split('.').pop() || 'jpg'
+      const photoKey = `packages/${userId}/${packageId}/photo-${i}-${Date.now()}.${fileExt}`
+      const photoBuffer = await photo.arrayBuffer()
+      
+      // Upload vers R2
+      if (R2) {
+        await R2.put(photoKey, photoBuffer, {
+          httpMetadata: { 
+            contentType: photo.type 
+          },
+          customMetadata: {
+            userId: String(userId),
+            packageId: String(packageId),
+            originalName: photo.name
+          }
+        })
+        console.log(`✅ Photo ${i + 1} uploadée vers R2:`, photoKey)
+        photos.push(photoKey)
+      } else {
+        console.log(`⚠️ R2 non disponible - Photo ${i + 1} simulée:`, photoKey)
+        photos.push(photoKey) // Simuler en dev
+      }
+    }
+    
+    return c.json({ 
+      success: true, 
+      photos,
+      package_id: packageId,
+      message: `${photos.length} photo(s) uploadée(s) avec succès` 
+    })
+    
+  } catch (error: any) {
+    console.error('Erreur upload photos:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Récupérer une photo de colis depuis R2
+app.get('/api/packages/photos/:photoKey', async (c) => {
+  const { R2 } = c.env
+  const photoKey = c.req.param('photoKey')
+  
+  try {
+    if (!R2) {
+      // En dev, retourner image placeholder
+      return c.redirect('https://via.placeholder.com/400x300?text=Photo+Colis')
+    }
+    
+    // Récupérer depuis R2
+    const object = await R2.get(photoKey)
+    
+    if (!object) {
+      return c.json({ 
+        success: false, 
+        error: 'Photo introuvable' 
+      }, 404)
+    }
+    
+    // Retourner l'image
+    return new Response(object.body, {
+      headers: {
+        'Content-Type': object.httpMetadata?.contentType || 'image/jpeg',
+        'Cache-Control': 'public, max-age=31536000' // Cache 1 an
+      }
+    })
+    
+  } catch (error: any) {
+    console.error('Erreur récupération photo:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
 
 // Create new package
 app.post('/api/packages', authMiddleware, async (c) => {

@@ -5,6 +5,14 @@
   "pages_build_output_dir": "dist",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "ENVIRONMENT": "production"
-  }
+    "ENVIRONMENT": "production",
+    "GOOGLE_CLIENT_ID": "",
+    "FACEBOOK_APP_ID": ""
+  },
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "amanah-go-storage"
+    }
+  ]
 }

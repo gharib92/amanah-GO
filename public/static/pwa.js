@@ -253,3 +253,226 @@ function showNetworkStatus(status) {
 }
 
 console.log('📱 PWA Script Amanah GO chargé ✅');
+
+// ==========================================
+// PUSH NOTIFICATIONS
+// ==========================================
+
+// Demander permission pour les notifications
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) {
+    console.log('❌ Notifications non supportées');
+    return false;
+  }
+
+  if (Notification.permission === 'granted') {
+    console.log('✅ Permission notifications déjà accordée');
+    return true;
+  }
+
+  if (Notification.permission !== 'denied') {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      console.log('✅ Permission notifications accordée');
+      await subscribeToPushNotifications();
+      return true;
+    }
+  }
+
+  console.log('❌ Permission notifications refusée');
+  return false;
+}
+
+// S'abonner aux notifications push
+async function subscribeToPushNotifications() {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    
+    // Vérifier si déjà abonné
+    const existingSubscription = await registration.pushManager.getSubscription();
+    if (existingSubscription) {
+      console.log('✅ Déjà abonné aux push notifications');
+      // Envoyer au serveur pour mise à jour
+      await sendSubscriptionToServer(existingSubscription);
+      return existingSubscription;
+    }
+
+    // Créer nouvelle subscription
+    // VAPID public key (à générer avec web-push lib)
+    const vapidPublicKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib37J8-fTYyEkFZGgFP8K8Zt4VKLnLmX3g3dADlNMHtBqFYqO0yvDLHTqz4';
+    
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+    });
+
+    console.log('✅ Abonné aux push notifications:', subscription);
+    
+    // Envoyer au serveur
+    await sendSubscriptionToServer(subscription);
+    
+    return subscription;
+    
+  } catch (error) {
+    console.error('❌ Erreur abonnement push:', error);
+    return null;
+  }
+}
+
+// Envoyer subscription au serveur
+async function sendSubscriptionToServer(subscription) {
+  try {
+    const user = JSON.parse(localStorage.getItem('amanah_user') || '{}');
+    if (!user.id) {
+      console.log('⚠️ Utilisateur non connecté');
+      return;
+    }
+
+    const response = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('amanah_token')}`
+      },
+      body: JSON.stringify({
+        user_id: user.id,
+        subscription: subscription
+      })
+    });
+
+    if (response.ok) {
+      console.log('✅ Subscription envoyée au serveur');
+    } else {
+      console.error('❌ Erreur envoi subscription');
+    }
+    
+  } catch (error) {
+    console.error('❌ Erreur envoi subscription:', error);
+  }
+}
+
+// Convertir VAPID key
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Afficher bouton pour activer les notifications
+function showNotificationPrompt() {
+  if (Notification.permission === 'granted' || 
+      Notification.permission === 'denied' ||
+      sessionStorage.getItem('notification-prompt-dismissed')) {
+    return;
+  }
+
+  const prompt = document.createElement('div');
+  prompt.id = 'notification-prompt';
+  prompt.innerHTML = `
+    <div style="position: fixed; top: 20px; right: 20px; 
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+                color: white; padding: 16px 20px; border-radius: 12px; 
+                box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4); z-index: 9999;
+                max-width: 320px; animation: slideInRight 0.3s ease-out;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 28px;">🔔</span>
+        <div style="flex: 1;">
+          <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">
+            Activer les notifications
+          </div>
+          <div style="font-size: 13px; opacity: 0.9;">
+            Recevez des alertes pour vos trajets et colis
+          </div>
+        </div>
+        <button id="close-notif-prompt" 
+                style="background: transparent; color: white; border: none; 
+                       padding: 4px; cursor: pointer; font-size: 18px; opacity: 0.8;">
+          ×
+        </button>
+      </div>
+      <div style="margin-top: 12px; display: flex; gap: 8px;">
+        <button id="enable-notifications" 
+                style="flex: 1; background: white; color: #059669; border: none; 
+                       padding: 8px 16px; border-radius: 8px; font-weight: bold;
+                       cursor: pointer; font-size: 13px; transition: all 0.2s;">
+          Activer
+        </button>
+        <button id="dismiss-notifications" 
+                style="flex: 1; background: transparent; color: white; 
+                       border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; 
+                       border-radius: 8px; font-weight: 500; cursor: pointer; 
+                       font-size: 13px; transition: all 0.2s;">
+          Plus tard
+        </button>
+      </div>
+    </div>
+    <style>
+      @keyframes slideInRight {
+        from {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      #enable-notifications:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+    </style>
+  `;
+
+  document.body.appendChild(prompt);
+
+  // Activer notifications
+  document.getElementById('enable-notifications').addEventListener('click', async () => {
+    const granted = await requestNotificationPermission();
+    if (granted) {
+      prompt.style.animation = 'slideInRight 0.3s ease-out reverse';
+      setTimeout(() => prompt.remove(), 300);
+      
+      // Afficher notification de test
+      new Notification('🎉 Notifications activées !', {
+        body: 'Vous recevrez désormais des alertes pour vos trajets et colis',
+        icon: '/static/logo-amanah-go.png',
+        badge: '/static/logo-amanah-go.png'
+      });
+    }
+  });
+
+  // Fermer
+  const closeActions = ['close-notif-prompt', 'dismiss-notifications'];
+  closeActions.forEach(id => {
+    document.getElementById(id)?.addEventListener('click', () => {
+      prompt.style.animation = 'slideInRight 0.3s ease-out reverse';
+      setTimeout(() => prompt.remove(), 300);
+      sessionStorage.setItem('notification-prompt-dismissed', 'true');
+    });
+  });
+}
+
+// Afficher prompt après 5 secondes si connecté
+setTimeout(() => {
+  const user = localStorage.getItem('amanah_user');
+  if (user && 'Notification' in window) {
+    showNotificationPrompt();
+  }
+}, 5000);
+
+// Exposer fonctions globalement
+window.notificationManager = {
+  request: requestNotificationPermission,
+  subscribe: subscribeToPushNotifications,
+  showPrompt: showNotificationPrompt
+};
