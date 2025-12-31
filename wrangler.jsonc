@@ -7,7 +7,10 @@
   "vars": {
     "ENVIRONMENT": "production",
     "GOOGLE_CLIENT_ID": "",
-    "FACEBOOK_APP_ID": ""
+    "FACEBOOK_APP_ID": "",
+    "TWILIO_ACCOUNT_SID": "",
+    "TWILIO_AUTH_TOKEN": "",
+    "TWILIO_PHONE_NUMBER": "+33757591098"
   },
   "r2_buckets": [
     {
