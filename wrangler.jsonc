@@ -12,6 +12,13 @@
     "TWILIO_AUTH_TOKEN": "",
     "TWILIO_PHONE_NUMBER": "+33757591098"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "amanah-go-db",
+      "database_id": "TO_BE_CONFIGURED_AFTER_CREATING_D1_DATABASE"
+    }
+  ],
   "r2_buckets": [
     {
       "binding": "R2",
