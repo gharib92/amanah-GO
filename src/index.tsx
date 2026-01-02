@@ -3485,6 +3485,143 @@ app.get('/api/auth/google/callback', async (c) => {
 })
 
 // ==========================================
+// OAUTH APPLE - Sign in with Apple
+// ==========================================
+
+// Rediriger vers Apple OAuth
+app.get('/api/auth/apple', (c) => {
+  const appleClientId = c.env?.APPLE_CLIENT_ID || 'YOUR_APPLE_CLIENT_ID'
+  const redirectUri = `${c.req.url.split('/api')[0]}/api/auth/apple/callback`
+  
+  // Apple utilise OpenID Connect
+  const appleAuthUrl = `https://appleid.apple.com/auth/authorize?` +
+    `client_id=${appleClientId}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&response_type=code` +
+    `&response_mode=form_post` +
+    `&scope=name email`
+  
+  return c.redirect(appleAuthUrl)
+})
+
+// Callback Apple OAuth (POST car Apple utilise form_post)
+app.post('/api/auth/apple/callback', async (c) => {
+  try {
+    const formData = await c.req.formData()
+    const code = formData.get('code')
+    const user = formData.get('user') // Apple envoie les infos user seulement la première fois
+    
+    if (!code) {
+      return c.redirect('/login?error=oauth_failed')
+    }
+    
+    const appleClientId = c.env?.APPLE_CLIENT_ID || 'YOUR_APPLE_CLIENT_ID'
+    const appleTeamId = c.env?.APPLE_TEAM_ID || 'YOUR_APPLE_TEAM_ID'
+    const appleKeyId = c.env?.APPLE_KEY_ID || 'YOUR_APPLE_KEY_ID'
+    const applePrivateKey = c.env?.APPLE_PRIVATE_KEY || 'YOUR_APPLE_PRIVATE_KEY'
+    const redirectUri = `${c.req.url.split('/api')[0]}/api/auth/apple/callback`
+    
+    // Créer client secret JWT pour Apple (valide 6 mois)
+    const clientSecret = await sign(
+      {
+        iss: appleTeamId,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 180), // 6 mois
+        aud: 'https://appleid.apple.com',
+        sub: appleClientId
+      },
+      applePrivateKey,
+      { algorithm: 'ES256', kid: appleKeyId }
+    )
+    
+    // Échanger le code contre un access token
+    const tokenResponse = await fetch('https://appleid.apple.com/auth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code: code as string,
+        client_id: appleClientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code'
+      })
+    })
+    
+    const tokenData = await tokenResponse.json()
+    if (!tokenData.id_token) {
+      return c.redirect('/login?error=oauth_failed')
+    }
+    
+    // Décoder l'id_token (JWT) pour récupérer les infos utilisateur
+    const [, payloadBase64] = tokenData.id_token.split('.')
+    const payload = JSON.parse(atob(payloadBase64))
+    
+    // Parser les infos user si disponibles (première connexion uniquement)
+    let userName = 'Utilisateur Apple'
+    if (user) {
+      try {
+        const userObj = typeof user === 'string' ? JSON.parse(user) : user
+        userName = userObj.name ? `${userObj.name.firstName || ''} ${userObj.name.lastName || ''}`.trim() : userName
+      } catch (e) {
+        console.error('Erreur parsing user Apple:', e)
+      }
+    }
+    
+    // Vérifier si l'utilisateur existe déjà
+    let dbUser = Array.from(inMemoryDB.users.values()).find(u => 
+      u.email === payload.email || (u.oauth_provider === 'apple' && u.oauth_id === payload.sub)
+    )
+    
+    if (!dbUser) {
+      // Créer un nouvel utilisateur
+      const userId = crypto.randomUUID()
+      dbUser = {
+        id: userId,
+        email: payload.email,
+        name: userName,
+        phone: '', // À remplir plus tard
+        avatar_url: null,
+        oauth_provider: 'apple',
+        oauth_id: payload.sub,
+        kyc_status: 'PENDING',
+        rating: 0,
+        reviews_count: 0,
+        created_at: new Date().toISOString()
+      }
+      inMemoryDB.users.set(userId, dbUser)
+      
+      // 📧 Envoyer email de bienvenue
+      try {
+        const resendKey = c.env?.RESEND_API_KEY
+        const emailHtml = EmailTemplates.welcome(dbUser.name)
+        await sendEmail(dbUser.email, '👋 Bienvenue sur Amanah GO !', emailHtml, resendKey)
+      } catch (emailError) {
+        console.error('Erreur envoi email bienvenue:', emailError)
+      }
+    }
+    
+    // Générer JWT token
+    const secret = c.env?.JWT_SECRET || JWT_SECRET
+    const token = await sign(
+      {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+      },
+      secret
+    )
+    
+    // Rediriger vers le dashboard avec le token
+    return c.redirect(`/voyageur?token=${token}`)
+    
+  } catch (error: any) {
+    console.error('Erreur OAuth Apple:', error)
+    return c.redirect('/login?error=oauth_failed')
+  }
+})
+
+// ==========================================
 // OAUTH FACEBOOK - Authentification
 // ==========================================
 
@@ -4286,12 +4423,21 @@ app.get('/login', (c) => {
 
                 <!-- OAuth Buttons -->
                 <div class="space-y-3">
+                    <!-- Apple Sign In -->
+                    <a href="/api/auth/apple"
+                       class="w-full flex items-center justify-center px-4 py-3 bg-black hover:bg-gray-900 text-white rounded-lg transition cursor-pointer">
+                        <i class="fab fa-apple text-white mr-2 text-xl"></i>
+                        <span class="font-medium">Sign in with Apple</span>
+                    </a>
+                    
+                    <!-- Google Sign In -->
                     <a href="/api/auth/google"
                        class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-google text-red-500 mr-2"></i>
                         <span class="font-medium text-gray-700">Continuer avec Google</span>
                     </a>
                     
+                    <!-- Facebook Sign In -->
                     <a href="/api/auth/facebook"
                        class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-facebook text-blue-600 mr-2"></i>
@@ -4472,12 +4618,21 @@ app.get('/signup', (c) => {
 
                 <!-- OAuth Buttons -->
                 <div class="space-y-3">
+                    <!-- Apple Sign In -->
+                    <a href="/api/auth/apple"
+                       class="w-full flex items-center justify-center px-4 py-3 bg-black hover:bg-gray-900 text-white rounded-lg transition cursor-pointer">
+                        <i class="fab fa-apple text-white mr-2 text-xl"></i>
+                        <span class="font-medium">Sign in with Apple</span>
+                    </a>
+                    
+                    <!-- Google Sign In -->
                     <a href="/api/auth/google"
                        class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-google text-red-500 mr-2"></i>
                         <span class="font-medium text-gray-700">Continuer avec Google</span>
                     </a>
                     
+                    <!-- Facebook Sign In -->
                     <a href="/api/auth/facebook"
                        class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-facebook text-blue-600 mr-2"></i>
