@@ -1175,6 +1175,66 @@ app.get('/', (c) => {
                         <div class="text-blue-100" data-i18n="landing.stats_security">Paiement sécurisé</div>
                     </div>
                 </div>
+                
+                <!-- Quick OAuth Login Section -->
+                <div class="mt-16 max-w-md mx-auto">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+                        <h3 class="text-2xl font-bold text-white text-center mb-2">
+                            Connexion rapide
+                        </h3>
+                        <p class="text-blue-100 text-center mb-6 text-sm">
+                            Commencez en quelques secondes
+                        </p>
+                        
+                        <div class="space-y-3">
+                            <!-- Apple Sign In -->
+                            <a href="/api/auth/apple"
+                               class="w-full flex items-center justify-center px-6 py-3.5 bg-black hover:bg-gray-900 text-white rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                                <i class="fab fa-apple text-white mr-3 text-2xl"></i>
+                                <span class="font-semibold text-lg">Sign in with Apple</span>
+                            </a>
+                            
+                            <!-- Google Sign In -->
+                            <a href="/api/auth/google"
+                               class="w-full flex items-center justify-center px-6 py-3.5 bg-white hover:bg-gray-50 text-gray-800 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                                <i class="fab fa-google text-red-500 mr-3 text-xl"></i>
+                                <span class="font-semibold">Continuer avec Google</span>
+                            </a>
+                            
+                            <!-- Facebook Sign In -->
+                            <a href="/api/auth/facebook"
+                               class="w-full flex items-center justify-center px-6 py-3.5 bg-white hover:bg-gray-50 text-gray-800 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                                <i class="fab fa-facebook text-blue-600 mr-3 text-xl"></i>
+                                <span class="font-semibold">Continuer avec Facebook</span>
+                            </a>
+                        </div>
+                        
+                        <!-- Divider -->
+                        <div class="relative my-6">
+                            <div class="absolute inset-0 flex items-center">
+                                <div class="w-full border-t border-white/30"></div>
+                            </div>
+                            <div class="relative flex justify-center text-sm">
+                                <span class="px-3 bg-transparent text-blue-100">ou</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Email/Password Login Link -->
+                        <div class="text-center">
+                            <a href="/login" class="text-white hover:text-blue-100 font-medium text-sm underline decoration-2 underline-offset-4">
+                                Se connecter avec email / mot de passe
+                            </a>
+                        </div>
+                        
+                        <!-- Signup Link -->
+                        <p class="mt-4 text-center text-sm text-blue-100">
+                            Pas encore de compte ?
+                            <a href="/signup" class="text-white hover:text-blue-100 font-bold underline decoration-2 underline-offset-4">
+                                Créer un compte
+                            </a>
+                        </p>
+                    </div>
+                </div>
             </div>
         </section>
 
