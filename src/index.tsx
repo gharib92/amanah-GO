@@ -5,6 +5,7 @@ import { jwt } from 'hono/jwt'
 import { sign, verify } from 'hono/jwt'
 import * as bcrypt from 'bcryptjs'
 import Stripe from 'stripe'
+import './styles.css' // Import Tailwind CSS
 
 // Types pour le contexte avec user authentifié
 type Variables = {
@@ -705,7 +706,7 @@ app.get('/test-i18n', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Test i18n - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
@@ -1032,7 +1033,7 @@ app.get('/', (c) => {
         </script>
         
         <!-- Styles -->
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
         <style>
@@ -1512,7 +1513,7 @@ app.get('/admin', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Admin Dashboard - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-50">
@@ -4416,7 +4417,7 @@ app.get('/login', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Connexion - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-50">
@@ -4572,7 +4573,7 @@ app.get('/signup', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Inscription - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-50">
@@ -4770,7 +4771,7 @@ app.get('/voyageur', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Espace Voyageur - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
@@ -5089,7 +5090,7 @@ app.get('/voyageur/stripe-connect', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Configuration Stripe - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
@@ -5227,7 +5228,7 @@ app.get('/verify-profile', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Vérification du Profil - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
           .verification-card {
@@ -5715,7 +5716,7 @@ app.get('/expediteur', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Espace Expéditeur - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
@@ -6096,7 +6097,7 @@ app.get('/voyageur/publier-trajet', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Publier un Trajet - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-50">
@@ -6337,7 +6338,7 @@ app.get('/expediteur/publier-colis', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Publier un Colis - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
     <body class="bg-gray-50">
@@ -7321,7 +7322,7 @@ app.get('/voyageur/mes-trajets', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Mes Trajets - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
           .filter-btn.active {
@@ -7413,7 +7414,7 @@ app.get('/expediteur/mes-colis', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Mes Colis - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
           .filter-btn.active {
@@ -8992,7 +8993,7 @@ app.get('/expediteur/payer', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Paiement Sécurisé - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <script src="https://js.stripe.com/v3/"></script>
     </head>
@@ -9142,7 +9143,7 @@ app.get('/search', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Recherche Avancée - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
@@ -9439,7 +9440,7 @@ app.get('/results', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Résultats de recherche - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
         <style>
@@ -9940,7 +9941,7 @@ app.get('/prohibited-items', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Produits Interdits - Amanah GO</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Tailwind CSS is now compiled locally via Vite -->
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
