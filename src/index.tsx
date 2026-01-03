@@ -6,15 +6,17 @@ import { sign, verify } from 'hono/jwt'
 import * as bcrypt from 'bcryptjs'
 import Stripe from 'stripe'
 import './styles.css' // Import Tailwind CSS
+import { DatabaseService } from './db.service'
 
-// Types pour le contexte avec user authentifié
+// Types pour le contexte avec user authentifié et DB
 type Variables = {
   user: {
-    id: number;
+    id: string;
     email: string;
     name: string;
     role: string;
   }
+  db: DatabaseService;
 }
 
 // ==========================================
@@ -178,6 +180,14 @@ const AIRPORTS = [
 ]
 
 const app = new Hono<{ Variables: Variables }>()
+
+// Middleware: Initialize DB for all requests
+app.use('*', async (c, next) => {
+  if (c.env?.DB) {
+    c.set('db', new DatabaseService(c.env.DB))
+  }
+  await next()
+})
 
 // Initialisation Stripe
 let stripe: Stripe | null = null
@@ -435,9 +445,19 @@ const authMiddleware = async (c: any, next: any) => {
       return c.json({ error: 'Token invalide' }, 401)
     }
     
-    // Charger les infos user depuis inMemoryDB
-    const users = Array.from(inMemoryDB.users.values())
-    const userResult = users.find(u => u.id === payload.id)
+    // Charger les infos user depuis D1
+    const db = c.get('db') as DatabaseService
+    let userResult = null
+    
+    if (db) {
+      userResult = await db.getUserById(payload.id)
+    }
+    
+    // Fallback sur inMemoryDB si D1 pas disponible
+    if (!userResult && inMemoryDB) {
+      const users = Array.from(inMemoryDB.users.values())
+      userResult = users.find(u => u.id === payload.id)
+    }
     
     if (!userResult) {
       return c.json({ error: 'Utilisateur non trouvé' }, 401)
@@ -3357,6 +3377,7 @@ app.post('/api/stripe/webhooks', async (c) => {
 app.post('/api/auth/signup', async (c) => {
   try {
     const { name, email, phone, password } = await c.req.json()
+    const db = c.get('db') as DatabaseService
     
     // Validation
     if (!name || !email || !phone || !password) {
@@ -3367,8 +3388,14 @@ app.post('/api/auth/signup', async (c) => {
       return c.json({ success: false, error: 'Le mot de passe doit contenir au moins 8 caractères' }, 400)
     }
     
-    // Vérifier si l'email existe déjà
-    const existingUser = Array.from(inMemoryDB.users.values()).find(u => u.email === email)
+    // Vérifier si l'email existe déjà (D1 first, fallback inMemoryDB)
+    let existingUser = null
+    if (db) {
+      existingUser = await db.getUserByEmail(email)
+    } else if (inMemoryDB) {
+      existingUser = Array.from(inMemoryDB.users.values()).find(u => u.email === email)
+    }
+    
     if (existingUser) {
       return c.json({ success: false, error: 'Cet email est déjà utilisé' }, 400)
     }
@@ -3377,8 +3404,8 @@ app.post('/api/auth/signup', async (c) => {
     const passwordHash = await bcrypt.hash(password, 10)
     
     // Créer l'utilisateur
-    const userId = crypto.randomUUID()
-    const user = {
+    const userId = crypto.randomUUID().replace(/-/g, '') // Format D1
+    const userData = {
       id: userId,
       email,
       name,
@@ -3392,7 +3419,16 @@ app.post('/api/auth/signup', async (c) => {
       created_at: new Date().toISOString()
     }
     
-    inMemoryDB.users.set(userId, user)
+    // Sauvegarder dans D1 ET inMemoryDB (dual-write pendant transition)
+    if (db) {
+      await db.createUser(userData)
+      console.log('✅ User created in D1:', userId)
+    }
+    
+    if (inMemoryDB) {
+      inMemoryDB.users.set(userId, userData)
+      console.log('✅ User created in memory:', userId)
+    }
     
     // 📧 Envoyer email de bienvenue
     try {
@@ -3430,6 +3466,7 @@ app.post('/api/auth/signup', async (c) => {
     })
     
   } catch (error: any) {
+    console.error('Signup error:', error)
     return c.json({ success: false, error: error.message }, 500)
   }
 })
@@ -3491,28 +3528,49 @@ app.get('/api/auth/google/callback', async (c) => {
     
     const googleUser = await userResponse.json()
     
-    // Vérifier si l'utilisateur existe déjà
-    let user = Array.from(inMemoryDB.users.values()).find(u => 
-      u.email === googleUser.email || (u.oauth_provider === 'google' && u.oauth_id === googleUser.id)
-    )
+    const db = c.get('db') as DatabaseService
+    
+    // Vérifier si l'utilisateur existe déjà (D1 first)
+    let user = null
+    if (db) {
+      user = await db.getUserByEmail(googleUser.email)
+      if (!user) {
+        user = await db.getUserByGoogleId(googleUser.id)
+      }
+    }
+    
+    // Fallback inMemoryDB
+    if (!user && inMemoryDB) {
+      user = Array.from(inMemoryDB.users.values()).find(u => 
+        u.email === googleUser.email || (u.oauth_provider === 'google' && u.oauth_id === googleUser.id)
+      )
+    }
     
     if (!user) {
       // Créer un nouvel utilisateur
-      const userId = crypto.randomUUID()
-      user = {
+      const userId = crypto.randomUUID().replace(/-/g, '')
+      const userData = {
         id: userId,
         email: googleUser.email,
         name: googleUser.name,
         phone: '', // À remplir plus tard
         avatar_url: googleUser.picture,
-        oauth_provider: 'google',
-        oauth_id: googleUser.id,
+        google_id: googleUser.id,
         kyc_status: 'PENDING',
         rating: 0,
         reviews_count: 0,
         created_at: new Date().toISOString()
       }
-      inMemoryDB.users.set(userId, user)
+      
+      // Dual-write: D1 + inMemoryDB
+      if (db) {
+        user = await db.createUser(userData)
+        console.log('✅ Google user created in D1:', userId)
+      }
+      if (inMemoryDB) {
+        inMemoryDB.users.set(userId, userData)
+        user = userData
+      }
       
       // 📧 Envoyer email de bienvenue
       try {
@@ -3628,28 +3686,46 @@ app.post('/api/auth/apple/callback', async (c) => {
       }
     }
     
-    // Vérifier si l'utilisateur existe déjà
-    let dbUser = Array.from(inMemoryDB.users.values()).find(u => 
-      u.email === payload.email || (u.oauth_provider === 'apple' && u.oauth_id === payload.sub)
-    )
+    const db = c.get('db') as DatabaseService
+    
+    // Vérifier si l'utilisateur existe déjà (D1 first)
+    let dbUser = null
+    if (db) {
+      dbUser = await db.getUserByEmail(payload.email)
+      // Note: apple_id field doesn't exist in schema, will add later
+    }
+    
+    // Fallback inMemoryDB
+    if (!dbUser && inMemoryDB) {
+      dbUser = Array.from(inMemoryDB.users.values()).find(u => 
+        u.email === payload.email || (u.oauth_provider === 'apple' && u.oauth_id === payload.sub)
+      )
+    }
     
     if (!dbUser) {
       // Créer un nouvel utilisateur
-      const userId = crypto.randomUUID()
-      dbUser = {
+      const userId = crypto.randomUUID().replace(/-/g, '')
+      const userData = {
         id: userId,
         email: payload.email,
         name: userName,
         phone: '', // À remplir plus tard
         avatar_url: null,
-        oauth_provider: 'apple',
-        oauth_id: payload.sub,
         kyc_status: 'PENDING',
         rating: 0,
         reviews_count: 0,
         created_at: new Date().toISOString()
       }
-      inMemoryDB.users.set(userId, dbUser)
+      
+      // Dual-write: D1 + inMemoryDB
+      if (db) {
+        dbUser = await db.createUser(userData)
+        console.log('✅ Apple user created in D1:', userId)
+      }
+      if (inMemoryDB) {
+        inMemoryDB.users.set(userId, { ...userData, oauth_provider: 'apple', oauth_id: payload.sub })
+        dbUser = userData
+      }
       
       // 📧 Envoyer email de bienvenue
       try {
@@ -3737,28 +3813,49 @@ app.get('/api/auth/facebook/callback', async (c) => {
       return c.redirect('/login?error=email_required')
     }
     
-    // Vérifier si l'utilisateur existe déjà
-    let user = Array.from(inMemoryDB.users.values()).find(u => 
-      u.email === facebookUser.email || (u.oauth_provider === 'facebook' && u.oauth_id === facebookUser.id)
-    )
+    const db = c.get('db') as DatabaseService
+    
+    // Vérifier si l'utilisateur existe déjà (D1 first)
+    let user = null
+    if (db) {
+      user = await db.getUserByEmail(facebookUser.email)
+      if (!user) {
+        user = await db.getUserByFacebookId(facebookUser.id)
+      }
+    }
+    
+    // Fallback inMemoryDB
+    if (!user && inMemoryDB) {
+      user = Array.from(inMemoryDB.users.values()).find(u => 
+        u.email === facebookUser.email || (u.oauth_provider === 'facebook' && u.oauth_id === facebookUser.id)
+      )
+    }
     
     if (!user) {
       // Créer un nouvel utilisateur
-      const userId = crypto.randomUUID()
-      user = {
+      const userId = crypto.randomUUID().replace(/-/g, '')
+      const userData = {
         id: userId,
         email: facebookUser.email,
         name: facebookUser.name,
         phone: '', // À remplir plus tard
         avatar_url: facebookUser.picture?.data?.url,
-        oauth_provider: 'facebook',
-        oauth_id: facebookUser.id,
+        facebook_id: facebookUser.id,
         kyc_status: 'PENDING',
         rating: 0,
         reviews_count: 0,
         created_at: new Date().toISOString()
       }
-      inMemoryDB.users.set(userId, user)
+      
+      // Dual-write: D1 + inMemoryDB
+      if (db) {
+        user = await db.createUser(userData)
+        console.log('✅ Facebook user created in D1:', userId)
+      }
+      if (inMemoryDB) {
+        inMemoryDB.users.set(userId, { ...userData, oauth_provider: 'facebook', oauth_id: facebookUser.id })
+        user = userData
+      }
       
       // 📧 Envoyer email de bienvenue
       try {
