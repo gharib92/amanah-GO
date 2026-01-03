@@ -2572,8 +2572,15 @@ const adminMiddleware = async (c: any, next: any) => {
 // Get admin stats
 app.get('/api/admin/stats', adminMiddleware, async (c) => {
   try {
-    // Mode dev avec inMemoryDB
-    const users = Array.from(inMemoryDB.users.values())
+    const db = c.get('db') as DatabaseService
+    let users = []
+    
+    // D1 first, fallback inMemoryDB
+    if (db) {
+      users = await db.getAllUsers()
+    } else if (inMemoryDB) {
+      users = Array.from(inMemoryDB.users.values())
+    }
     
     const stats = {
       total: users.length,
@@ -2596,8 +2603,17 @@ app.get('/api/admin/stats', adminMiddleware, async (c) => {
 // Get all users for admin
 app.get('/api/admin/users', adminMiddleware, async (c) => {
   try {
-    // Mode dev avec inMemoryDB
-    const users = Array.from(inMemoryDB.users.values()).map(u => ({
+    const db = c.get('db') as DatabaseService
+    let usersData = []
+    
+    // D1 first, fallback inMemoryDB
+    if (db) {
+      usersData = await db.getAllUsers()
+    } else if (inMemoryDB) {
+      usersData = Array.from(inMemoryDB.users.values())
+    }
+    
+    const users = usersData.map(u => ({
       id: u.id,
       name: u.name,
       email: u.email,
@@ -2629,6 +2645,7 @@ app.get('/api/admin/users', adminMiddleware, async (c) => {
 app.post('/api/admin/validate-kyc', adminMiddleware, async (c) => {
   try {
     const { user_id, status, notes } = await c.req.json()
+    const db = c.get('db') as DatabaseService
     
     if (!user_id || !status) {
       return c.json({ 
@@ -2644,32 +2661,47 @@ app.post('/api/admin/validate-kyc', adminMiddleware, async (c) => {
       }, 400)
     }
     
-    // Mode dev avec inMemoryDB
-    const users = Array.from(inMemoryDB.users.entries())
-    const userEntry = users.find(([_, u]) => u.id === user_id)
+    // D1 first, fallback inMemoryDB
+    let user = null
+    if (db) {
+      user = await db.getUserById(user_id)
+    } else if (inMemoryDB) {
+      const users = Array.from(inMemoryDB.users.values())
+      user = users.find(u => u.id === user_id)
+    }
     
-    if (!userEntry) {
+    if (!user) {
       return c.json({ 
         success: false, 
         error: 'Utilisateur introuvable' 
       }, 404)
     }
     
-    const [key, user] = userEntry
-    
-    // Mettre à jour le statut KYC
-    user.kyc_status = status
-    
-    if (status === 'REJECTED') {
-      user.kyc_rejection_reason = notes || 'Non spécifié'
-    } else {
-      delete user.kyc_rejection_reason
+    // Préparer les updates
+    const updates: any = {
+      kyc_status: status,
+      kyc_verified_at: new Date().toISOString()
     }
     
-    user.kyc_validated_at = new Date().toISOString()
-    user.kyc_validated_by = c.get('user').id
+    if (status === 'REJECTED') {
+      updates.kyc_rejection_reason = notes || 'Non spécifié'
+    }
     
-    inMemoryDB.users.set(key, user)
+    // Dual-write: D1 + inMemoryDB
+    if (db) {
+      await db.updateUser(user_id, updates)
+      console.log('✅ KYC updated in D1:', user_id, status)
+    }
+    
+    if (inMemoryDB) {
+      const users = Array.from(inMemoryDB.users.entries())
+      const userEntry = users.find(([_, u]) => u.id === user_id)
+      if (userEntry) {
+        const [key, userData] = userEntry
+        Object.assign(userData, updates)
+        inMemoryDB.users.set(key, userData)
+      }
+    }
     
     console.log(`✅ KYC ${status} pour user ${user_id}`)
     
