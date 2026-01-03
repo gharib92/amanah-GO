@@ -4964,10 +4964,11 @@ app.get('/voyageur', (c) => {
           loadStats()
         </script>
 
+        <!-- i18n MUST be loaded FIRST for translations to work -->
+        <script src="/static/i18n.js?v=4"></script>
         <script src="/static/auth.js"></script>
         <script src="/static/auth-ui.js"></script>
         <script src="/static/protected-page.js"></script>
-        <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
           function createLanguageSwitcher() {
@@ -5970,10 +5971,11 @@ app.get('/expediteur', (c) => {
           loadStats()
         </script>
 
+        <!-- i18n MUST be loaded FIRST for translations to work -->
+        <script src="/static/i18n.js?v=4"></script>
         <script src="/static/auth.js"></script>
         <script src="/static/auth-ui.js"></script>
         <script src="/static/protected-page.js"></script>
-        <script src="/static/i18n.js?v=3"></script>
         <script>
           // Language Switcher Component (inline for immediate availability)
           function createLanguageSwitcher() {
