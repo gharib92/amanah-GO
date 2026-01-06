@@ -2251,14 +2251,9 @@ const adminMiddleware = async (c: any, next: any) => {
 app.get('/api/admin/stats', adminMiddleware, async (c) => {
   try {
     const db = c.get('db') as DatabaseService
-    let users = []
     
-    // D1 first, fallback inMemoryDB
-    if (db) {
-      users = await db.getAllUsers()
-    } else if (inMemoryDB) {
-      users = Array.from(inMemoryDB.users.values())
-    }
+    // ✅ MIGRATION D1: Récupérer depuis D1 uniquement
+    const users = await db.getAllUsers()
     
     const stats = {
       total: users.length,
@@ -2282,14 +2277,9 @@ app.get('/api/admin/stats', adminMiddleware, async (c) => {
 app.get('/api/admin/users', adminMiddleware, async (c) => {
   try {
     const db = c.get('db') as DatabaseService
-    let usersData = []
     
-    // D1 first, fallback inMemoryDB
-    if (db) {
-      usersData = await db.getAllUsers()
-    } else if (inMemoryDB) {
-      usersData = Array.from(inMemoryDB.users.values())
-    }
+    // ✅ MIGRATION D1: Récupérer depuis D1 uniquement
+    const usersData = await db.getAllUsers()
     
     const users = usersData.map(u => ({
       id: u.id,
@@ -2339,14 +2329,8 @@ app.post('/api/admin/validate-kyc', adminMiddleware, async (c) => {
       }, 400)
     }
     
-    // D1 first, fallback inMemoryDB
-    let user = null
-    if (db) {
-      user = await db.getUserById(user_id)
-    } else if (inMemoryDB) {
-      const users = Array.from(inMemoryDB.users.values())
-      user = users.find(u => u.id === user_id)
-    }
+    // ✅ MIGRATION D1: Récupérer depuis D1 uniquement
+    const user = await db.getUserById(user_id)
     
     if (!user) {
       return c.json({ 
@@ -2365,21 +2349,9 @@ app.post('/api/admin/validate-kyc', adminMiddleware, async (c) => {
       updates.kyc_rejection_reason = notes || 'Non spécifié'
     }
     
-    // Dual-write: D1 + inMemoryDB
-    if (db) {
-      await db.updateUser(user_id, updates)
-      console.log('✅ KYC updated in D1:', user_id, status)
-    }
-    
-    if (inMemoryDB) {
-      const users = Array.from(inMemoryDB.users.entries())
-      const userEntry = users.find(([_, u]) => u.id === user_id)
-      if (userEntry) {
-        const [key, userData] = userEntry
-        Object.assign(userData, updates)
-        inMemoryDB.users.set(key, userData)
-      }
-    }
+    // ✅ MIGRATION D1: Mettre à jour dans D1 uniquement
+    await db.updateUser(user_id, updates)
+    console.log('✅ KYC updated in D1:', user_id, status)
     
     console.log(`✅ KYC ${status} pour user ${user_id}`)
     
@@ -2481,8 +2453,9 @@ app.post('/api/stripe/connect/onboard', authMiddleware, async (c) => {
     }
     const user = c.get('user')
 
-    // Vérifier si l'utilisateur a déjà un compte Connect
-    const existingUser = inMemoryDB.users.get(user.email)
+    // ✅ MIGRATION D1: Vérifier si l'utilisateur a déjà un compte Connect
+    const db = c.get('db') as DatabaseService
+    const existingUser = await db.getUserById(user.id)
     if (existingUser?.stripe_account_id) {
       return c.json({ 
         success: false, 
@@ -2507,9 +2480,10 @@ app.post('/api/stripe/connect/onboard', authMiddleware, async (c) => {
       }
     })
 
-    // Sauvegarder l'account_id dans la DB
-    existingUser.stripe_account_id = account.id
-    inMemoryDB.users.set(user.email, existingUser)
+    // ✅ MIGRATION D1: Sauvegarder l'account_id dans la DB
+    await db.updateUser(user.id, {
+      stripe_account_id: account.id
+    })
 
     // Créer un lien d'onboarding
     const accountLink = await stripe.accountLinks.create({
@@ -3041,15 +3015,17 @@ app.post('/api/stripe/webhooks', async (c) => {
         const paymentIntent = event.data.object
         console.log('💰 Paiement réussi:', paymentIntent.id)
         
-        // Mettre à jour le booking
+        // ✅ MIGRATION D1: Mettre à jour la transaction
         const bookingId = paymentIntent.metadata?.booking_id
         if (bookingId) {
-          const booking = inMemoryDB.bookings.get(bookingId)
-          if (booking) {
-            booking.payment_status = 'paid'
-            booking.paid_at = new Date().toISOString()
-            inMemoryDB.bookings.set(bookingId, booking)
-            console.log('✅ Booking mis à jour:', bookingId)
+          const db = c.get('db') as DatabaseService
+          const transaction = await db.getTransactionById(bookingId)
+          if (transaction) {
+            await db.updateTransaction(bookingId, {
+              status: 'PAID',
+              updated_at: new Date().toISOString()
+            })
+            console.log('✅ Transaction mise à jour:', bookingId)
           }
         }
         break
@@ -3060,10 +3036,12 @@ app.post('/api/stripe/webhooks', async (c) => {
         
         const failedBookingId = failedPayment.metadata?.booking_id
         if (failedBookingId) {
-          const booking = inMemoryDB.bookings.get(failedBookingId)
-          if (booking) {
-            booking.payment_status = 'failed'
-            inMemoryDB.bookings.set(failedBookingId, booking)
+          const db = c.get('db') as DatabaseService
+          const transaction = await db.getTransactionById(failedBookingId)
+          if (transaction) {
+            await db.updateTransaction(failedBookingId, {
+              status: 'FAILED'
+            })
           }
         }
         break
@@ -3872,8 +3850,9 @@ app.post('/api/auth/login', async (c) => {
       return c.json({ success: false, error: 'Email et mot de passe requis' }, 400)
     }
     
-    // Trouver l'utilisateur
-    const user = Array.from(inMemoryDB.users.values()).find(u => u.email === email)
+    // ✅ MIGRATION D1: Trouver l'utilisateur
+    const db = c.get('db') as DatabaseService
+    const user = await db.getUserByEmail(email)
     
     if (!user) {
       return c.json({ success: false, error: 'Email ou mot de passe incorrect' }, 401)
