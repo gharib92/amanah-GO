@@ -308,19 +308,9 @@ const authMiddleware = async (c: any, next: any) => {
       return c.json({ error: 'Token invalide' }, 401)
     }
     
-    // Charger les infos user depuis D1
+    // ✅ MIGRATION D1: Charger les infos user depuis D1
     const db = c.get('db') as DatabaseService
-    let userResult = null
-    
-    if (db) {
-      userResult = await db.getUserById(payload.id)
-    }
-    
-    // Fallback sur inMemoryDB si D1 pas disponible
-    if (!userResult && inMemoryDB) {
-      const users = Array.from(inMemoryDB.users.values())
-      userResult = users.find(u => u.id === payload.id)
-    }
+    const userResult = await db.getUserById(payload.id)
     
     if (!userResult) {
       return c.json({ error: 'Utilisateur non trouvé' }, 401)
@@ -3120,13 +3110,8 @@ app.post('/api/auth/signup', async (c) => {
       return c.json({ success: false, error: 'Le mot de passe doit contenir au moins 8 caractères' }, 400)
     }
     
-    // Vérifier si l'email existe déjà (D1 first, fallback inMemoryDB)
-    let existingUser = null
-    if (db) {
-      existingUser = await db.getUserByEmail(email)
-    } else if (inMemoryDB) {
-      existingUser = Array.from(inMemoryDB.users.values()).find(u => u.email === email)
-    }
+    // ✅ MIGRATION D1: Vérifier si l'email existe déjà
+    const existingUser = await db.getUserByEmail(email)
     
     if (existingUser) {
       return c.json({ success: false, error: 'Cet email est déjà utilisé' }, 400)
@@ -3151,16 +3136,9 @@ app.post('/api/auth/signup', async (c) => {
       created_at: new Date().toISOString()
     }
     
-    // Sauvegarder dans D1 ET inMemoryDB (dual-write pendant transition)
-    if (db) {
-      await db.createUser(userData)
-      console.log('✅ User created in D1:', userId)
-    }
-    
-    if (inMemoryDB) {
-      inMemoryDB.users.set(userId, userData)
-      console.log('✅ User created in memory:', userId)
-    }
+    // ✅ MIGRATION D1: Sauvegarder dans D1 uniquement
+    await db.createUser(userData)
+    console.log('✅ User created in D1:', userId)
     
     // 📧 Envoyer email de bienvenue
     try {
@@ -3262,20 +3240,10 @@ app.get('/api/auth/google/callback', async (c) => {
     
     const db = c.get('db') as DatabaseService
     
-    // Vérifier si l'utilisateur existe déjà (D1 first)
-    let user = null
-    if (db) {
-      user = await db.getUserByEmail(googleUser.email)
-      if (!user) {
-        user = await db.getUserByGoogleId(googleUser.id)
-      }
-    }
-    
-    // Fallback inMemoryDB
-    if (!user && inMemoryDB) {
-      user = Array.from(inMemoryDB.users.values()).find(u => 
-        u.email === googleUser.email || (u.oauth_provider === 'google' && u.oauth_id === googleUser.id)
-      )
+    // ✅ MIGRATION D1: Vérifier si l'utilisateur existe déjà
+    let user = await db.getUserByEmail(googleUser.email)
+    if (!user) {
+      user = await db.getUserByGoogleId(googleUser.id)
     }
     
     if (!user) {
@@ -3294,15 +3262,9 @@ app.get('/api/auth/google/callback', async (c) => {
         created_at: new Date().toISOString()
       }
       
-      // Dual-write: D1 + inMemoryDB
-      if (db) {
-        user = await db.createUser(userData)
-        console.log('✅ Google user created in D1:', userId)
-      }
-      if (inMemoryDB) {
-        inMemoryDB.users.set(userId, userData)
-        user = userData
-      }
+      // ✅ MIGRATION D1: Sauvegarder dans D1 uniquement
+      user = await db.createUser(userData)
+      console.log('✅ Google user created in D1:', userId)
       
       // 📧 Envoyer email de bienvenue
       try {
@@ -3420,19 +3382,9 @@ app.post('/api/auth/apple/callback', async (c) => {
     
     const db = c.get('db') as DatabaseService
     
-    // Vérifier si l'utilisateur existe déjà (D1 first)
-    let dbUser = null
-    if (db) {
-      dbUser = await db.getUserByEmail(payload.email)
-      // Note: apple_id field doesn't exist in schema, will add later
-    }
-    
-    // Fallback inMemoryDB
-    if (!dbUser && inMemoryDB) {
-      dbUser = Array.from(inMemoryDB.users.values()).find(u => 
-        u.email === payload.email || (u.oauth_provider === 'apple' && u.oauth_id === payload.sub)
-      )
-    }
+    // ✅ MIGRATION D1: Vérifier si l'utilisateur existe déjà
+    let dbUser = await db.getUserByEmail(payload.email)
+    // Note: apple_id field doesn't exist in schema, will add later
     
     if (!dbUser) {
       // Créer un nouvel utilisateur
@@ -3449,15 +3401,9 @@ app.post('/api/auth/apple/callback', async (c) => {
         created_at: new Date().toISOString()
       }
       
-      // Dual-write: D1 + inMemoryDB
-      if (db) {
-        dbUser = await db.createUser(userData)
-        console.log('✅ Apple user created in D1:', userId)
-      }
-      if (inMemoryDB) {
-        inMemoryDB.users.set(userId, { ...userData, oauth_provider: 'apple', oauth_id: payload.sub })
-        dbUser = userData
-      }
+      // ✅ MIGRATION D1: Sauvegarder dans D1 uniquement
+      dbUser = await db.createUser(userData)
+      console.log('✅ Apple user created in D1:', userId)
       
       // 📧 Envoyer email de bienvenue
       try {
@@ -3547,20 +3493,10 @@ app.get('/api/auth/facebook/callback', async (c) => {
     
     const db = c.get('db') as DatabaseService
     
-    // Vérifier si l'utilisateur existe déjà (D1 first)
-    let user = null
-    if (db) {
-      user = await db.getUserByEmail(facebookUser.email)
-      if (!user) {
-        user = await db.getUserByFacebookId(facebookUser.id)
-      }
-    }
-    
-    // Fallback inMemoryDB
-    if (!user && inMemoryDB) {
-      user = Array.from(inMemoryDB.users.values()).find(u => 
-        u.email === facebookUser.email || (u.oauth_provider === 'facebook' && u.oauth_id === facebookUser.id)
-      )
+    // ✅ MIGRATION D1: Vérifier si l'utilisateur existe déjà
+    let user = await db.getUserByEmail(facebookUser.email)
+    if (!user) {
+      user = await db.getUserByFacebookId(facebookUser.id)
     }
     
     if (!user) {
@@ -3579,15 +3515,9 @@ app.get('/api/auth/facebook/callback', async (c) => {
         created_at: new Date().toISOString()
       }
       
-      // Dual-write: D1 + inMemoryDB
-      if (db) {
-        user = await db.createUser(userData)
-        console.log('✅ Facebook user created in D1:', userId)
-      }
-      if (inMemoryDB) {
-        inMemoryDB.users.set(userId, { ...userData, oauth_provider: 'facebook', oauth_id: facebookUser.id })
-        user = userData
-      }
+      // ✅ MIGRATION D1: Sauvegarder dans D1 uniquement
+      user = await db.createUser(userData)
+      console.log('✅ Facebook user created in D1:', userId)
       
       // 📧 Envoyer email de bienvenue
       try {
