@@ -22,145 +22,8 @@ type Variables = {
 // ==========================================
 // IN-MEMORY DATABASE (pour développement)
 // ==========================================
-const inMemoryDB = {
-  users: new Map<string, any>(),
-  trips: new Map<string, any>(),
-  packages: new Map<string, any>(),
-  bookings: new Map<string, any>()
-}
-
-// ==========================================
-// COMPTE TEST PERMANENT (toujours disponible)
-// ==========================================
-// Ce compte existe TOUJOURS, même après restart du serveur
-// Email: test@amanah.com | Password: test123
-inMemoryDB.users.set('test@amanah.com', {
-  id: 1,
-  email: 'test@amanah.com',
-  name: 'Test User',
-  phone: '+33612345678',
-  // Password: test123 (bcrypt hash avec 10 rounds)
-  password_hash: '$2b$10$q8wGuYT/ANp77Y9YOr4JXuDMfa0Fhb.OMPf36G6xGqt3izYyQCfRW',
-  kyc_status: 'PENDING',
-  stripe_account_id: 'acct_1SizAX8B6iTWgSS', // Compte Stripe Connect créé précédemment
-  created_at: new Date().toISOString()
-})
-
-// ==========================================
-// DONNÉES DE TEST (trip + booking pour tester paiement)
-// ==========================================
-// Trajet de test
-inMemoryDB.trips.set('trip_test_001', {
-  id: 'trip_test_001',
-  user_id: 1, // Test User
-  departure_city: 'Paris',
-  departure_airport: 'CDG',
-  arrival_city: 'Casablanca',
-  arrival_airport: 'CMN',
-  departure_date: '2025-01-15',
-  available_weight: 10,
-  price_per_kg: 5,
-  status: 'ACTIVE',
-  created_at: new Date().toISOString()
-})
-
-// Autres trajets de test pour matching
-inMemoryDB.trips.set('trip_test_002', {
-  id: 'trip_test_002',
-  user_id: 1,
-  departure_city: 'Paris',
-  departure_airport: 'CDG',
-  arrival_city: 'Casablanca',
-  arrival_airport: 'CMN',
-  departure_date: '2025-01-14', // 1 jour avant
-  available_weight: 15,
-  price_per_kg: 8,
-  flexible_dates: true,
-  kyc_status: 'VERIFIED',
-  status: 'ACTIVE',
-  created_at: new Date().toISOString()
-})
-
-inMemoryDB.trips.set('trip_test_003', {
-  id: 'trip_test_003',
-  user_id: 1,
-  departure_city: 'Lyon',
-  departure_airport: 'LYS',
-  arrival_city: 'Marrakech',
-  arrival_airport: 'RAK',
-  departure_date: '2025-01-20',
-  available_weight: 20,
-  price_per_kg: 7.5,
-  flexible_dates: true,
-  kyc_status: 'VERIFIED',
-  status: 'ACTIVE',
-  created_at: new Date().toISOString()
-})
-
-// Colis de test pour matching
-inMemoryDB.packages.set('pkg_test_001', {
-  id: 'pkg_test_001',
-  user_id: 1,
-  title: 'Cadeaux pour famille',
-  departure_city: 'Paris',
-  arrival_city: 'Casablanca',
-  preferred_date: '2025-01-15', // Match parfait avec trip_test_001
-  weight: 8,
-  budget: 80, // 10€/kg
-  flexible_dates: true,
-  status: 'PUBLISHED',
-  created_at: new Date().toISOString()
-})
-
-inMemoryDB.packages.set('pkg_test_002', {
-  id: 'pkg_test_002',
-  user_id: 1,
-  title: 'Documents importants',
-  departure_city: 'Paris',
-  arrival_city: 'Casablanca',
-  preferred_date: '2025-01-16', // 1 jour après
-  weight: 3,
-  budget: 24, // 8€/kg
-  flexible_dates: true,
-  status: 'PUBLISHED',
-  created_at: new Date().toISOString()
-})
-
-inMemoryDB.packages.set('pkg_test_003', {
-  id: 'pkg_test_003',
-  user_id: 1,
-  title: 'Vêtements',
-  departure_city: 'Lyon',
-  arrival_city: 'Marrakech',
-  preferred_date: '2025-01-20', // Match exact avec trip_test_003
-  weight: 12,
-  budget: 90, // 7.5€/kg
-  flexible_dates: true,
-  status: 'PUBLISHED',
-  created_at: new Date().toISOString()
-})
-
-// Réservation de test (déjà payée)
-inMemoryDB.bookings.set('booking_test_001', {
-  id: 'booking_test_001',
-  trip_id: 'trip_test_001',
-  sender_id: 1, // Test User (en tant qu'expéditeur)
-  traveler_id: 1, // Test User (en tant que voyageur - pour simplifier le test)
-  weight: 5,
-  amount: 25, // 5kg × 5€
-  payment_status: 'paid',
-  payment_intent_id: 'pi_test_123456789',
-  delivery_confirmed: false,
-  transfer_status: 'pending',
-  status: 'pending',
-  created_at: new Date().toISOString()
-})
-
-// Messages de chat (pour tests)
-inMemoryDB.messages = new Map()
-
-// Reviews / Avis (pour tests)
-inMemoryDB.reviews = new Map()
+// ✅ MIGRATION D1: inMemoryDB supprimé - Toutes les données sont maintenant dans D1
+// Les données de test sont créées via les scripts de migration SQL
 
 // Liste d'aéroports populaires France ↔ Maroc
 const AIRPORTS = [
@@ -1756,50 +1619,24 @@ app.post('/api/messages', authMiddleware, async (c) => {
       }, 400)
     }
     
-    // Mode dev avec inMemoryDB
-    if (!DB) {
-      const messageId = Date.now()
-      const newMessage = {
-        id: messageId,
-        exchange_id: exchange_id || null,
-        sender_id: user.id,
-        receiver_id: Number(receiver_id),
-        message: message,
-        message_type: message_type,
-        read_at: null,
-        created_at: new Date().toISOString()
-      }
-      
-      inMemoryDB.messages.set(messageId.toString(), newMessage)
-      
-      console.log('💬 Message envoyé (inMemoryDB):', messageId)
-      
-      return c.json({
-        success: true,
-        message_data: newMessage
-      })
-    }
+    // ✅ MIGRATION D1: Utiliser DatabaseService
+    const db = c.get('db') as DatabaseService
     
-    // Mode production avec D1
-    const result = await DB.prepare(`
-      INSERT INTO exchange_messages (exchange_id, sender_id, receiver_id, message, message_type, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-    `).bind(exchange_id, user.id, receiver_id, message, message_type).run()
-    
-    const messageData = {
-      id: result.meta.last_row_id,
-      exchange_id,
+    // Créer le message dans D1
+    const newMessage = await db.createMessage({
+      transaction_id: exchange_id || null,
       sender_id: user.id,
-      receiver_id,
-      message,
-      message_type,
-      read_at: null,
+      receiver_id: Number(receiver_id),
+      content: message,
+      is_read: 0,
       created_at: new Date().toISOString()
-    }
+    })
+    
+    console.log('💬 Message envoyé (D1):', newMessage.id)
     
     return c.json({
       success: true,
-      message_data: messageData
+      message_data: newMessage
     })
     
   } catch (error) {
@@ -1811,36 +1648,16 @@ app.post('/api/messages', authMiddleware, async (c) => {
 // Récupérer les messages d'une conversation
 app.get('/api/messages/:userId', authMiddleware, async (c) => {
   try {
-    const { DB } = c.env
+    const db = c.get('db') as DatabaseService
     const user = c.get('user')
     const otherUserId = c.req.param('userId')
     
-    // Mode dev avec inMemoryDB
-    if (!DB) {
-      const messages = Array.from(inMemoryDB.messages.values())
-        .filter(m => 
-          (m.sender_id === user.id && m.receiver_id === Number(otherUserId)) ||
-          (m.sender_id === Number(otherUserId) && m.receiver_id === user.id)
-        )
-        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-      
-      return c.json({
-        success: true,
-        messages: messages
-      })
-    }
-    
-    // Mode production avec D1
-    const messages = await DB.prepare(`
-      SELECT * FROM exchange_messages
-      WHERE (sender_id = ? AND receiver_id = ?)
-         OR (sender_id = ? AND receiver_id = ?)
-      ORDER BY created_at ASC
-    `).bind(user.id, otherUserId, otherUserId, user.id).all()
+    // ✅ MIGRATION D1: Utiliser DatabaseService
+    const messages = await db.getConversationsBetween(user.id, otherUserId)
     
     return c.json({
       success: true,
-      messages: messages.results || []
+      messages: messages
     })
     
   } catch (error) {
@@ -1852,27 +1669,12 @@ app.get('/api/messages/:userId', authMiddleware, async (c) => {
 // Marquer un message comme lu
 app.put('/api/messages/:messageId/read', authMiddleware, async (c) => {
   try {
-    const { DB } = c.env
+    const db = c.get('db') as DatabaseService
     const user = c.get('user')
     const messageId = c.req.param('messageId')
     
-    // Mode dev avec inMemoryDB
-    if (!DB) {
-      const message = inMemoryDB.messages.get(messageId)
-      if (message && message.receiver_id === user.id) {
-        message.read_at = new Date().toISOString()
-        inMemoryDB.messages.set(messageId, message)
-      }
-      
-      return c.json({ success: true })
-    }
-    
-    // Mode production avec D1
-    await DB.prepare(`
-      UPDATE exchange_messages
-      SET read_at = datetime('now')
-      WHERE id = ? AND receiver_id = ?
-    `).bind(messageId, user.id).run()
+    // ✅ MIGRATION D1: Utiliser DatabaseService
+    await db.markMessageAsRead(messageId)
     
     return c.json({ success: true })
     
@@ -1992,75 +1794,27 @@ app.post('/api/reviews', authMiddleware, async (c) => {
       }, 400)
     }
     
-    // Mode dev avec inMemoryDB
-    if (!DB) {
-      // Vérifier si une review existe déjà pour ce booking
-      const existingReview = Array.from(inMemoryDB.reviews.values())
-        .find(r => r.booking_id === booking_id && r.reviewer_id === user.id)
-      
-      if (existingReview) {
-        return c.json({ 
-          success: false, 
-          error: 'Vous avez déjà noté cette transaction' 
-        }, 400)
-      }
-      
-      const reviewId = Date.now()
-      const newReview = {
-        id: reviewId,
-        reviewer_id: user.id,
-        reviewee_id: Number(reviewee_id),
-        booking_id: booking_id || null,
-        rating: Number(rating),
-        comment: comment,
-        created_at: new Date().toISOString()
-      }
-      
-      inMemoryDB.reviews.set(reviewId.toString(), newReview)
-      
-      // Mettre à jour la note moyenne de l'utilisateur noté
-      updateUserRating(Number(reviewee_id))
-      
-      console.log('⭐ Avis créé (inMemoryDB):', reviewId)
-      
-      return c.json({
-        success: true,
-        review: newReview
-      })
-    }
+    // ✅ MIGRATION D1: Utiliser DatabaseService
+    const db = c.get('db') as DatabaseService
     
-    // Mode production avec D1
-    // Vérifier si une review existe déjà
-    const existing = await DB.prepare(`
-      SELECT id FROM reviews 
-      WHERE booking_id = ? AND reviewer_id = ?
-    `).bind(booking_id, user.id).first()
+    // Créer la review dans D1 (elle gère automatiquement la mise à jour du rating)
+    const newReview = await db.createReview({
+      transaction_id: booking_id || null,
+      reviewer_id: user.id,
+      reviewed_id: Number(reviewee_id),
+      rating: Number(rating),
+      comment: comment,
+      punctuality_rating: Number(rating),
+      communication_rating: Number(rating),
+      care_rating: Number(rating),
+      created_at: new Date().toISOString()
+    })
     
-    if (existing) {
-      return c.json({ 
-        success: false, 
-        error: 'Vous avez déjà noté cette transaction' 
-      }, 400)
-    }
-    
-    // Créer la review
-    const result = await DB.prepare(`
-      INSERT INTO reviews (reviewer_id, reviewee_id, booking_id, rating, comment, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-    `).bind(user.id, reviewee_id, booking_id, rating, comment).run()
-    
-    // Recalculer la note moyenne
-    await updateUserRatingDB(DB, reviewee_id)
+    console.log('⭐ Avis créé (D1):', newReview.id)
     
     return c.json({
       success: true,
-      review: {
-        id: result.meta.last_row_id,
-        reviewer_id: user.id,
-        reviewee_id,
-        rating,
-        comment
-      }
+      review: newReview
     })
     
   } catch (error) {
@@ -2072,48 +1826,27 @@ app.post('/api/reviews', authMiddleware, async (c) => {
 // Récupérer les avis d'un utilisateur
 app.get('/api/reviews/:userId', async (c) => {
   try {
-    const { DB } = c.env
+    const db = c.get('db') as DatabaseService
     const userId = c.req.param('userId')
     
-    // Mode dev avec inMemoryDB
-    if (!DB) {
-      const reviews = Array.from(inMemoryDB.reviews.values())
-        .filter(r => r.reviewee_id === Number(userId))
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      
-      // Enrichir avec les noms des reviewers
-      const enrichedReviews = reviews.map(review => {
-        const reviewer = Array.from(inMemoryDB.users.values())
-          .find(u => u.id === review.reviewer_id)
-        
+    // ✅ MIGRATION D1: Utiliser DatabaseService
+    const reviews = await db.getReviewsByUserId(userId)
+    
+    // Enrichir avec les noms des reviewers
+    const enrichedReviews = await Promise.all(
+      reviews.map(async (review: any) => {
+        const reviewer = await db.getUserById(review.reviewer_id)
         return {
           ...review,
           reviewer_name: reviewer?.name || 'Utilisateur',
           reviewer_avatar: reviewer?.avatar_url || null
         }
       })
-      
-      return c.json({
-        success: true,
-        reviews: enrichedReviews
-      })
-    }
-    
-    // Mode production avec D1
-    const reviews = await DB.prepare(`
-      SELECT 
-        r.*,
-        u.name as reviewer_name,
-        u.avatar_url as reviewer_avatar
-      FROM reviews r
-      INNER JOIN users u ON r.reviewer_id = u.id
-      WHERE r.reviewee_id = ?
-      ORDER BY r.created_at DESC
-    `).bind(userId).all()
+    )
     
     return c.json({
       success: true,
-      reviews: reviews.results || []
+      reviews: enrichedReviews
     })
     
   } catch (error) {
@@ -2122,53 +1855,8 @@ app.get('/api/reviews/:userId', async (c) => {
   }
 })
 
-// Fonction helper: Mettre à jour la note moyenne (inMemoryDB)
-function updateUserRating(userId: number) {
-  const reviews = Array.from(inMemoryDB.reviews.values())
-    .filter(r => r.reviewee_id === userId)
-  
-  if (reviews.length === 0) return
-  
-  const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0)
-  const avgRating = totalRating / reviews.length
-  
-  // Trouver et mettre à jour l'utilisateur
-  const userEntry = Array.from(inMemoryDB.users.entries())
-    .find(([_, u]) => u.id === userId)
-  
-  if (userEntry) {
-    const [email, user] = userEntry
-    user.rating = Math.round(avgRating * 10) / 10 // Arrondir à 1 décimale
-    user.reviews_count = reviews.length
-    inMemoryDB.users.set(email, user)
-    
-    console.log(`⭐ Note mise à jour pour user ${userId}: ${user.rating} (${reviews.length} avis)`)
-  }
-}
-
-// Fonction helper: Mettre à jour la note moyenne (D1)
-async function updateUserRatingDB(DB: any, userId: string) {
-  const stats = await DB.prepare(`
-    SELECT 
-      AVG(rating) as avg_rating,
-      COUNT(*) as review_count
-    FROM reviews
-    WHERE reviewee_id = ?
-  `).bind(userId).first()
-  
-  if (stats) {
-    await DB.prepare(`
-      UPDATE users
-      SET rating = ?,
-          reviews_count = ?
-      WHERE id = ?
-    `).bind(
-      Math.round(stats.avg_rating * 10) / 10,
-      stats.review_count,
-      userId
-    ).run()
-  }
-}
+// ✅ MIGRATION D1: Fonction updateUserRating supprimée - Gérée par DatabaseService.createReview()
+// La mise à jour du rating est automatique lors de la création d'un avis
 
 // ==========================================
 // AIRPORTS API ROUTES
@@ -2934,6 +2622,7 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
   try {
     const stripe = getStripe(c)
     const user = c.get('user')
+    const db = c.get('db') as DatabaseService
     const { booking_id, amount, currency = 'eur' } = await c.req.json()
 
     // Validation
@@ -2956,11 +2645,13 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
         client_secret: 'pi_mock_secret_' + Date.now()
       }
       
-      const booking = inMemoryDB.bookings.get(booking_id)
-      if (booking) {
-        booking.payment_intent_id = mockPaymentIntent.id
-        booking.payment_status = 'pending'
-        inMemoryDB.bookings.set(booking_id, booking)
+      // ✅ MIGRATION D1: Utiliser transactions au lieu de bookings
+      const transaction = await db.getTransactionById(booking_id)
+      if (transaction) {
+        await db.updateTransaction(booking_id, {
+          stripe_payment_intent_id: mockPaymentIntent.id,
+          status: 'PENDING'
+        })
       }
       
       return c.json({
@@ -2974,17 +2665,17 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
       })
     }
 
-    // Récupérer la réservation (booking)
-    const booking = inMemoryDB.bookings.get(booking_id)
-    if (!booking) {
+    // ✅ MIGRATION D1: Récupérer la transaction
+    const transaction = await db.getTransactionById(booking_id)
+    if (!transaction) {
       return c.json({ 
         success: false, 
         error: 'Réservation introuvable' 
       }, 404)
     }
 
-    // Récupérer le trajet (trip) pour obtenir le voyageur
-    const trip = inMemoryDB.trips.get(booking.trip_id)
+    // ✅ MIGRATION D1: Récupérer le trajet depuis D1
+    const trip = await db.getTripById(transaction.trip_id)
     if (!trip) {
       return c.json({ 
         success: false, 
@@ -2992,16 +2683,15 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
       }, 404)
     }
 
-    // Récupérer le voyageur (traveler)
-    const travelerEmail = Array.from(inMemoryDB.users.values()).find(u => u.id === trip.user_id)?.email
-    if (!travelerEmail) {
+    // ✅ MIGRATION D1: Récupérer le voyageur depuis D1
+    const traveler = await db.getUserById(trip.user_id)
+    if (!traveler) {
       return c.json({ 
         success: false, 
         error: 'Voyageur introuvable' 
       }, 404)
     }
 
-    const traveler = inMemoryDB.users.get(travelerEmail)
     if (!traveler?.stripe_account_id) {
       return c.json({ 
         success: false, 
@@ -3031,10 +2721,11 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
       description: `Paiement Escrow pour trajet ${trip.departure_city} → ${trip.arrival_city}`
     })
 
-    // Sauvegarder le payment_intent_id dans la réservation
-    booking.payment_intent_id = paymentIntent.id
-    booking.payment_status = 'pending'
-    inMemoryDB.bookings.set(booking_id, booking)
+    // ✅ MIGRATION D1: Sauvegarder le payment_intent_id dans la transaction
+    await db.updateTransaction(booking_id, {
+      stripe_payment_intent_id: paymentIntent.id,
+      status: 'PENDING'
+    })
 
     return c.json({
       success: true,
@@ -3057,6 +2748,7 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
 app.post('/api/stripe/payment/confirm', authMiddleware, async (c) => {
   try {
     const stripe = getStripe(c)
+    const db = c.get('db') as DatabaseService
     const { payment_intent_id } = await c.req.json()
 
     if (!payment_intent_id) {
@@ -3070,20 +2762,22 @@ app.post('/api/stripe/payment/confirm', authMiddleware, async (c) => {
     if (!stripe || STRIPE_MOCK_MODE || payment_intent_id.startsWith('pi_mock_')) {
       console.log('🎭 MOCK MODE: Simulating payment confirmation')
       
-      // Trouver le booking associé
-      const bookingArray = Array.from(inMemoryDB.bookings.values())
-      const booking = bookingArray.find(b => b.payment_intent_id === payment_intent_id)
+      // ✅ MIGRATION D1: Trouver la transaction associée
+      // Note: Il faudrait ajouter une méthode getTransactionByPaymentIntent dans db.service.ts
+      // Pour l'instant, on simule avec le booking_id direct
+      const transaction = await db.getTransactionById(payment_intent_id.replace('pi_mock_', ''))
       
-      if (booking) {
-        booking.payment_status = 'held' // Simuler Escrow (fonds bloqués)
-        inMemoryDB.bookings.set(booking.id, booking)
+      if (transaction) {
+        await db.updateTransaction(transaction.id, {
+          status: 'HELD' // Simuler Escrow (fonds bloqués)
+        })
       }
       
       return c.json({
         success: true,
         mock_mode: true,
         status: 'requires_capture',
-        amount: booking ? booking.amount : 0,
+        amount: transaction ? transaction.agreed_price : 0,
         currency: 'eur',
         escrow_status: 'held'
       })
@@ -3092,21 +2786,25 @@ app.post('/api/stripe/payment/confirm', authMiddleware, async (c) => {
     // Récupérer le Payment Intent depuis Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
 
-    // Mettre à jour le statut de la réservation
+    // ✅ MIGRATION D1: Mettre à jour le statut de la transaction
     const booking_id = paymentIntent.metadata.booking_id
     if (booking_id) {
-      const booking = inMemoryDB.bookings.get(booking_id)
-      if (booking) {
+      const transaction = await db.getTransactionById(booking_id)
+      if (transaction) {
         // Le Payment Intent est "requires_capture" = fonds bloqués en Escrow
+        let newStatus = 'PENDING'
         if (paymentIntent.status === 'requires_capture') {
-          booking.payment_status = 'held' // 🔐 Fonds bloqués en Escrow
+          newStatus = 'HELD' // 🔐 Fonds bloqués en Escrow
         } else if (paymentIntent.status === 'succeeded') {
-          booking.payment_status = 'paid'
+          newStatus = 'PAID'
         } else {
-          booking.payment_status = 'failed'
+          newStatus = 'FAILED'
         }
-        booking.payment_intent_id = payment_intent_id
-        inMemoryDB.bookings.set(booking_id, booking)
+        
+        await db.updateTransaction(booking_id, {
+          stripe_payment_intent_id: payment_intent_id,
+          status: newStatus
+        })
       }
     }
 
@@ -3144,12 +2842,13 @@ app.get('/api/stripe/config', (c) => {
 app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
   try {
     const stripe = getStripe(c)
+    const db = c.get('db') as DatabaseService
     const bookingId = c.req.param('id')
     const user = c.get('user')
 
-    // Récupérer la réservation
-    const booking = inMemoryDB.bookings.get(bookingId)
-    if (!booking) {
+    // ✅ MIGRATION D1: Récupérer la transaction
+    const transaction = await db.getTransactionById(bookingId)
+    if (!transaction) {
       return c.json({ 
         success: false, 
         error: 'Réservation introuvable' 
@@ -3157,7 +2856,7 @@ app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
     }
 
     // Vérifier que c'est l'expéditeur qui confirme
-    if (booking.sender_id !== user.id) {
+    if (transaction.shipper_id !== user.id) {
       return c.json({ 
         success: false, 
         error: 'Seul l\'expéditeur peut confirmer la livraison' 
@@ -3165,15 +2864,15 @@ app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
     }
 
     // Vérifier que le paiement est en Escrow (held)
-    if (booking.payment_status !== 'held' && booking.payment_status !== 'paid') {
+    if (transaction.status !== 'HELD' && transaction.status !== 'PAID') {
       return c.json({ 
         success: false, 
-        error: `Le paiement n'est pas en attente (statut: ${booking.payment_status})` 
+        error: `Le paiement n'est pas en attente (statut: ${transaction.status})` 
       }, 400)
     }
 
     // Vérifier que la livraison n'est pas déjà confirmée
-    if (booking.delivery_confirmed) {
+    if (transaction.status === 'COMPLETED') {
       return c.json({ 
         success: false, 
         error: 'La livraison a déjà été confirmée' 
@@ -3181,15 +2880,15 @@ app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
     }
 
     // 🔐 ÉTAPE 1: CAPTURER les fonds bloqués (Escrow Release)
-    if (booking.payment_status === 'held') {
+    if (transaction.status === 'HELD') {
       // 🧪 MODE MOCK: Simuler la capture
-      if (!stripe || STRIPE_MOCK_MODE || booking.payment_intent_id.startsWith('pi_mock_')) {
+      if (!stripe || STRIPE_MOCK_MODE || transaction.stripe_payment_intent_id?.startsWith('pi_mock_')) {
         console.log('🎭 MOCK MODE: Simulating payment capture')
-        booking.payment_status = 'captured'
-        console.log(`✅ Escrow released (MOCK): Payment ${booking.payment_intent_id} captured`)
+        await db.updateTransaction(bookingId, { status: 'CAPTURED' })
+        console.log(`✅ Escrow released (MOCK): Payment ${transaction.stripe_payment_intent_id} captured`)
       } else {
         try {
-          const paymentIntent = await stripe.paymentIntents.capture(booking.payment_intent_id)
+          const paymentIntent = await stripe.paymentIntents.capture(transaction.stripe_payment_intent_id!)
           
           if (paymentIntent.status !== 'succeeded') {
             return c.json({
@@ -3198,8 +2897,8 @@ app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
             }, 400)
           }
           
-          booking.payment_status = 'captured' // Fonds capturés
-          console.log(`✅ Escrow released: Payment ${booking.payment_intent_id} captured`)
+          await db.updateTransaction(bookingId, { status: 'CAPTURED' })
+          console.log(`✅ Escrow released: Payment ${transaction.stripe_payment_intent_id} captured`)
         } catch (captureError: any) {
           console.error('❌ Capture error:', captureError)
           return c.json({
@@ -3211,20 +2910,19 @@ app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
     }
 
     // Marquer la livraison comme confirmée
-    booking.delivery_confirmed = true
-    booking.delivery_confirmed_at = new Date().toISOString()
-    booking.status = 'completed'
-    inMemoryDB.bookings.set(bookingId, booking)
+    await db.updateTransaction(bookingId, {
+      status: 'COMPLETED',
+      updated_at: new Date().toISOString()
+    })
 
     // 🔐 ÉTAPE 2: TRANSFÉRER au voyageur
     try {
-      const transferResult = await createTransfer(bookingId)
+      const transferResult = await createTransfer(bookingId, db)
       
       if (transferResult.success) {
-        booking.transfer_id = transferResult.transfer_id
-        booking.transfer_status = 'completed'
-        booking.payment_status = 'transferred' // Paiement transféré au voyageur
-        inMemoryDB.bookings.set(bookingId, booking)
+        await db.updateTransaction(bookingId, {
+          status: 'TRANSFERRED' // Paiement transféré au voyageur
+        })
 
         return c.json({
           success: true,
@@ -3258,6 +2956,7 @@ app.post('/api/bookings/:id/confirm-delivery', authMiddleware, async (c) => {
 // Route 2: Créer un transfert manuellement (admin/debug)
 app.post('/api/stripe/transfer/create', authMiddleware, async (c) => {
   try {
+    const db = c.get('db') as DatabaseService
     const { booking_id } = await c.req.json()
 
     if (!booking_id) {
@@ -3267,7 +2966,7 @@ app.post('/api/stripe/transfer/create', authMiddleware, async (c) => {
       }, 400)
     }
 
-    const result = await createTransfer(booking_id)
+    const result = await createTransfer(booking_id, db)
     
     if (result.success) {
       return c.json(result)
@@ -3283,19 +2982,19 @@ app.post('/api/stripe/transfer/create', authMiddleware, async (c) => {
   }
 })
 
-// Fonction helper pour créer un transfert
-async function createTransfer(bookingId: string): Promise<any> {
+// ✅ MIGRATION D1: Fonction helper pour créer un transfert
+async function createTransfer(bookingId: string, db: DatabaseService): Promise<any> {
   try {
-    const booking = inMemoryDB.bookings.get(bookingId)
-    if (!booking) {
+    const transaction = await db.getTransactionById(bookingId)
+    if (!transaction) {
       return { success: false, error: 'Réservation introuvable' }
     }
 
-    if (!booking.payment_intent_id) {
+    if (!transaction.stripe_payment_intent_id) {
       return { success: false, error: 'Aucun paiement associé à cette réservation' }
     }
 
-    if (booking.transfer_status === 'completed') {
+    if (transaction.status === 'TRANSFERRED' || transaction.status === 'COMPLETED') {
       return { success: false, error: 'Le transfert a déjà été effectué' }
     }
 
@@ -3304,15 +3003,16 @@ async function createTransfer(bookingId: string): Promise<any> {
     // l'argent est automatiquement transféré après capture.
     
     // On marque juste le transfert comme effectué
-    booking.transfer_status = 'completed'
-    booking.transfer_completed_at = new Date().toISOString()
-    inMemoryDB.bookings.set(bookingId, booking)
+    await db.updateTransaction(bookingId, {
+      status: 'TRANSFERRED',
+      updated_at: new Date().toISOString()
+    })
 
     return {
       success: true,
       message: 'Transfert effectué automatiquement par Stripe Connect',
-      transfer_id: booking.payment_intent_id,
-      amount: booking.amount,
+      transfer_id: transaction.stripe_payment_intent_id,
+      amount: transaction.agreed_price,
       booking_id: bookingId
     }
   } catch (error: any) {
