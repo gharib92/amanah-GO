@@ -124,30 +124,68 @@ async function handlePhotoUpload(event) {
     return;
   }
   
-  for (const file of files) {
-    if (!file.type.startsWith('image/')) {
-      showNotification('error', 'Seules les images sont autorisées');
-      continue;
-    }
+  // Show loading notification
+  const loadingNotif = showNotification('info', 'Upload des photos en cours...');
+  
+  try {
+    // Créer FormData pour upload vers R2
+    const formData = new FormData();
+    formData.append('user_id', currentUser.id);
     
-    if (file.size > 5 * 1024 * 1024) {
-      showNotification('error', 'Taille maximale 5MB par photo');
-      continue;
-    }
-    
-    // TODO: Upload to Cloudflare R2
-    // For now, create a local preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const photoData = {
-        url: e.target.result,
-        name: file.name
-      };
+    let validFilesCount = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       
-      uploadedPhotos.push(photoData);
-      renderPhotos();
-    };
-    reader.readAsDataURL(file);
+      if (!file.type.startsWith('image/')) {
+        showNotification('error', `${file.name}: Seules les images sont autorisées`);
+        continue;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        showNotification('error', `${file.name}: Taille maximale 5MB`);
+        continue;
+      }
+      
+      formData.append(`photo_${uploadedPhotos.length + validFilesCount}`, file);
+      validFilesCount++;
+    }
+    
+    if (validFilesCount === 0) {
+      return;
+    }
+    
+    // Upload vers R2
+    const response = await window.auth.apiRequest('/api/packages/upload-photos', {
+      method: 'POST',
+      body: formData,
+      // Ne pas définir Content-Type, le navigateur le fera avec boundary
+      headers: {}
+    });
+    
+    if (response.success) {
+      // Ajouter les URLs R2 aux photos uploadées
+      response.photos.forEach((photoKey, index) => {
+        // Créer preview local
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          uploadedPhotos.push({
+            url: photoKey, // URL R2 pour envoi au backend
+            preview: e.target.result, // Preview locale pour affichage
+            name: files[index].name
+          });
+          renderPhotos();
+        };
+        reader.readAsDataURL(files[index]);
+      });
+      
+      showNotification('success', `${response.photos.length} photo(s) uploadée(s) !`);
+    } else {
+      showNotification('error', response.error || 'Erreur lors de l\'upload');
+    }
+    
+  } catch (error) {
+    console.error('Erreur upload photos:', error);
+    showNotification('error', 'Erreur lors de l\'upload des photos');
   }
   
   // Reset input
@@ -159,7 +197,7 @@ function renderPhotos() {
   
   container.innerHTML = uploadedPhotos.map((photo, index) => `
     <div class="relative group">
-      <img src="${photo.url}" alt="${photo.name}" class="w-full h-24 object-cover rounded-lg border-2 border-gray-200">
+      <img src="${photo.preview || photo.url}" alt="${photo.name}" class="w-full h-24 object-cover rounded-lg border-2 border-gray-200">
       <button type="button" 
               onclick="removePhoto(${index})"
               class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -273,14 +311,22 @@ function showNotification(type, message) {
   const colors = {
     success: 'bg-green-500',
     error: 'bg-red-500',
-    warning: 'bg-yellow-500'
+    warning: 'bg-yellow-500',
+    info: 'bg-blue-500'
+  };
+  
+  const icons = {
+    success: 'check-circle',
+    error: 'exclamation-circle',
+    warning: 'exclamation-triangle',
+    info: 'info-circle'
   };
   
   const notification = document.createElement('div');
   notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in`;
   notification.innerHTML = `
     <div class="flex items-center">
-      <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'} mr-2"></i>
+      <i class="fas fa-${icons[type]} mr-2"></i>
       <span>${message}</span>
     </div>
   `;
@@ -290,6 +336,8 @@ function showNotification(type, message) {
   setTimeout(() => {
     notification.remove();
   }, 5000);
+  
+  return notification;
 }
 
 // Set minimum date to today
