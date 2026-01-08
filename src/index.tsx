@@ -310,7 +310,9 @@ const authMiddleware = async (c: any, next: any) => {
     
     // ✅ MIGRATION D1: Charger les infos user depuis D1
     const db = c.get('db') as DatabaseService
-    const userResult = await db.getUserById(payload.id)
+    // Normaliser l'ID: enlever les tirets si présents (JWT peut avoir tirets, D1 non)
+    const normalizedId = payload.id.replace(/-/g, '')
+    const userResult = await db.getUserById(normalizedId)
     
     if (!userResult) {
       return c.json({ error: 'Utilisateur non trouvé' }, 401)
@@ -3098,8 +3100,8 @@ app.post('/api/auth/signup', async (c) => {
     // Hash le mot de passe avec bcrypt
     const passwordHash = await bcrypt.hash(password, 10)
     
-    // Créer l'utilisateur
-    const userId = crypto.randomUUID().replace(/-/g, '') // Format D1
+    // Créer l'utilisateur avec UUID SANS TIRETS pour D1 (format hex)
+    const userId = crypto.randomUUID().replace(/-/g, '') // Enlève tirets pour D1
     const userData = {
       id: userId,
       email,
@@ -3226,7 +3228,7 @@ app.get('/api/auth/google/callback', async (c) => {
     
     if (!user) {
       // Créer un nouvel utilisateur
-      const userId = crypto.randomUUID().replace(/-/g, '')
+      const userId = crypto.randomUUID().replace(/-/g, '') // Format D1 (sans tirets)
       const userData = {
         id: userId,
         email: googleUser.email,
@@ -3366,7 +3368,7 @@ app.post('/api/auth/apple/callback', async (c) => {
     
     if (!dbUser) {
       // Créer un nouvel utilisateur
-      const userId = crypto.randomUUID().replace(/-/g, '')
+      const userId = crypto.randomUUID().replace(/-/g, '') // Format D1 (sans tirets)
       const userData = {
         id: userId,
         email: payload.email,
@@ -3479,7 +3481,7 @@ app.get('/api/auth/facebook/callback', async (c) => {
     
     if (!user) {
       // Créer un nouvel utilisateur
-      const userId = crypto.randomUUID().replace(/-/g, '')
+      const userId = crypto.randomUUID().replace(/-/g, '') // Format D1 (sans tirets)
       const userData = {
         id: userId,
         email: facebookUser.email,
@@ -3836,6 +3838,91 @@ app.post('/api/auth/verify-kyc', async (c) => {
     return c.json({ 
       success: false, 
       error: error.message || 'Erreur lors de la vérification KYC' 
+    }, 500)
+  }
+})
+
+// 🔧 DEBUG USER ENDPOINT (temporary - remove in production!)
+app.get('/api/debug/user/:email', async (c) => {
+  try {
+    const email = c.req.param('email')
+    const db = c.get('db') as DatabaseService
+    const user = await db.getUserByEmail(email)
+    
+    if (!user) {
+      return c.json({
+        success: false,
+        message: 'User not found',
+        email_searched: email
+      }, 404)
+    }
+    
+    return c.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        has_password_hash: !!user.password_hash,
+        password_hash_length: user.password_hash?.length || 0,
+        password_hash_preview: user.password_hash?.substring(0, 20) + '...',
+        kyc_status: user.kyc_status,
+        created_at: user.created_at
+      }
+    })
+  } catch (error: any) {
+    return c.json({
+      success: false,
+      error: error.message
+    }, 500)
+  }
+})
+
+// 🔧 DEBUG LOGIN ENDPOINT (temporary)
+app.post('/api/auth/login/debug', async (c) => {
+  try {
+    const { email, password } = await c.req.json()
+    const db = c.get('db') as DatabaseService
+    
+    // 1) Chercher l'utilisateur
+    const user = await db.getUserByEmail(email)
+    
+    if (!user) {
+      return c.json({
+        success: false,
+        debug: {
+          step: 'user_lookup',
+          email_searched: email,
+          user_found: false,
+          message: 'Utilisateur introuvable dans D1'
+        }
+      }, 404)
+    }
+    
+    // 2) Vérifier le hash
+    const passwordMatch = await bcrypt.compare(password, user.password_hash)
+    
+    return c.json({
+      success: passwordMatch,
+      debug: {
+        step: 'password_verification',
+        user_found: true,
+        user_id: user.id,
+        user_email: user.email,
+        has_password_hash: !!user.password_hash,
+        password_hash_length: user.password_hash?.length || 0,
+        password_hash_starts_with: user.password_hash?.substring(0, 7),
+        password_match: passwordMatch,
+        message: passwordMatch ? '✅ Mot de passe correct' : '❌ Mot de passe incorrect'
+      }
+    })
+  } catch (error: any) {
+    return c.json({
+      success: false,
+      debug: {
+        step: 'error',
+        error: error.message
+      }
     }, 500)
   }
 })
