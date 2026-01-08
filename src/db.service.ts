@@ -3,9 +3,9 @@
  * Professional migration from inMemoryDB to D1
  */
 
-// Helper pour générer des IDs D1-style
+// Helper pour générer des IDs D1-style (sans tirets, format hex)
 export function generateId(): string {
-  return crypto.randomUUID().replace(/-/g, '')
+  return crypto.randomUUID().replace(/-/g, '') // Enlève tirets pour D1
 }
 
 export class DatabaseService {
