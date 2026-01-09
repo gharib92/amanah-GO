@@ -16,7 +16,7 @@
     {
       "binding": "DB",
       "database_name": "amanah-go-db",
-      "database_id": "TO_BE_CONFIGURED_AFTER_CREATING_D1_DATABASE"
+      "database_id": "5157b1c4-4467-491d-aaff-41a4650fe6b9"
     }
   ],
   "r2_buckets": [

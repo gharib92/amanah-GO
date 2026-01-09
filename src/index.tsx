@@ -3108,7 +3108,7 @@ app.post('/api/auth/signup', async (c) => {
       name,
       phone,
       password_hash: passwordHash,
-      kyc_status: 'PENDING',
+      kyc_status: 'VERIFIED', // 🚀 BETA MODE: Auto-approve tous les utilisateurs
       rating: 0,
       reviews_count: 0,
       oauth_provider: null,
@@ -3149,7 +3149,7 @@ app.post('/api/auth/signup', async (c) => {
         email,
         name,
         phone,
-        kyc_status: 'PENDING'
+        kyc_status: 'VERIFIED' // 🚀 BETA MODE: Auto-approve
       },
       token,
       message: 'Compte créé avec succès'
@@ -3236,7 +3236,7 @@ app.get('/api/auth/google/callback', async (c) => {
         phone: '', // À remplir plus tard
         avatar_url: googleUser.picture,
         google_id: googleUser.id,
-        kyc_status: 'PENDING',
+        kyc_status: 'VERIFIED', // 🚀 BETA MODE: Auto-approve
         rating: 0,
         reviews_count: 0,
         created_at: new Date().toISOString()
@@ -3375,7 +3375,7 @@ app.post('/api/auth/apple/callback', async (c) => {
         name: userName,
         phone: '', // À remplir plus tard
         avatar_url: null,
-        kyc_status: 'PENDING',
+        kyc_status: 'VERIFIED', // 🚀 BETA MODE: Auto-approve
         rating: 0,
         reviews_count: 0,
         created_at: new Date().toISOString()
@@ -3489,7 +3489,7 @@ app.get('/api/auth/facebook/callback', async (c) => {
         phone: '', // À remplir plus tard
         avatar_url: facebookUser.picture?.data?.url,
         facebook_id: facebookUser.id,
-        kyc_status: 'PENDING',
+        kyc_status: 'VERIFIED', // 🚀 BETA MODE: Auto-approve
         rating: 0,
         reviews_count: 0,
         created_at: new Date().toISOString()
