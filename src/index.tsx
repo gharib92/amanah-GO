@@ -908,7 +908,7 @@ app.get('/', (c) => {
         </script>
         
         <!-- Styles -->
-        <!-- Tailwind CSS is now compiled locally via Vite -->
+        <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
         <style>

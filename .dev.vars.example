@@ -1,28 +1,75 @@
-# Twilio Configuration (pour SMS et WhatsApp)
-# Remplace ces valeurs par tes vraies credentials Twilio
-# NE COMMITE JAMAIS CE FICHIER SUR GIT !
+# ================================
+# FICHIER .dev.vars - VARIABLES D'ENVIRONNEMENT
+# ⚠️ NE JAMAIS COMMITER CE FICHIER SUR GIT !
+# ================================
 
+# --------------------------------
+# 🔐 Twilio Configuration (SMS et WhatsApp)
+# --------------------------------
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=your_auth_token_here
 TWILIO_PHONE_NUMBER=+33612345678
 
 # WhatsApp (optionnel)
-# Pour utiliser WhatsApp, tu as 2 options :
-
 # Option 1 : Twilio Sandbox (GRATUIT pour tester)
-# Utilise le numéro Twilio Sandbox par défaut
 TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
-# Les utilisateurs doivent d'abord rejoindre le sandbox en envoyant "join <code>" au numéro
+# Les utilisateurs doivent rejoindre le sandbox en envoyant "join <code>" au numéro
 
 # Option 2 : Numéro WhatsApp approuvé (PRODUCTION)
-# Après approbation Meta/WhatsApp, utilise ton propre numéro
 # TWILIO_WHATSAPP_NUMBER=whatsapp:+33612345678
 
-# Pour obtenir ces valeurs :
+# Pour obtenir ces credentials :
 # 1. Crée un compte sur https://www.twilio.com
-# 2. Va dans Console > Account Info
-# 3. Copie ton Account SID et Auth Token
-# 4. Pour SMS : Va dans Phone Numbers pour obtenir ton numéro Twilio
-# 5. Pour WhatsApp : 
-#    - Test : Utilise le Sandbox (https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn)
-#    - Production : Demande l'approbation Meta (https://www.twilio.com/docs/whatsapp/tutorial/connect-number-business-profile)
+# 2. Console → Account Info → Copie Account SID et Auth Token
+# 3. Phone Numbers → Obtiens ton numéro Twilio
+# 4. WhatsApp : https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn
+
+# --------------------------------
+# 💳 Stripe Configuration (Paiements)
+# --------------------------------
+
+# Mode TEST (Développement)
+STRIPE_SECRET_KEY=sk_test_YOUR_TEST_SECRET_KEY_HERE
+STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_TEST_PUBLISHABLE_KEY_HERE
+STRIPE_WEBHOOK_SECRET=whsec_YOUR_WEBHOOK_SECRET_HERE
+
+# Mode LIVE (Production - à configurer avant déploiement)
+# STRIPE_SECRET_KEY=sk_live_YOUR_LIVE_SECRET_KEY_HERE
+# STRIPE_PUBLISHABLE_KEY=pk_live_YOUR_LIVE_PUBLISHABLE_KEY_HERE
+# STRIPE_WEBHOOK_SECRET=whsec_YOUR_WEBHOOK_SECRET_HERE
+
+# Pour obtenir ces clés :
+# 1. Crée un compte sur https://dashboard.stripe.com/register
+# 2. Dashboard → Developers → API Keys
+#    - Publishable key (pk_test_... ou pk_live_...)
+#    - Secret key (sk_test_... ou sk_live_...)
+# 3. Dashboard → Developers → Webhooks → Add endpoint
+#    - URL: https://amanah-go.pages.dev/api/webhooks/stripe
+#    - Events: payment_intent.succeeded, payment_intent.payment_failed, transfer.created
+#    - Copie le Webhook Secret (whsec_...)
+
+# --------------------------------
+# 📧 Email Configuration (Resend ou SendGrid)
+# --------------------------------
+# RESEND_API_KEY=re_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+# ou
+# SENDGRID_API_KEY=SG.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# --------------------------------
+# 🔑 OAuth Configuration
+# --------------------------------
+# GOOGLE_CLIENT_ID=XXXXXX.apps.googleusercontent.com
+# GOOGLE_CLIENT_SECRET=GOCSPX-XXXXXX
+# FACEBOOK_APP_ID=XXXXXX
+# FACEBOOK_APP_SECRET=XXXXXX
+
+# --------------------------------
+# 🔐 JWT Configuration
+# --------------------------------
+# JWT_SECRET=votre_secret_super_securise_minimum_32_caracteres_aleatoires
+
+# --------------------------------
+# 🌐 URLs Configuration
+# --------------------------------
+# APP_URL=http://localhost:3000
+# API_URL=http://localhost:3000/api
