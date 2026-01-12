@@ -74,23 +74,32 @@ async function apiRequest(url, options = {}) {
 
 async function signup(email, password, name, phone) {
   try {
+    console.log('🔐 auth.signup called:', { email, name, phone });
+    
     const response = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name, phone })
     })
     
+    console.log('📡 Signup response status:', response.status, response.ok);
+    
     const data = await response.json()
+    console.log('📦 Signup response data:', data);
     
     if (response.ok) {
+      console.log('✅ Signup successful, saving token...');
       saveToken(data.token)
       saveUser(data.user)
+      console.log('✅ Token saved, localStorage check:', !!getToken());
       return { success: true, user: data.user }
     } else {
+      console.error('❌ Signup failed:', data.error);
       return { success: false, error: data.error || 'Erreur lors de l\'inscription' }
     }
   } catch (error) {
-    return { success: false, error: 'Erreur réseau' }
+    console.error('❌ Signup network error:', error);
+    return { success: false, error: 'Erreur réseau: ' + error.message }
   }
 }
 

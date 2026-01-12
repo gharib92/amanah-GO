@@ -4542,6 +4542,7 @@ app.get('/signup', (c) => {
           
           document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('🚀 SIGNUP: Form submitted');
             
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
@@ -4550,13 +4551,17 @@ app.get('/signup', (c) => {
             const confirmPassword = document.getElementById('confirmPassword').value;
             const submitBtn = e.target.querySelector('button[type="submit"]');
             
+            console.log('📝 SIGNUP: Form data:', { name, email, phone, passwordLength: password.length });
+            
             // Validation
             if (password !== confirmPassword) {
+              console.error('❌ SIGNUP: Passwords do not match');
               showError('Les mots de passe ne correspondent pas');
               return;
             }
             
             if (password.length < 8) {
+              console.error('❌ SIGNUP: Password too short');
               showError('Le mot de passe doit contenir au moins 8 caractères');
               return;
             }
@@ -4565,12 +4570,16 @@ app.get('/signup', (c) => {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Création du compte...';
             
+            console.log('🔄 SIGNUP: Calling auth.signup()...');
             const result = await auth.signup(email, password, name, phone);
+            console.log('📦 SIGNUP: Result:', result);
             
             if (result.success) {
+              console.log('✅ SIGNUP: Success! Redirecting to /voyageur...');
               // Redirection vers la page voyageur
               window.location.href = '/voyageur';
             } else {
+              console.error('❌ SIGNUP: Error:', result.error);
               showError(result.error);
               submitBtn.disabled = false;
               submitBtn.innerHTML = '<i class="fas fa-user-plus mr-2"></i> Créer mon compte';
