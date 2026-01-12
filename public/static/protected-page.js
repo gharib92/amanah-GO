@@ -4,11 +4,20 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('🔒 PROTECTED PAGE: Checking authentication...');
+  console.log('🔒 window.auth exists:', !!window.auth);
+  console.log('🔒 isAuthenticated:', window.auth?.isAuthenticated());
+  console.log('🔒 Token:', window.auth?.getToken()?.substring(0, 20) + '...');
+  console.log('🔒 User:', window.auth?.getUser());
+  
   // Protection: redirect if not authenticated
   if (!window.auth || !window.auth.isAuthenticated()) {
+    console.error('❌ PROTECTED PAGE: Not authenticated, redirecting to login');
     window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
     return;
   }
+  
+  console.log('✅ PROTECTED PAGE: Authenticated, loading page...');
   
   // Display user name in navbar
   const user = window.auth.getUser();

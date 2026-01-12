@@ -4576,6 +4576,13 @@ app.get('/signup', (c) => {
             
             if (result.success) {
               console.log('✅ SIGNUP: Success! Redirecting to /voyageur...');
+              console.log('✅ SIGNUP: Token saved:', !!auth.getToken());
+              console.log('✅ SIGNUP: User saved:', !!auth.getUser());
+              
+              // Petite pause pour s'assurer que localStorage est bien synchronisé
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              console.log('🚀 SIGNUP: Redirecting NOW...');
               // Redirection vers la page voyageur
               window.location.href = '/voyageur';
             } else {
