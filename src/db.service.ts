@@ -31,6 +31,12 @@ export class DatabaseService {
     ).bind(id).first()
   }
   
+  async getUserByFirebaseUid(firebaseUid: string) {
+    return await this.db.prepare(
+      'SELECT * FROM users WHERE firebase_uid = ?'
+    ).bind(firebaseUid).first()
+  }
+  
   async getUserByGoogleId(googleId: string) {
     return await this.db.prepare(
       'SELECT * FROM users WHERE google_id = ?'
@@ -49,9 +55,9 @@ export class DatabaseService {
     await this.db.prepare(`
       INSERT INTO users (
         id, email, name, phone, password_hash, 
-        avatar_url, kyc_status, google_id, facebook_id,
+        avatar_url, kyc_status, google_id, facebook_id, firebase_uid,
         rating, reviews_count, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       user.email,
@@ -62,6 +68,7 @@ export class DatabaseService {
       user.kyc_status || 'PENDING',
       user.google_id || null,
       user.facebook_id || null,
+      user.firebase_uid || null,
       user.rating || 0,
       user.reviews_count || 0,
       user.created_at || new Date().toISOString()

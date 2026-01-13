@@ -6,7 +6,7 @@ import { sign, verify } from 'hono/jwt'
 import * as bcrypt from 'bcryptjs'
 import Stripe from 'stripe'
 import './styles.css' // Import Tailwind CSS
-import { DatabaseService } from './db.service'
+import { DatabaseService, generateId } from './db.service'
 
 // Types pour le contexte avec user authentifié et DB
 type Variables = {
@@ -343,6 +343,70 @@ const authMiddleware = async (c: any, next: any) => {
   } catch (error: any) {
     console.error('Auth middleware error:', error)
     return c.json({ error: 'Token invalide ou expiré' }, 401)
+  }
+}
+
+// ==========================================
+// 🔥 FIREBASE AUTH MIDDLEWARE
+// ==========================================
+const firebaseAuthMiddleware = async (c: any, next: any) => {
+  try {
+    const authHeader = c.req.header('Authorization')
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Token manquant' }, 401)
+    }
+    
+    const idToken = authHeader.substring(7)
+    
+    // Vérifier le token Firebase avec l'API REST (pas besoin de firebase-admin en Workers)
+    const response = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyCtz79Y0HLOuTibmaoeJm-w0dzkpY18aiQ`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      }
+    )
+    
+    if (!response.ok) {
+      console.error('Firebase token verification failed')
+      return c.json({ error: 'Token Firebase invalide' }, 401)
+    }
+    
+    const data: any = await response.json()
+    const firebaseUser = data.users?.[0]
+    
+    if (!firebaseUser) {
+      return c.json({ error: 'Utilisateur Firebase non trouvé' }, 401)
+    }
+    
+    console.log('✅ Firebase token verified:', firebaseUser.email)
+    
+    // Récupérer l'utilisateur dans notre DB par Firebase UID
+    const db = c.get('db') as DatabaseService
+    const userResult = await db.getUserByFirebaseUid(firebaseUser.localId)
+    
+    if (!userResult) {
+      return c.json({ error: 'Utilisateur non trouvé dans la base de données' }, 401)
+    }
+    
+    // Stocker user dans le contexte
+    c.set('user', {
+      id: userResult.id,
+      firebaseUid: firebaseUser.localId,
+      email: userResult.email,
+      name: userResult.name,
+      phone: userResult.phone,
+      kyc_status: userResult.kyc_status,
+      emailVerified: firebaseUser.emailVerified === 'true',
+      role: 'user'
+    })
+    
+    await next()
+  } catch (error: any) {
+    console.error('Firebase auth middleware error:', error)
+    return c.json({ error: 'Token Firebase invalide ou expiré' }, 401)
   }
 }
 
@@ -3083,7 +3147,160 @@ app.post('/api/stripe/webhooks', async (c) => {
 })
 
 // ==========================================
-// AUTH API ROUTES
+// 🔥 FIREBASE AUTH API ROUTES
+// ==========================================
+
+// Firebase Signup - Créer utilisateur dans notre DB après création Firebase
+app.post('/api/auth/firebase-signup', firebaseAuthMiddleware, async (c) => {
+  try {
+    const { firebaseUid, email, name, phone } = await c.req.json()
+    const db = c.get('db') as DatabaseService
+    
+    console.log('🔥 Firebase signup - Creating user in DB:', email)
+    
+    // Vérifier si l'utilisateur existe déjà
+    const existingUser = await db.getUserByFirebaseUid(firebaseUid)
+    
+    if (existingUser) {
+      return c.json({
+        success: true,
+        user: existingUser,
+        message: 'Utilisateur déjà existant'
+      })
+    }
+    
+    // Créer l'utilisateur dans notre DB
+    const userId = generateId()
+    const userData = {
+      id: userId,
+      firebase_uid: firebaseUid,
+      email,
+      name,
+      phone,
+      password_hash: '', // Pas de password hash avec Firebase
+      kyc_status: 'PENDING',
+      rating: 0,
+      reviews_count: 0,
+      created_at: new Date().toISOString()
+    }
+    
+    await db.createUser(userData)
+    console.log('✅ User created in D1:', userId)
+    
+    return c.json({
+      success: true,
+      user: {
+        id: userId,
+        firebase_uid: firebaseUid,
+        email,
+        name,
+        phone,
+        kyc_status: 'PENDING'
+      },
+      message: 'Compte créé avec succès'
+    })
+    
+  } catch (error: any) {
+    console.error('❌ Firebase signup error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Firebase OAuth - Créer/Récupérer utilisateur OAuth
+app.post('/api/auth/firebase-oauth', firebaseAuthMiddleware, async (c) => {
+  try {
+    const { provider, firebaseUid, email, name, avatar_url } = await c.req.json()
+    const db = c.get('db') as DatabaseService
+    
+    console.log(`🔥 Firebase ${provider} OAuth:`, email)
+    
+    // Vérifier si l'utilisateur existe
+    let user = await db.getUserByFirebaseUid(firebaseUid)
+    
+    if (!user) {
+      // Créer nouvel utilisateur OAuth
+      const userId = generateId()
+      const userData = {
+        id: userId,
+        firebase_uid: firebaseUid,
+        email,
+        name,
+        phone: '',
+        password_hash: '',
+        avatar_url: avatar_url || '',
+        kyc_status: 'PENDING',
+        rating: 0,
+        reviews_count: 0,
+        created_at: new Date().toISOString()
+      }
+      
+      user = await db.createUser(userData)
+      console.log('✅ OAuth user created:', userId)
+    } else {
+      console.log('✅ OAuth user exists:', user.id)
+    }
+    
+    return c.json({
+      success: true,
+      user: {
+        id: user.id,
+        firebase_uid: firebaseUid,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        avatar_url: user.avatar_url,
+        kyc_status: user.kyc_status
+      }
+    })
+    
+  } catch (error: any) {
+    console.error('❌ Firebase OAuth error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Get user profile (avec Firebase token)
+app.get('/api/auth/me', firebaseAuthMiddleware, async (c) => {
+  const user = c.get('user')
+  
+  return c.json({
+    success: true,
+    user: {
+      id: user.id,
+      firebase_uid: user.firebaseUid,
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      kyc_status: user.kyc_status,
+      emailVerified: user.emailVerified
+    }
+  })
+})
+
+// Update phone number
+app.post('/api/auth/update-phone', firebaseAuthMiddleware, async (c) => {
+  try {
+    const { phone } = await c.req.json()
+    const user = c.get('user')
+    const db = c.get('db') as DatabaseService
+    
+    await db.updateUser(user.id, { phone })
+    
+    console.log('✅ Phone updated for user:', user.id)
+    
+    return c.json({
+      success: true,
+      message: 'Téléphone mis à jour'
+    })
+    
+  } catch (error: any) {
+    console.error('❌ Update phone error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// ==========================================
+// AUTH API ROUTES (Legacy JWT - à garder pour compatibilité)
 // ==========================================
 
 // Signup
@@ -4597,15 +4814,33 @@ app.get('/signup', (c) => {
             </div>
         </div>
 
-        <script src="/static/auth.js"></script>
-        <script src="/static/auth-ui.js"></script>
+        <!-- 🔥 FIREBASE SDK -->
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+        
         <script>
+          // Configuration Firebase
+          const firebaseConfig = {
+            apiKey: "AIzaSyCtz79Y0HLOuTibmaoeJm-w0dzkpY18aiQ",
+            authDomain: "studio-1096025835-e3034.firebaseapp.com",
+            projectId: "studio-1096025835-e3034",
+            storageBucket: "studio-1096025835-e3034.firebasestorage.app",
+            messagingSenderId: "867447961267",
+            appId: "1:867447961267:web:892fdbbdf8c8c7bcf1a2c6"
+          };
+          
+          // Initialiser Firebase
+          firebase.initializeApp(firebaseConfig);
+          const auth = firebase.auth();
+          
           // Rediriger si déjà connecté
-          auth.redirectIfAuthenticated();
+          if (auth.currentUser) {
+            window.location.href = '/voyageur';
+          }
           
           document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log('🚀 SIGNUP: Form submitted');
+            console.log('🔥 FIREBASE SIGNUP: Form submitted');
             
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
@@ -4633,24 +4868,71 @@ app.get('/signup', (c) => {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Création du compte...';
             
-            console.log('🔄 SIGNUP: Calling auth.signup()...');
-            const result = await auth.signup(email, password, name, phone);
-            console.log('📦 SIGNUP: Result:', result);
-            
-            if (result.success) {
-              console.log('✅ SIGNUP: Success! Redirecting to /voyageur...');
-              console.log('✅ SIGNUP: Token saved:', !!auth.getToken());
-              console.log('✅ SIGNUP: User saved:', !!auth.getUser());
+            try {
+              console.log('🔥 Step 1: Creating Firebase user...');
               
-              // Petite pause pour s'assurer que localStorage est bien synchronisé
-              await new Promise(resolve => setTimeout(resolve, 100));
+              // 1. Créer utilisateur Firebase
+              const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+              const firebaseUser = userCredential.user;
               
-              console.log('🚀 SIGNUP: Redirecting NOW...');
-              // Redirection vers la page voyageur
+              console.log('✅ Firebase user created:', firebaseUser.uid);
+              
+              // 2. Envoyer email de vérification
+              await firebaseUser.sendEmailVerification();
+              console.log('✅ Verification email sent');
+              
+              // 3. Récupérer le token
+              const idToken = await firebaseUser.getIdToken();
+              
+              // 4. Créer l'utilisateur dans notre DB
+              console.log('🔥 Step 2: Creating user in our DB...');
+              
+              const response = await fetch('/api/auth/firebase-signup', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + idToken
+                },
+                body: JSON.stringify({
+                  firebaseUid: firebaseUser.uid,
+                  email,
+                  name,
+                  phone
+                })
+              });
+              
+              const data = await response.json();
+              
+              if (!response.ok) {
+                throw new Error(data.error || 'Erreur lors de la création du compte');
+              }
+              
+              console.log('✅ User created in DB:', data.user);
+              
+              // 5. Sauvegarder localement
+              localStorage.setItem('amanah_user', JSON.stringify(data.user));
+              
+              // Success
+              alert('✅ Compte créé avec succès!\\n\\nUn email de vérification a été envoyé à ' + email);
+              
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
               window.location.href = '/voyageur';
-            } else {
-              console.error('❌ SIGNUP: Error:', result.error);
-              showError(result.error);
+              
+            } catch (error) {
+              console.error('❌ FIREBASE SIGNUP Error:', error);
+              let errorMessage = error.message;
+              
+              // Messages d'erreur en français
+              if (error.code === 'auth/email-already-in-use') {
+                errorMessage = 'Cet email est déjà utilisé';
+              } else if (error.code === 'auth/invalid-email') {
+                errorMessage = 'Email invalide';
+              } else if (error.code === 'auth/weak-password') {
+                errorMessage = 'Mot de passe trop faible (min 6 caractères)';
+              }
+              
+              showError(errorMessage);
               submitBtn.disabled = false;
               submitBtn.innerHTML = '<i class="fas fa-user-plus mr-2"></i> Créer mon compte';
             }
