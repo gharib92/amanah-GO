@@ -39,8 +39,20 @@ const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 const appleProvider = new OAuthProvider('apple.com');
 
-// Storage keys
+// Storage keys (compatible avec auth.js)
+const AUTH_TOKEN_KEY = 'amanah_token';
 const AUTH_USER_KEY = 'amanah_user';
+
+// ==========================================
+// TOKEN MANAGEMENT (Compatible avec auth.js)
+// ==========================================
+function saveToken(token) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+function getToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
 
 // ==========================================
 // INSCRIPTION
@@ -83,7 +95,7 @@ async function signup(email, password, name, phone) {
       throw new Error(data.error || 'Erreur lors de la création du compte');
     }
     
-    // 5. Sauvegarder l'utilisateur localement
+    // 5. Sauvegarder l'utilisateur localement ET le token Firebase
     const user = {
       id: data.user.id,
       firebaseUid: firebaseUser.uid,
@@ -95,10 +107,12 @@ async function signup(email, password, name, phone) {
     };
     
     saveUser(user);
+    saveToken(idToken); // ✅ Sauvegarder le token pour compatibilité auth.js
     
     console.log('✅ User saved in DB:', user);
+    console.log('✅ Firebase token saved in localStorage');
     
-    return { success: true, user };
+    return { success: true, user, token: idToken };
     
   } catch (error) {
     console.error('❌ Firebase signup error:', error);
@@ -138,7 +152,7 @@ async function login(email, password) {
       throw new Error(data.error || 'Erreur lors de la récupération du profil');
     }
     
-    // 4. Sauvegarder localement
+    // 4. Sauvegarder localement ET le token
     const user = {
       ...data.user,
       firebaseUid: firebaseUser.uid,
@@ -146,8 +160,10 @@ async function login(email, password) {
     };
     
     saveUser(user);
+    saveToken(idToken); // ✅ Sauvegarder le token pour compatibilité auth.js
     
     console.log('✅ User logged in:', user);
+    console.log('✅ Firebase token saved in localStorage');
     
     return { success: true, user, token: idToken };
     
@@ -200,6 +216,8 @@ async function loginWithGoogle() {
     };
     
     saveUser(user);
+    saveToken(idToken); // ✅ Sauvegarder le token pour compatibilité auth.js
+    console.log('✅ Google login successful, token saved');
     
     return { success: true, user, token: idToken };
     
