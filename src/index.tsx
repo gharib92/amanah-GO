@@ -5720,6 +5720,8 @@ app.get('/verify-profile', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/auth.js"></script>
+        <script type="module" src="/static/firebase-auth.js"></script>
         <script src="/static/kyc-verification.js"></script>
         <script>
           let verificationState = {
