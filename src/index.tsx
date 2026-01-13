@@ -231,6 +231,17 @@ const EmailTemplates = {
     <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
       Besoin d'aide ? Contactez-nous à <a href="mailto:support@amanah-go.com" style="color: #667eea;">support@amanah-go.com</a>
     </p>
+  `),
+
+  emailVerification: (userName: string, code: string) => EmailTemplates.baseTemplate(`
+    <h2>📧 Vérification de votre email</h2>
+    <p>Bonjour ${userName},</p>
+    <p>Votre code de vérification pour <strong>Amanah GO</strong> est :</p>
+    <div style="background: #667eea; color: white; padding: 30px; border-radius: 10px; text-align: center; margin: 30px 0; font-size: 32px; font-weight: bold; letter-spacing: 8px;">
+      ${code}
+    </div>
+    <p><strong>⏱️ Ce code expire dans 10 minutes.</strong></p>
+    <p>Si vous n'avez pas demandé ce code, ignorez cet email.</p>
   `)
 }
 
@@ -3532,12 +3543,64 @@ app.get('/api/auth/facebook/callback', async (c) => {
 
 // Envoyer email de vérification
 app.post('/api/auth/send-verification-email', async (c) => {
-  // TODO: Intégrer avec Resend ou SendGrid
+  const { DB } = c.env
+  
   try {
-    // Simuler envoi email
-    console.log('Envoi email de vérification...')
-    return c.json({ success: true, message: 'Email de vérification envoyé' })
-  } catch (error) {
+    const { email, userId } = await c.req.json()
+    
+    // Validation
+    if (!email || !userId) {
+      return c.json({ 
+        success: false, 
+        error: 'Email et userId requis' 
+      }, 400)
+    }
+    
+    // Récupérer l'utilisateur
+    const user = await DB.prepare('SELECT * FROM users WHERE id = ? AND email = ?')
+      .bind(userId, email)
+      .first()
+    
+    if (!user) {
+      return c.json({ 
+        success: false, 
+        error: 'Utilisateur introuvable' 
+      }, 404)
+    }
+    
+    // Générer code à 6 chiffres
+    const code = Math.floor(100000 + Math.random() * 900000).toString()
+    
+    // TODO: Stocker le code en DB avec expiration 10 minutes
+    // Pour l'instant, on le log juste
+    console.log(`📧 Code de vérification email pour ${email}: ${code}`)
+    
+    // Envoyer l'email
+    const resendKey = c.env?.RESEND_API_KEY
+    const emailHtml = EmailTemplates.emailVerification(user.name, code)
+    const emailSent = await sendEmail(
+      email, 
+      '📧 Vérification de votre email - Amanah GO', 
+      emailHtml, 
+      resendKey
+    )
+    
+    if (!emailSent && resendKey) {
+      return c.json({ 
+        success: false, 
+        error: 'Échec de l\'envoi de l\'email' 
+      }, 500)
+    }
+    
+    return c.json({ 
+      success: true, 
+      message: 'Email de vérification envoyé',
+      code: resendKey ? undefined : code, // DEV ONLY: renvoie le code si Resend n'est pas configuré
+      dev_mode: !resendKey
+    })
+    
+  } catch (error: any) {
+    console.error('❌ Erreur send-verification-email:', error)
     return c.json({ success: false, error: error.message }, 500)
   }
 })
@@ -5390,18 +5453,37 @@ app.get('/verify-profile', (c) => {
           let currentMethod = '';
 
           async function verifyEmail() {
-            // Simuler envoi email de vérification
-            const confirmed = confirm('Un email de vérification va être envoyé. Continuer ?');
+            // Récupérer l'utilisateur connecté
+            const user = window.auth?.getUser();
+            if (!user) {
+              alert('Erreur : Utilisateur non connecté');
+              return;
+            }
+            
+            const confirmed = confirm('Un email de vérification va être envoyé à ' + user.email + '. Continuer ?');
             if (confirmed) {
               try {
-                await axios.post('/api/auth/send-verification-email');
-                alert('Email de vérification envoyé ! Vérifiez votre boîte de réception.');
+                const response = await axios.post('/api/auth/send-verification-email', {
+                  email: user.email,
+                  userId: user.id
+                });
+                
+                // Afficher le code en mode dev
+                if (response.data.dev_mode && response.data.code) {
+                  alert('📧 EMAIL DE VÉRIFICATION\\n\\n' +
+                        'Un email a été envoyé à ' + user.email + '\\n\\n' +
+                        '🔐 CODE (DEV MODE): ' + response.data.code + '\\n\\n' +
+                        'Entrez ce code pour valider votre email.');
+                } else {
+                  alert('Email de vérification envoyé ! Vérifiez votre boîte de réception.');
+                }
                 
                 // Marquer comme vérifié (simulation)
                 verificationState.email = true;
                 updateUI();
               } catch (error) {
-                alert('Erreur lors de l\\'envoi de l\\'email');
+                console.error('Erreur envoi email:', error);
+                alert('Erreur lors de l\\'envoi de l\\'email: ' + (error.response?.data?.error || error.message));
               }
             }
           }
