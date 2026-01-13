@@ -410,6 +410,56 @@ const firebaseAuthMiddleware = async (c: any, next: any) => {
   }
 }
 
+// 🔥 FIREBASE TOKEN VERIFICATION ONLY (pour signup)
+// Ne vérifie QUE le token Firebase, sans chercher l'user dans D1
+const firebaseTokenOnly = async (c: any, next: any) => {
+  try {
+    const authHeader = c.req.header('Authorization')
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Token manquant' }, 401)
+    }
+    
+    const idToken = authHeader.substring(7)
+    
+    // Vérifier le token Firebase
+    const response = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyCtz79Y0HLOuTibmaoeJm-w0dzkpY18aiQ`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      }
+    )
+    
+    if (!response.ok) {
+      console.error('Firebase token verification failed')
+      return c.json({ error: 'Token Firebase invalide' }, 401)
+    }
+    
+    const data: any = await response.json()
+    const firebaseUser = data.users?.[0]
+    
+    if (!firebaseUser) {
+      return c.json({ error: 'Utilisateur Firebase non trouvé' }, 401)
+    }
+    
+    console.log('✅ Firebase token verified (token only):', firebaseUser.email)
+    
+    // Stocker les infos Firebase dans le contexte (SANS chercher dans D1)
+    c.set('firebaseUser', {
+      uid: firebaseUser.localId,
+      email: firebaseUser.email,
+      emailVerified: firebaseUser.emailVerified === 'true'
+    })
+    
+    await next()
+  } catch (error: any) {
+    console.error('Firebase token verification error:', error)
+    return c.json({ error: 'Token Firebase invalide' }, 401)
+  }
+}
+
 // Enable CORS pour API
 app.use('/api/*', cors())
 
@@ -3151,7 +3201,7 @@ app.post('/api/stripe/webhooks', async (c) => {
 // ==========================================
 
 // Firebase Signup - Créer utilisateur dans notre DB après création Firebase
-app.post('/api/auth/firebase-signup', firebaseAuthMiddleware, async (c) => {
+app.post('/api/auth/firebase-signup', firebaseTokenOnly, async (c) => {
   try {
     const { firebaseUid, email, name, phone } = await c.req.json()
     const db = c.get('db') as DatabaseService
@@ -3162,6 +3212,7 @@ app.post('/api/auth/firebase-signup', firebaseAuthMiddleware, async (c) => {
     const existingUser = await db.getUserByFirebaseUid(firebaseUid)
     
     if (existingUser) {
+      console.log('✅ User already exists in DB:', existingUser.id)
       return c.json({
         success: true,
         user: existingUser,
@@ -3207,7 +3258,7 @@ app.post('/api/auth/firebase-signup', firebaseAuthMiddleware, async (c) => {
 })
 
 // Firebase OAuth - Créer/Récupérer utilisateur OAuth
-app.post('/api/auth/firebase-oauth', firebaseAuthMiddleware, async (c) => {
+app.post('/api/auth/firebase-oauth', firebaseTokenOnly, async (c) => {
   try {
     const { provider, firebaseUid, email, name, avatar_url } = await c.req.json()
     const db = c.get('db') as DatabaseService
