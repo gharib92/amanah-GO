@@ -281,6 +281,15 @@ async function submitPackage(event) {
         window.location.href = '/expediteur/mes-colis';
       }, 2000);
     } else {
+      // Check if KYC verification is required
+      if (response.requiresKYC || response.error?.includes('vérification')) {
+        showNotification('warning', response.error || 'Veuillez compléter la vérification de votre profil');
+        setTimeout(() => {
+          window.location.href = response.redirectUrl || '/verify-profile';
+        }, 2000);
+        return;
+      }
+      
       showNotification('error', response.error || 'Erreur lors de la publication');
       document.getElementById('submitBtn').disabled = false;
       document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Publier mon colis';

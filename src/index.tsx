@@ -3108,7 +3108,7 @@ app.post('/api/auth/signup', async (c) => {
       name,
       phone,
       password_hash: passwordHash,
-      kyc_status: 'VERIFIED', // 🚀 BETA MODE: Auto-approve tous les utilisateurs
+      kyc_status: 'PENDING', // ✅ KYC activé : les utilisateurs doivent compléter la vérification
       rating: 0,
       reviews_count: 0,
       oauth_provider: null,
@@ -3149,7 +3149,7 @@ app.post('/api/auth/signup', async (c) => {
         email,
         name,
         phone,
-        kyc_status: 'VERIFIED' // 🚀 BETA MODE: Auto-approve
+        kyc_status: 'PENDING' // ✅ KYC activé
       },
       token,
       message: 'Compte créé avec succès'
@@ -6508,14 +6508,15 @@ app.post('/api/trips', authMiddleware, async (c) => {
       }, 404)
     }
     
-    // ⚠️ KYC VERIFICATION TEMPORAIREMENT DÉSACTIVÉE POUR TESTS
-    // TODO: Réactiver en production après configuration KYC/Firebase
-    // if (user.kyc_status !== 'VERIFIED') {
-    //   return c.json({
-    //     success: false,
-    //     error: 'User must complete KYC verification before publishing trips'
-    //   }, 403)
-    // }
+    // ✅ KYC VERIFICATION ACTIVÉE
+    if (user.kyc_status !== 'VERIFIED') {
+      return c.json({
+        success: false,
+        error: 'Veuillez compléter la vérification de votre profil avant de publier un trajet',
+        requiresKYC: true,
+        redirectUrl: '/verify-profile'
+      }, 403)
+    }
     
     // Create trip
     const tripId = crypto.randomUUID()
@@ -6913,14 +6914,15 @@ app.post('/api/packages', authMiddleware, async (c) => {
       }, 404)
     }
     
-    // ⚠️ KYC VERIFICATION TEMPORAIREMENT DÉSACTIVÉE POUR TESTS
-    // TODO: Réactiver en production après configuration KYC/Firebase
-    // if (user.kyc_status !== 'VERIFIED') {
-    //   return c.json({
-    //     success: false,
-    //     error: 'User must complete KYC verification before publishing packages'
-    //   }, 403)
-    // }
+    // ✅ KYC VERIFICATION ACTIVÉE
+    if (user.kyc_status !== 'VERIFIED') {
+      return c.json({
+        success: false,
+        error: 'Veuillez compléter la vérification de votre profil avant de publier un colis',
+        requiresKYC: true,
+        redirectUrl: '/verify-profile'
+      }, 403)
+    }
     
     // Create package
     const packageId = crypto.randomUUID()
