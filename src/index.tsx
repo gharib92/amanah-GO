@@ -4832,7 +4832,7 @@ app.get('/signup', (c) => {
           
           // Rediriger si déjà connecté
           if (auth.currentUser) {
-            window.location.href = '/voyageur';
+            window.location.href = '/verify-profile';
           }
           
           document.getElementById('signupForm').addEventListener('submit', async (e) => {
