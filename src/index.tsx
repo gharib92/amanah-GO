@@ -4914,7 +4914,7 @@ app.get('/signup', (c) => {
               
               await new Promise(resolve => setTimeout(resolve, 500));
               
-              window.location.href = '/voyageur';
+              window.location.href = '/verify-profile';
               
             } catch (error) {
               console.error('❌ FIREBASE SIGNUP Error:', error);
