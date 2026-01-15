@@ -4598,18 +4598,18 @@ app.get('/login', (c) => {
                     </a>
                     
                     <!-- Google Sign In -->
-                    <a href="/api/auth/google"
+                    <button onclick="signInWithGoogle()" type="button"
                        class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-google text-red-500 mr-2"></i>
                         <span class="font-medium text-gray-700">Continuer avec Google</span>
-                    </a>
+                    </button>
                     
                     <!-- Facebook Sign In -->
-                    <a href="/api/auth/facebook"
+                    <button onclick="signInWithFacebook()" type="button"
                        class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-facebook text-blue-600 mr-2"></i>
                         <span class="font-medium text-gray-700">Continuer avec Facebook</span>
-                    </a>
+                    </button>
                 </div>
 
                 <!-- Lien inscription -->
@@ -4794,18 +4794,18 @@ app.get('/signup', (c) => {
                     </a>
                     
                     <!-- Google Sign In -->
-                    <a href="/api/auth/google"
+                    <button onclick="signInWithGoogle()" type="button"
                        class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-google text-red-500 mr-2"></i>
                         <span class="font-medium text-gray-700">Continuer avec Google</span>
-                    </a>
+                    </button>
                     
                     <!-- Facebook Sign In -->
-                    <a href="/api/auth/facebook"
+                    <button onclick="signInWithFacebook()" type="button"
                        class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
                         <i class="fab fa-facebook text-blue-600 mr-2"></i>
                         <span class="font-medium text-gray-700">Continuer avec Facebook</span>
-                    </a>
+                    </button>
                 </div>
 
                 <!-- Lien connexion -->
@@ -4840,6 +4840,38 @@ app.get('/signup', (c) => {
             window.location.href = '/verify-profile';
           }
           
+          // ==========================================
+          // OAUTH FUNCTIONS (Google & Facebook)
+          // ==========================================
+          async function signInWithGoogle() {
+            try {
+              console.log('🔥 Google Sign In clicked');
+              const result = await window.firebaseAuth.loginWithGoogle();
+              
+              if (result.success) {
+                console.log('✅ Google login successful:', result.user);
+                alert('✅ Connexion Google réussie !');
+                window.location.href = '/verify-profile';
+              } else {
+                throw new Error(result.error || 'Erreur Google Sign In');
+              }
+            } catch (error) {
+              console.error('❌ Google Sign In error:', error);
+              alert('❌ ' + error.message);
+            }
+          }
+
+          async function signInWithFacebook() {
+            try {
+              console.log('🔥 Facebook Sign In clicked');
+              alert('Facebook Sign In sera disponible prochainement !');
+              // TODO: Implémenter Facebook OAuth avec Firebase
+            } catch (error) {
+              console.error('❌ Facebook Sign In error:', error);
+              alert('❌ ' + error.message);
+            }
+          }
+
           document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             console.log('🔥 FIREBASE SIGNUP: Form submitted');
