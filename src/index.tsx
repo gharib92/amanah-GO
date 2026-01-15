@@ -5735,6 +5735,12 @@ app.get('/verify-profile', (c) => {
         <script type="module" src="/static/firebase-auth.js"></script>
         <script src="/static/kyc-verification.js"></script>
         <script>
+          // Attendre que tout soit chargé
+          document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Page loaded, initializing...');
+            initializeVerification();
+          });
+
           let verificationState = {
             email: false,
             phone: false,
@@ -5743,6 +5749,12 @@ app.get('/verify-profile', (c) => {
 
           let currentPhone = '';
           let currentMethod = '';
+
+          function initializeVerification() {
+            console.log('🔥 Verification initialized');
+            console.log('firebaseAuth available:', !!window.firebaseAuth);
+            console.log('auth available:', !!window.auth);
+          }
 
           async function verifyEmail() {
             // ✅ Récupérer l'utilisateur depuis Firebase Auth
