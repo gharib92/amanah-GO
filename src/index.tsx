@@ -5745,38 +5745,42 @@ app.get('/verify-profile', (c) => {
           let currentMethod = '';
 
           async function verifyEmail() {
-            // Récupérer l'utilisateur connecté
-            const user = window.auth?.getUser();
+            // ✅ Récupérer l'utilisateur depuis Firebase Auth
+            const user = window.firebaseAuth?.getUser() || window.auth?.getUser();
+            
             if (!user) {
-              alert('Erreur : Utilisateur non connecté');
+              alert('Erreur : Utilisateur non connecté. Veuillez vous reconnecter.');
+              console.error('❌ No user found in firebaseAuth or auth');
               return;
             }
             
+            console.log('✅ User found:', user.email);
+            
             const confirmed = confirm('Un email de vérification va être envoyé à ' + user.email + '. Continuer ?');
-            if (confirmed) {
-              try {
-                const response = await axios.post('/api/auth/send-verification-email', {
-                  email: user.email,
-                  userId: user.id
-                });
-                
-                // Afficher le code en mode dev
-                if (response.data.dev_mode && response.data.code) {
-                  alert('📧 EMAIL DE VÉRIFICATION\\n\\n' +
-                        'Un email a été envoyé à ' + user.email + '\\n\\n' +
-                        '🔐 CODE (DEV MODE): ' + response.data.code + '\\n\\n' +
-                        'Entrez ce code pour valider votre email.');
-                } else {
-                  alert('Email de vérification envoyé ! Vérifiez votre boîte de réception.');
-                }
-                
-                // Marquer comme vérifié (simulation)
-                verificationState.email = true;
-                updateUI();
-              } catch (error) {
-                console.error('Erreur envoi email:', error);
-                alert('Erreur lors de l\\'envoi de l\\'email: ' + (error.response?.data?.error || error.message));
+            if (!confirmed) return;
+            
+            try {
+              // ✅ Utiliser Firebase pour envoyer l'email de vérification
+              const firebaseUser = window.firebaseAuth.auth.currentUser;
+              
+              if (!firebaseUser) {
+                throw new Error('Session Firebase expirée. Veuillez vous reconnecter.');
               }
+              
+              // Envoyer l'email de vérification Firebase
+              await firebaseUser.sendEmailVerification();
+              
+              console.log('✅ Email de vérification Firebase envoyé');
+              
+              alert('✅ Email de vérification envoyé !\\n\\nVérifiez votre boîte de réception et cliquez sur le lien de vérification.');
+              
+              // Marquer comme vérifié côté client (sera confirmé après clic sur le lien)
+              verificationState.email = true;
+              updateUI();
+              
+            } catch (error) {
+              console.error('❌ Erreur envoi email:', error);
+              alert('❌ Erreur lors de l\'envoi de l\'email: ' + error.message);
             }
           }
 
