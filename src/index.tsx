@@ -5657,6 +5657,9 @@ app.get('/verify-profile', (c) => {
                                placeholder="+33 6 12 34 56 78"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <p class="text-sm text-gray-500 mt-1">Format international (ex: +33612345678)</p>
+                        
+                        <!-- Firebase reCAPTCHA container (invisible) -->
+                        <div id="recaptcha-container"></div>
                     </div>
 
                     <div>
@@ -5818,16 +5821,14 @@ app.get('/verify-profile', (c) => {
             currentMethod = method;
 
             try {
-              const response = await axios.post('/api/auth/send-sms-verification', { 
-                phone: phone,
-                method: method 
-              });
-
-              // Afficher le code en mode dev
-              if (response.data.dev_mode && response.data.code) {
-                document.getElementById('devCode').textContent = response.data.code;
-                document.getElementById('devCodeDisplay').classList.remove('hidden');
+              // ✅ Utiliser Firebase Phone Auth au lieu de Twilio
+              const result = await window.firebaseAuth.sendSMSVerification(phone);
+              
+              if (!result.success) {
+                throw new Error(result.error || 'Erreur lors de l\'envoi du SMS');
               }
+              
+              console.log('✅ SMS Firebase envoyé à:', phone);
 
               // Mettre à jour l'affichage
               document.getElementById('phoneDisplay').textContent = phone;
@@ -5852,12 +5853,24 @@ app.get('/verify-profile', (c) => {
               return;
             }
 
-            // TODO: Appeler l'API pour vérifier le code
-            // Pour l'instant, simulation
-            verificationState.phone = true;
-            updateUI();
-            closePhoneModal();
-            alert('✅ Téléphone vérifié avec succès !');
+            try {
+              // ✅ Utiliser Firebase pour vérifier le code SMS
+              const result = await window.firebaseAuth.verifySMSCode(code);
+              
+              if (!result.success) {
+                throw new Error(result.error || 'Code invalide');
+              }
+              
+              console.log('✅ Téléphone vérifié avec Firebase:', currentPhone);
+              
+              verificationState.phone = true;
+              updateUI();
+              closePhoneModal();
+              alert('✅ Téléphone vérifié avec succès !');
+            } catch (error) {
+              console.error('❌ Erreur vérification code:', error);
+              alert('❌ ' + error.message);
+            }
           }
 
           function startSelfieCapture() {
