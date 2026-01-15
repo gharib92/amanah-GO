@@ -46,13 +46,8 @@ const AUTH_USER_KEY = 'amanah_user';
 // ==========================================
 // TOKEN MANAGEMENT (Compatible avec auth.js)
 // ==========================================
-function saveToken(token) {
-  localStorage.setItem(AUTH_TOKEN_KEY, token);
-}
-
-function getToken() {
-  return localStorage.getItem(AUTH_TOKEN_KEY);
-}
+// Note: saveToken() et getToken() sont fournis par auth.js
+// On utilise directement window.auth.saveToken() et window.auth.getToken()
 
 // ==========================================
 // INSCRIPTION
@@ -107,7 +102,7 @@ async function signup(email, password, name, phone) {
     };
     
     saveUser(user);
-    saveToken(idToken); // ✅ Sauvegarder le token pour compatibilité auth.js
+    localStorage.setItem(AUTH_TOKEN_KEY, idToken); // ✅ Sauvegarder le token pour compatibilité auth.js
     
     console.log('✅ User saved in DB:', user);
     console.log('✅ Firebase token saved in localStorage');
@@ -160,7 +155,7 @@ async function login(email, password) {
     };
     
     saveUser(user);
-    saveToken(idToken); // ✅ Sauvegarder le token pour compatibilité auth.js
+    localStorage.setItem(AUTH_TOKEN_KEY, idToken); // ✅ Sauvegarder le token pour compatibilité auth.js
     
     console.log('✅ User logged in:', user);
     console.log('✅ Firebase token saved in localStorage');
@@ -216,7 +211,7 @@ async function loginWithGoogle() {
     };
     
     saveUser(user);
-    saveToken(idToken); // ✅ Sauvegarder le token pour compatibilité auth.js
+    localStorage.setItem(AUTH_TOKEN_KEY, idToken); // ✅ Sauvegarder le token pour compatibilité auth.js
     console.log('✅ Google login successful, token saved');
     
     return { success: true, user, token: idToken };
@@ -300,7 +295,7 @@ async function verifySMSCode(code) {
 // ==========================================
 // RÉCUPÉRER TOKEN (pour les requêtes API)
 // ==========================================
-async function getToken() {
+async function getFirebaseIdToken() {
   const user = auth.currentUser;
   if (!user) return null;
   
@@ -316,7 +311,7 @@ async function getToken() {
 // REQUÊTES API AUTHENTIFIÉES
 // ==========================================
 async function apiRequest(url, options = {}) {
-  const token = await getToken();
+  const token = await getFirebaseIdToken();
   
   if (!token) {
     console.error('❌ No Firebase token available');
@@ -440,7 +435,7 @@ window.firebaseAuth = {
   sendSMSVerification,
   verifySMSCode,
   logout,
-  getToken,
+  getFirebaseIdToken, // Renommé pour éviter conflit avec auth.js
   getUser,
   isAuthenticated,
   requireAuth,
