@@ -5827,6 +5827,9 @@ app.get('/verify-profile', (c) => {
               alert('❌ Erreur lors de l\'envoi de l\'email: ' + error.message);
             }
           }
+          
+          // ✅ Exposer au scope global pour onclick
+          window.verifyEmail = verifyEmail;
 
           function openPhoneModal() {
             document.getElementById('phoneModal').classList.remove('hidden');
@@ -5974,6 +5977,16 @@ app.get('/verify-profile', (c) => {
               document.getElementById('uploadIDBtn').classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'cursor-pointer');
             }
           }
+          
+          // ✅ Exposer toutes les fonctions au scope global pour onclick
+          window.openPhoneModal = openPhoneModal;
+          window.closePhoneModal = closePhoneModal;
+          window.showStep1 = showStep1;
+          window.showStep2 = showStep2;
+          window.sendVerificationCode = sendVerificationCode;
+          window.verifyCode = verifyCode;
+          window.startSelfieCapture = startSelfieCapture;
+          window.uploadIDDocument = uploadIDDocument;
         </script>
     </body>
     </html>
