@@ -5507,7 +5507,7 @@ app.get('/verify-profile', (c) => {
                             </div>
                         </div>
                         <div class="flex space-x-2">
-                            <button onclick="verifyEmail()" 
+                            <button id="verifyEmailBtn" 
                                     class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition">
                                 Vérifier maintenant
                             </button>
@@ -5529,7 +5529,7 @@ app.get('/verify-profile', (c) => {
                             <span class="bg-yellow-500/20 text-yellow-300 px-4 py-2 rounded-lg font-medium text-sm">
                                 Requis
                             </span>
-                            <button onclick="openPhoneModal()" disabled
+                            <button id="verifyPhoneBtn" disabled
                                     class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed">
                                 Vérifier maintenant
                             </button>
@@ -5767,12 +5767,7 @@ app.get('/verify-profile', (c) => {
         <script type="module" src="/static/firebase-auth.js"></script>
         <script src="/static/kyc-verification.js"></script>
         <script>
-          // Attendre que tout soit chargé
-          document.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ Page loaded, initializing...');
-            initializeVerification();
-          });
-
+          // Variables globales
           let verificationState = {
             email: false,
             phone: false,
@@ -5827,9 +5822,6 @@ app.get('/verify-profile', (c) => {
               alert('❌ Erreur lors de l\'envoi de l\'email: ' + error.message);
             }
           }
-          
-          // ✅ Exposer au scope global pour onclick
-          window.verifyEmail = verifyEmail;
 
           function openPhoneModal() {
             document.getElementById('phoneModal').classList.remove('hidden');
@@ -5978,15 +5970,35 @@ app.get('/verify-profile', (c) => {
             }
           }
           
-          // ✅ Exposer toutes les fonctions au scope global pour onclick
-          window.openPhoneModal = openPhoneModal;
-          window.closePhoneModal = closePhoneModal;
-          window.showStep1 = showStep1;
-          window.showStep2 = showStep2;
-          window.sendVerificationCode = sendVerificationCode;
-          window.verifyCode = verifyCode;
-          window.startSelfieCapture = startSelfieCapture;
-          window.uploadIDDocument = uploadIDDocument;
+          // ✅ Attendre que le DOM soit prêt, puis exposer les fonctions et attacher les event listeners
+          document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Page loaded, initializing...');
+            initializeVerification();
+            
+            // Exposer toutes les fonctions au scope global
+            window.verifyEmail = verifyEmail;
+            window.openPhoneModal = openPhoneModal;
+            window.closePhoneModal = closePhoneModal;
+            window.showStep1 = showStep1;
+            window.showStep2 = showStep2;
+            window.sendVerificationCode = sendVerificationCode;
+            window.verifyCode = verifyCode;
+            window.startSelfieCapture = startSelfieCapture;
+            window.uploadIDDocument = uploadIDDocument;
+            
+            // Attacher les event listeners aux boutons
+            const verifyEmailBtn = document.getElementById('verifyEmailBtn');
+            if (verifyEmailBtn) {
+              verifyEmailBtn.addEventListener('click', verifyEmail);
+            }
+            
+            const verifyPhoneBtn = document.getElementById('verifyPhoneBtn');
+            if (verifyPhoneBtn) {
+              verifyPhoneBtn.addEventListener('click', openPhoneModal);
+            }
+            
+            console.log('✅ Event listeners attached');
+          });
         </script>
     </body>
     </html>
