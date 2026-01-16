@@ -5819,7 +5819,7 @@ app.get('/verify-profile', (c) => {
               
             } catch (error) {
               console.error('❌ Erreur envoi email:', error);
-              alert('❌ Erreur lors de l\'envoi de l\'email: ' + error.message);
+              alert(\`❌ Erreur lors de l'envoi de l'email: \${error.message}\`);
             }
           }
 
@@ -5868,7 +5868,7 @@ app.get('/verify-profile', (c) => {
               const result = await window.firebaseAuth.sendSMSVerification(phone);
               
               if (!result.success) {
-                throw new Error(result.error || 'Erreur lors de l\'envoi du SMS');
+                throw new Error(result.error || \`Erreur lors de l'envoi du SMS\`);
               }
               
               console.log('✅ SMS Firebase envoyé à:', phone);
