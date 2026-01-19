@@ -5746,7 +5746,7 @@ app.get('/verify-profile', (c) => {
 
             try {
               // ✅ Utiliser Firebase Phone Auth au lieu de Twilio
-              const result = await window.firebaseAuth.sendSMSVerification(phone);
+              const result = await window.sendSMSVerification(phone);
               
               if (!result.success) {
                 throw new Error(result.error || \`Erreur lors de l'envoi du SMS\`);
@@ -5779,7 +5779,7 @@ app.get('/verify-profile', (c) => {
 
             try {
               // ✅ Utiliser Firebase pour vérifier le code SMS
-              const result = await window.firebaseAuth.verifySMSCode(code);
+              const result = await window.verifySMSCode(code);
               
               if (!result.success) {
                 throw new Error(result.error || 'Code invalide');

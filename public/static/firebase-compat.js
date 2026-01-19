@@ -126,6 +126,72 @@ window.loginWithGoogle = async function() {
   }
 };
 
+/**
+ * Envoyer SMS de vérification avec Firebase Phone Auth
+ */
+window.sendSMSVerification = async function(phoneNumber) {
+  try {
+    // Créer le reCAPTCHA invisible (une seule fois)
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+        'size': 'invisible',
+        'callback': (response) => {
+          console.log('✅ reCAPTCHA résolu');
+        }
+      });
+    }
+    
+    console.log('🔥 Envoi SMS Firebase à:', phoneNumber);
+    
+    // Envoyer le SMS via Firebase
+    const confirmationResult = await window.firebaseAuth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier);
+    
+    // Sauvegarder pour vérification ultérieure
+    window.phoneConfirmationResult = confirmationResult;
+    
+    console.log('✅ SMS envoyé avec succès');
+    
+    return { success: true, message: 'SMS envoyé' };
+  } catch (error) {
+    console.error('❌ Erreur SMS:', error);
+    
+    // Reset reCAPTCHA en cas d'erreur
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      window.recaptchaVerifier = null;
+    }
+    
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Vérifier le code SMS
+ */
+window.verifySMSCode = async function(code) {
+  try {
+    if (!window.phoneConfirmationResult) {
+      throw new Error('Aucune vérification SMS en cours');
+    }
+    
+    console.log('🔥 Vérification du code:', code);
+    
+    // Confirmer le code
+    const result = await window.phoneConfirmationResult.confirm(code);
+    const user = result.user;
+    
+    console.log('✅ Téléphone vérifié:', user.phoneNumber);
+    
+    // Récupérer le token
+    const token = await user.getIdToken();
+    
+    return { success: true, token, phoneNumber: user.phoneNumber };
+  } catch (error) {
+    console.error('❌ Erreur vérification code:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // ==========================================
 // AUTH STATE LISTENER
 // ==========================================
