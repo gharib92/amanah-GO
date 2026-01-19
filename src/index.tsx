@@ -3845,116 +3845,6 @@ app.post('/api/auth/send-verification-email', async (c) => {
 })
 
 // Envoyer SMS de vérification
-app.post('/api/auth/send-sms-verification', async (c) => {
-  const { DB } = c.env
-  
-  try {
-    const { phone, method = 'sms' } = await c.req.json()
-    
-    // Validation du numéro
-    if (!phone || phone.length < 10) {
-      return c.json({ 
-        success: false, 
-        error: 'Numéro de téléphone invalide' 
-      }, 400)
-    }
-    
-    // Validation de la méthode
-    if (!['sms', 'whatsapp'].includes(method)) {
-      return c.json({ 
-        success: false, 
-        error: 'Méthode invalide. Utilisez "sms" ou "whatsapp"' 
-      }, 400)
-    }
-    
-    // Générer code à 6 chiffres
-    const code = Math.floor(100000 + Math.random() * 900000).toString()
-    
-    // Get Twilio credentials from environment variables
-    const TWILIO_ACCOUNT_SID = c.env.TWILIO_ACCOUNT_SID
-    const TWILIO_AUTH_TOKEN = c.env.TWILIO_AUTH_TOKEN
-    const TWILIO_PHONE_NUMBER = c.env.TWILIO_PHONE_NUMBER
-    const TWILIO_WHATSAPP_NUMBER = c.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886' // Twilio Sandbox default
-    
-    // Check if Twilio is configured
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-      console.log(`⚠️ Twilio non configuré. Code de vérification ${method.toUpperCase()} (DEV ONLY):`, code)
-      
-      // In development, return code for testing (REMOVE IN PRODUCTION!)
-      return c.json({ 
-        success: true, 
-        message: `${method === 'whatsapp' ? 'WhatsApp' : 'SMS'} simulé - Twilio non configuré`,
-        code: code, // DEV ONLY: Remove in production!
-        dev_mode: true,
-        method: method
-      })
-    }
-    
-    // Prepare message content
-    const messageBody = `Amanah GO - Votre code de vérification est : ${code}. Il expire dans 10 minutes.`
-    
-    // Determine sender and recipient based on method
-    let fromNumber, toNumber
-    
-    if (method === 'whatsapp') {
-      fromNumber = TWILIO_WHATSAPP_NUMBER
-      toNumber = `whatsapp:${phone}`
-    } else {
-      fromNumber = TWILIO_PHONE_NUMBER
-      toNumber = phone
-    }
-    
-    // Send message via Twilio
-    try {
-      const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)
-      
-      const response = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${auth}`,
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: new URLSearchParams({
-            To: toNumber,
-            From: fromNumber,
-            Body: messageBody
-          })
-        }
-      )
-      
-      if (!response.ok) {
-        const error = await response.json()
-        console.error(`Erreur Twilio ${method.toUpperCase()}:`, error)
-        throw new Error(`Échec envoi ${method === 'whatsapp' ? 'WhatsApp' : 'SMS'}`)
-      }
-      
-      console.log(`✅ ${method === 'whatsapp' ? 'WhatsApp' : 'SMS'} envoyé avec succès à:`, phone)
-      
-      // TODO: Store code in DB or KV with expiration (10 minutes)
-      // Example: await DB.prepare('INSERT INTO verification_codes (phone, code, expires_at, method) VALUES (?, ?, datetime("now", "+10 minutes"), ?)').bind(phone, code, method).run()
-      
-      return c.json({ 
-        success: true, 
-        message: `${method === 'whatsapp' ? 'Message WhatsApp' : 'SMS'} envoyé avec succès`,
-        method: method
-        // Don't return code in production!
-      })
-      
-    } catch (twilioError) {
-      console.error(`Erreur Twilio ${method.toUpperCase()}:`, twilioError)
-      return c.json({ 
-        success: false, 
-        error: `Erreur lors de l'envoi du ${method === 'whatsapp' ? 'message WhatsApp' : 'SMS'}` 
-      }, 500)
-    }
-    
-  } catch (error) {
-    return c.json({ success: false, error: error.message }, 500)
-  }
-})
-
 // Upload photo KYC (selfie ou document)
 app.post('/api/auth/upload-kyc', async (c) => {
   const { R2 } = c.env
@@ -4889,8 +4779,9 @@ app.get('/signup', (c) => {
             try {
               console.log('🔥 Step 1: Creating Firebase user...');
               
-              // 1. Créer utilisateur Firebase
-              const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+              // 1. Créer utilisateur Firebase avec SDK modular
+              const { createUserWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+              const userCredential = await createUserWithEmailAndPassword(window.firebaseAuth.auth, email, password);
               const firebaseUser = userCredential.user;
               
               console.log('✅ Firebase user created:', firebaseUser.uid);
@@ -8413,29 +8304,8 @@ async function sendSecurityCodes(
   env: any
 ) {
   try {
-    // Send SMS with Twilio (if configured)
-    if (env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN) {
-      const smsBody = `Amanah GO - Codes sécurité pour "${packageTitle}":\n\n🟢 Remise colis: ${pickupCode}\n🔵 Livraison: ${deliveryCode}\n\nValides 24h.`
-      
-      await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Basic ' + btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`),
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            To: userPhone,
-            From: env.TWILIO_PHONE_NUMBER || '+33757591098',
-            Body: smsBody
-          })
-        }
-      )
-      console.log('✅ SMS envoyé:', userPhone)
-    } else {
-      console.log('⚠️ Twilio non configuré - SMS simulé:', userPhone)
-    }
+    // SMS notifications removed - using Firebase Phone Auth instead
+    console.log('📱 Codes de sécurité générés pour:', userPhone)
     
     // Send Email with Resend
     if (env.RESEND_API_KEY) {
