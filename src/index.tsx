@@ -4706,10 +4706,15 @@ app.get('/signup', (c) => {
             </div>
         </div>
 
+        <!-- 🔥 FIREBASE COMPAT SDK -->
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+        <script src="/static/firebase-compat.js"></script>
+
         <script>
-          // Rediriger si déjà connecté (utilise firebase-auth.js module)
-          document.addEventListener('DOMContentLoaded', function() {
-            if (window.firebaseAuth?.auth?.currentUser) {
+          // Rediriger si déjà connecté
+          window.firebaseAuth.onAuthStateChanged((user) => {
+            if (user) {
               window.location.href = '/verify-profile';
             }
           });
@@ -4720,7 +4725,7 @@ app.get('/signup', (c) => {
           async function signInWithGoogle() {
             try {
               console.log('🔥 Google Sign In clicked');
-              const result = await window.firebaseAuth.loginWithGoogle();
+              const result = await window.loginWithGoogle();
               
               if (result.success) {
                 console.log('✅ Google login successful:', result.user);
@@ -4779,16 +4784,14 @@ app.get('/signup', (c) => {
             try {
               console.log('🔥 Step 1: Creating Firebase user...');
               
-              // 1. Créer utilisateur Firebase avec SDK modular
-              const { createUserWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
-              const userCredential = await createUserWithEmailAndPassword(window.firebaseAuth.auth, email, password);
+              // 1. Créer utilisateur Firebase avec COMPAT
+              const userCredential = await window.firebaseAuth.createUserWithEmailAndPassword(email, password);
               const firebaseUser = userCredential.user;
               
               console.log('✅ Firebase user created:', firebaseUser.uid);
               
-              // 2. Envoyer email de vérification avec SDK modular
-              const { sendEmailVerification: sendVerificationEmail } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
-              await sendVerificationEmail(firebaseUser);
+              // 2. Envoyer email de vérification
+              await firebaseUser.sendEmailVerification();
               console.log('✅ Verification email sent');
               
               // 3. Récupérer le token
@@ -5639,8 +5642,10 @@ app.get('/verify-profile', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+        <script src="/static/firebase-compat.js"></script>
         <script src="/static/auth.js"></script>
-        <script type="module" src="/static/firebase-auth.js"></script>
         <script src="/static/kyc-verification.js"></script>
         <script>
           // Variables globales
@@ -5661,7 +5666,7 @@ app.get('/verify-profile', (c) => {
 
           async function verifyEmail() {
             // ✅ Récupérer l'utilisateur depuis Firebase Auth
-            const user = window.firebaseAuth?.getUser() || window.auth?.getUser();
+            const user = window.getFirebaseUser();
             
             if (!user) {
               alert('Erreur : Utilisateur non connecté. Veuillez vous reconnecter.');
@@ -5676,15 +5681,14 @@ app.get('/verify-profile', (c) => {
             
             try {
               // ✅ Utiliser Firebase pour envoyer l'email de vérification
-              const firebaseUser = window.firebaseAuth.auth.currentUser;
+              const firebaseUser = window.firebaseAuth.currentUser;
               
               if (!firebaseUser) {
                 throw new Error('Session Firebase expirée. Veuillez vous reconnecter.');
               }
               
               // Envoyer l'email de vérification Firebase avec SDK modular
-              const { sendEmailVerification } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
-              await sendEmailVerification(firebaseUser);
+              await firebaseUser.sendEmailVerification();
               
               console.log('✅ Email de vérification Firebase envoyé');
               
