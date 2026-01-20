@@ -5700,7 +5700,7 @@ app.get('/verify-profile', (c) => {
               
             } catch (error) {
               console.error('❌ Erreur envoi email:', error);
-              alert(\`❌ Erreur lors de l'envoi de l'email: \${error.message}\`);
+              alert("❌ Erreur lors de l'envoi de l'email: " + error.message);
             }
           }
 
@@ -6076,7 +6076,7 @@ app.get('/expediteur', (c) => {
             const destination = document.getElementById('searchDestination').value.trim()
             
             if (!origin || !destination) {
-              alert('Veuillez remplir les villes de départ et d\\'arrivée')
+              alert("Veuillez remplir les villes de départ et d'arrivée")
               return
             }
             
@@ -6119,7 +6119,7 @@ app.get('/expediteur', (c) => {
 
           // Contact traveler (placeholder)
           function contactTraveler(tripId) {
-            alert(\`Fonctionnalité de contact en cours de développement (Trajet #\${tripId})\`)
+            alert("Fonctionnalité de contact en cours de développement (Trajet #" + tripId + ")")
             // TODO: Implement real-time chat or messaging system
           }
 
