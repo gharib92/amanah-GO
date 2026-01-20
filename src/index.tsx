@@ -4444,6 +4444,11 @@ app.get('/login', (c) => {
             </div>
         </nav>
 
+        <!-- Firebase COMPAT SDK -->
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+        <script src="/static/firebase-compat.js"></script>
+
         <div class="max-w-md mx-auto px-4 py-12">
             <div class="bg-white rounded-xl shadow-lg p-8">
                 <h1 class="text-3xl font-bold text-gray-900 mb-2">Connexion</h1>
