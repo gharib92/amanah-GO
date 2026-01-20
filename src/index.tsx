@@ -297,9 +297,26 @@ async function sendEmail(to: string, subject: string, html: string, resendApiKey
   }
 }
 
-// JWT Secret (fallback pour dev, utiliser variable d'environnement en prod)
-const JWT_SECRET = 'amanah-go-secret-key-change-in-production'
+// JWT Secret - DOIT être configuré via variable d'environnement en production
+const JWT_SECRET_DEFAULT = 'amanah-go-secret-key-change-in-production'
 const JWT_EXPIRATION = '7d' // 7 jours
+
+// Helper pour obtenir le JWT secret de manière sécurisée
+function getJWTSecret(env: any): string {
+  const secret = env?.JWT_SECRET || JWT_SECRET_DEFAULT
+  
+  // 🚨 SÉCURITÉ : Avertir si la clé par défaut est utilisée
+  if (secret === JWT_SECRET_DEFAULT) {
+    console.warn('⚠️  SECURITY WARNING: Using default JWT_SECRET! Set JWT_SECRET environment variable in production.')
+  }
+  
+  // Valider que la clé est suffisamment forte (minimum 32 caractères)
+  if (secret.length < 32) {
+    console.error('🔴 CRITICAL: JWT_SECRET is too short! Minimum 32 characters required.')
+  }
+  
+  return secret
+}
 
 // Middleware JWT pour routes protégées
 const authMiddleware = async (c: any, next: any) => {
@@ -311,7 +328,7 @@ const authMiddleware = async (c: any, next: any) => {
     }
     
     const token = authHeader.substring(7)
-    const secret = c.env.JWT_SECRET || JWT_SECRET
+    const secret = getJWTSecret(c.env)
     
     const payload: any = await verify(token, secret)
     
@@ -3381,7 +3398,7 @@ app.post('/api/auth/signup', async (c) => {
     }
     
     // Générer JWT token
-    const secret = c.env?.JWT_SECRET || JWT_SECRET
+    const secret = getJWTSecret(c.env)
     const token = await sign(
       {
         id: userId,
@@ -3507,7 +3524,7 @@ app.get('/api/auth/google/callback', async (c) => {
     }
     
     // Générer JWT token
-    const secret = c.env?.JWT_SECRET || JWT_SECRET
+    const secret = getJWTSecret(c.env)
     const token = await sign(
       {
         id: user.id,
@@ -3646,7 +3663,7 @@ app.post('/api/auth/apple/callback', async (c) => {
     }
     
     // Générer JWT token
-    const secret = c.env?.JWT_SECRET || JWT_SECRET
+    const secret = getJWTSecret(c.env)
     const token = await sign(
       {
         id: dbUser.id,
@@ -3760,7 +3777,7 @@ app.get('/api/auth/facebook/callback', async (c) => {
     }
     
     // Générer JWT token
-    const secret = c.env?.JWT_SECRET || JWT_SECRET
+    const secret = getJWTSecret(c.env)
     const token = await sign(
       {
         id: user.id,
@@ -4123,7 +4140,7 @@ app.post('/api/auth/login', async (c) => {
     }
     
     // Générer JWT token
-    const secret = c.env?.JWT_SECRET || JWT_SECRET
+    const secret = getJWTSecret(c.env)
     const token = await sign(
       {
         id: user.id,
@@ -4178,7 +4195,7 @@ app.post('/api/auth/verify-token', async (c) => {
       return c.json({ valid: false, error: 'Token manquant' }, 400)
     }
     
-    const secret = c.env.JWT_SECRET || JWT_SECRET
+    const secret = getJWTSecret(c.env)
     const payload = await verify(token, secret)
     
     if (!payload || !payload.id) {
