@@ -4119,6 +4119,8 @@ app.post('/api/auth/login', async (c) => {
   try {
     const { email, password } = await c.req.json()
     
+    console.log('🔍 Login attempt:', { email, passwordLength: password?.length })
+    
     // Validation
     if (!email || !password) {
       return c.json({ success: false, error: 'Email et mot de passe requis' }, 400)
@@ -4128,14 +4130,20 @@ app.post('/api/auth/login', async (c) => {
     const db = c.get('db') as DatabaseService
     const user = await db.getUserByEmail(email)
     
+    console.log('🔍 User found in DB:', user ? { id: user.id, email: user.email, has_password: !!user.password_hash } : 'NOT FOUND')
+    
     if (!user) {
+      console.error('❌ User not found for email:', email)
       return c.json({ success: false, error: 'Email ou mot de passe incorrect' }, 401)
     }
     
     // Vérifier le mot de passe avec bcrypt
+    console.log('🔍 Comparing password...')
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
+    console.log('🔍 Password match:', passwordMatch)
     
     if (!passwordMatch) {
+      console.error('❌ Password mismatch for user:', user.email)
       return c.json({ success: false, error: 'Email ou mot de passe incorrect' }, 401)
     }
     
@@ -4150,6 +4158,8 @@ app.post('/api/auth/login', async (c) => {
       },
       secret
     )
+    
+    console.log('✅ Login successful for:', user.email)
     
     return c.json({ 
       success: true, 
@@ -4166,6 +4176,7 @@ app.post('/api/auth/login', async (c) => {
     })
     
   } catch (error: any) {
+    console.error('❌ Login error:', error)
     return c.json({ success: false, error: error.message }, 500)
   }
 })
