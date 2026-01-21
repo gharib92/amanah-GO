@@ -149,8 +149,7 @@
             style="
               position: absolute;
               left: 12px;
-              top: 50%;
-              transform: translateY(-50%);
+              top: 12px;
               background: transparent;
               border: none;
               cursor: pointer;
@@ -161,10 +160,11 @@
               border-radius: 6px;
               transition: background 0.2s;
               z-index: 10;
+              height: calc(100% - 24px);
             "
           >
             <span class="country-flag" style="font-size: 20px;">${this.selectedCountry.flag}</span>
-            <span class="country-dial" style="font-weight: 500; color: #374151;">${this.selectedCountry.dial}</span>
+            <span class="country-dial" style="font-weight: 500; color: #374151; font-size: 15px;">${this.selectedCountry.dial}</span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="opacity: 0.6;">
               <path d="M3 5L6 8L9 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
@@ -179,10 +179,11 @@
             ${this.options.required ? 'required' : ''}
             style="
               width: 100%;
-              padding: 12px 12px 12px 120px;
+              padding: 12px 12px 12px 110px;
               border: 1px solid #D1D5DB;
               border-radius: 8px;
               font-size: 15px;
+              line-height: 24px;
               transition: all 0.2s;
             "
           />
