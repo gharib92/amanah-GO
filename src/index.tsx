@@ -5879,6 +5879,8 @@ app.get('/verify-profile', (c) => {
         <script src="/static/firebase-compat.js?v=3"></script>
         <script src="/static/auth.js"></script>
         <script src="/static/kyc-verification.js"></script>
+        <!-- 📷 KYC Camera Module (isolé, optionnel) -->
+        <script src="/static/kyc-camera.js"></script>
         <script>
           // Variables globales
           let verificationState = {
