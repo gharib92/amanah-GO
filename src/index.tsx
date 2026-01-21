@@ -4421,6 +4421,198 @@ function generateMockFlights(from: string, to: string, date: string) {
 // PAGES PLACEHOLDER
 // ==========================================
 
+/**
+ * PAGE: Mot de passe oublié
+ */
+app.get('/forgot-password', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Mot de passe oublié - Amanah GO</title>
+        <link href="/static/tailwind.css" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50">
+        <!-- Header -->
+        <nav class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 py-4">
+                <a href="/" class="flex items-center space-x-2">
+                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
+                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="max-w-md mx-auto px-4 py-12">
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                        <i class="fas fa-key text-blue-600 text-2xl"></i>
+                    </div>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Mot de passe oublié ?</h1>
+                    <p class="text-gray-600">Entrez votre email pour recevoir un lien de réinitialisation</p>
+                </div>
+
+                <form id="resetForm" class="space-y-6">
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Adresse email
+                        </label>
+                        <input type="email" id="email" required
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                               placeholder="exemple@email.com">
+                    </div>
+
+                    <!-- Messages -->
+                    <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <span id="errorText"></span>
+                    </div>
+
+                    <div id="successMessage" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <span id="successText"></span>
+                    </div>
+
+                    <!-- Bouton -->
+                    <button type="submit" id="submitBtn"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition">
+                        <i class="fas fa-paper-plane mr-2"></i>
+                        Envoyer le lien de réinitialisation
+                    </button>
+                </form>
+
+                <!-- Retour connexion -->
+                <div class="mt-6 text-center">
+                    <a href="/login" class="text-blue-600 hover:underline text-sm">
+                        <i class="fas fa-arrow-left mr-1"></i>
+                        Retour à la connexion
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Firebase COMPAT SDK -->
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+        <script src="/static/firebase-compat.js?v=3"></script>
+
+        <script>
+          const form = document.getElementById('resetForm');
+          const submitBtn = document.getElementById('submitBtn');
+          const emailInput = document.getElementById('email');
+          const errorMessage = document.getElementById('errorMessage');
+          const errorText = document.getElementById('errorText');
+          const successMessage = document.getElementById('successMessage');
+          const successText = document.getElementById('successText');
+
+          // Masquer les messages
+          function hideMessages() {
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+          }
+
+          // Afficher erreur
+          function showError(message) {
+            hideMessages();
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+          }
+
+          // Afficher succès
+          function showSuccess(message) {
+            hideMessages();
+            successText.textContent = message;
+            successMessage.classList.remove('hidden');
+          }
+
+          // Validation email
+          function isValidEmail(email) {
+            const re = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+            return re.test(email);
+          }
+
+          // Soumission du formulaire
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideMessages();
+
+            const email = emailInput.value.trim();
+
+            // Validation
+            if (!email) {
+              showError('Veuillez entrer votre adresse email');
+              return;
+            }
+
+            if (!isValidEmail(email)) {
+              showError('Format d\\'email invalide');
+              return;
+            }
+
+            // Désactiver le bouton
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Envoi en cours...';
+
+            try {
+              console.log('🔐 Sending password reset email to:', email);
+
+              // Appeler Firebase pour envoyer l'email
+              await window.firebaseAuth.sendPasswordResetEmail(email);
+
+              console.log('✅ Password reset email sent');
+
+              // Message de succès (ne pas révéler si le compte existe)
+              showSuccess('Si un compte existe pour cet email, un lien de réinitialisation a été envoyé. Vérifiez votre boîte de réception.');
+
+              // Vider le champ
+              emailInput.value = '';
+
+              // Rediriger vers login après 5 secondes
+              setTimeout(() => {
+                window.location.href = '/login';
+              }, 5000);
+
+            } catch (error) {
+              console.error('❌ Password reset error:', error);
+
+              let errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
+
+              // Gestion des erreurs spécifiques
+              if (error.code === 'auth/invalid-email') {
+                errorMessage = 'Format d\\'email invalide';
+              } else if (error.code === 'auth/user-not-found') {
+                // Ne pas révéler que le compte n'existe pas (sécurité)
+                errorMessage = 'Si un compte existe pour cet email, un lien de réinitialisation a été envoyé.';
+                showSuccess(errorMessage);
+                setTimeout(() => {
+                  window.location.href = '/login';
+                }, 5000);
+                return;
+              } else if (error.code === 'auth/too-many-requests') {
+                errorMessage = 'Trop de tentatives. Veuillez réessayer dans quelques minutes.';
+              } else if (error.code === 'auth/network-request-failed') {
+                errorMessage = 'Erreur de connexion. Vérifiez votre connexion internet.';
+              }
+
+              showError(errorMessage);
+
+              // Réactiver le bouton
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> Envoyer le lien de réinitialisation';
+            }
+          });
+        </script>
+    </body>
+    </html>
+  `)
+})
+
 app.get('/login', (c) => {
   return c.html(`
     <!DOCTYPE html>
@@ -4469,7 +4661,7 @@ app.get('/login', (c) => {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2 flex justify-between">
                             <span>Mot de passe</span>
-                            <a href="#" class="text-blue-600 hover:underline text-sm">Mot de passe oublié ?</a>
+                            <a href="/forgot-password" class="text-blue-600 hover:underline text-sm">Mot de passe oublié ?</a>
                         </label>
                         <input type="password" id="password" required
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
