@@ -21,9 +21,9 @@ if (!firebase.apps.length) {
 // Auth instance globale
 window.firebaseAuth = firebase.auth();
 
-// Storage keys
-const AUTH_TOKEN_KEY = 'amanah_token';
-const AUTH_USER_KEY = 'amanah_user';
+// Storage keys (utiliser celles définies dans auth.js pour éviter les duplications)
+// const AUTH_TOKEN_KEY = 'amanah_token';
+// const AUTH_USER_KEY = 'amanah_user';
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -33,7 +33,7 @@ const AUTH_USER_KEY = 'amanah_user';
  * Sauvegarder le token dans localStorage
  */
 window.saveFirebaseToken = function(token) {
-  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.setItem('amanah_token', token);
   console.log('🔐 Token sauvegardé');
 };
 
@@ -41,7 +41,7 @@ window.saveFirebaseToken = function(token) {
  * Récupérer le token depuis localStorage
  */
 window.getFirebaseToken = function() {
-  return localStorage.getItem(AUTH_TOKEN_KEY);
+  return localStorage.getItem('amanah_token');
 };
 
 /**
@@ -56,7 +56,7 @@ window.saveFirebaseUser = function(user) {
     emailVerified: user.emailVerified,
     phoneNumber: user.phoneNumber
   };
-  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
+  localStorage.setItem('amanah_user', JSON.stringify(userData));
   console.log('👤 Utilisateur sauvegardé:', user.email);
 };
 
@@ -64,7 +64,7 @@ window.saveFirebaseUser = function(user) {
  * Récupérer l'utilisateur depuis localStorage
  */
 window.getFirebaseUser = function() {
-  const userData = localStorage.getItem(AUTH_USER_KEY);
+  const userData = localStorage.getItem('amanah_user');
   return userData ? JSON.parse(userData) : null;
 };
 
@@ -81,8 +81,8 @@ window.isFirebaseAuthenticated = function() {
 window.firebaseLogout = async function() {
   try {
     await window.firebaseAuth.signOut();
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem('amanah_token');
+    localStorage.removeItem('amanah_user');
     console.log('👋 Déconnexion réussie');
     window.location.href = '/';
   } catch (error) {
