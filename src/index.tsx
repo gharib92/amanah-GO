@@ -4824,14 +4824,12 @@ app.get('/signup', (c) => {
                                placeholder="exemple@email.com">
                     </div>
 
-                    <!-- Téléphone -->
+                    <!-- Téléphone avec sélecteur pays -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Téléphone <span class="text-red-500">*</span>
                         </label>
-                        <input type="tel" id="phone" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                               placeholder="+33 6 12 34 56 78">
+                        <div id="phone-input-container"></div>
                     </div>
 
                     <!-- Mot de passe -->
@@ -4920,6 +4918,9 @@ app.get('/signup', (c) => {
             </div>
         </div>
 
+        <!-- 📞 PHONE INPUT MODULE -->
+        <script src="/static/phone-input.js"></script>
+
         <!-- 🔥 FIREBASE COMPAT SDK -->
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -4937,6 +4938,20 @@ app.get('/signup', (c) => {
             } else {
               console.log('✅ No Firebase user - Ready for signup');
             }
+          });
+          
+          // ==========================================
+          // INITIALISER LE PHONE INPUT
+          // ==========================================
+          let phoneInputWidget = null;
+          
+          window.addEventListener('DOMContentLoaded', () => {
+            phoneInputWidget = new PhoneInputWithCountry('phone-input-container', {
+              defaultCountry: 'FR',
+              placeholder: '6 12 34 56 78',
+              required: true
+            });
+            console.log('✅ Phone input widget initialized');
           });
           
           // ==========================================
@@ -4977,7 +4992,15 @@ app.get('/signup', (c) => {
             
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
-            const phone = document.getElementById('phone').value;
+            
+            // Récupérer le téléphone depuis le widget
+            const phone = phoneInputWidget ? phoneInputWidget.getPhoneE164() : null;
+            
+            if (!phone) {
+              alert('❌ Veuillez entrer un numéro de téléphone valide');
+              return;
+            }
+            
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             const submitBtn = e.target.querySelector('button[type="submit"]');
