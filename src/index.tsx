@@ -5819,9 +5819,7 @@ app.get('/verify-profile', (c) => {
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Numéro de téléphone <span class="text-red-500">*</span>
                         </label>
-                        <input type="tel" id="phoneInput" 
-                               placeholder="+33 6 12 34 56 78"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <div id="phone-verify-container"></div>
                         <p class="text-sm text-gray-500 mt-1">Format international (ex: +33612345678)</p>
                         
                         <!-- Firebase reCAPTCHA container (invisible) -->
@@ -5897,6 +5895,10 @@ app.get('/verify-profile', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        
+        <!-- 📞 PHONE INPUT MODULE -->
+        <script src="/static/phone-input.js"></script>
+        
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
         <script src="/static/firebase-compat.js?v=3"></script>
@@ -5914,11 +5916,20 @@ app.get('/verify-profile', (c) => {
 
           let currentPhone = '';
           let currentMethod = '';
+          let phoneVerifyWidget = null;
 
           function initializeVerification() {
             console.log('🔥 Verification initialized');
             console.log('firebaseAuth available:', !!window.firebaseAuth);
             console.log('auth available:', !!window.auth);
+            
+            // Initialiser le widget téléphone
+            phoneVerifyWidget = new PhoneInputWithCountry('phone-verify-container', {
+              defaultCountry: 'FR',
+              placeholder: '6 12 34 56 78',
+              required: true
+            });
+            console.log('✅ Phone verify widget initialized');
           }
 
           async function verifyEmail() {
@@ -5990,11 +6001,11 @@ app.get('/verify-profile', (c) => {
           }
 
           async function sendVerificationCode(method) {
-            const phoneInput = document.getElementById('phoneInput');
-            const phone = phoneInput.value.trim();
+            // Récupérer le téléphone depuis le widget
+            const phone = phoneVerifyWidget ? phoneVerifyWidget.getPhoneE164() : null;
 
-            if (!phone || phone.length < 10) {
-              showError('Veuillez entrer un numéro de téléphone valide (format international)');
+            if (!phone) {
+              showError('Veuillez entrer un numéro de téléphone valide');
               return;
             }
 
