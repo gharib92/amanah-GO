@@ -203,25 +203,45 @@ const phoneE164 = phoneWidget.getPhoneE164();
 
 ## 📋 Dataset des pays
 
-Le module supporte actuellement **15 pays** avec les données suivantes :
+Le module supporte actuellement **65 pays** organisés par régions :
 
-| Pays | Code | Indicatif | Drapeau | Format exemple |
-|------|------|-----------|---------|----------------|
-| France | FR | +33 | 🇫🇷 | 6 XX XX XX XX |
-| Maroc | MA | +212 | 🇲🇦 | 6XX XX XX XX |
-| Belgique | BE | +32 | 🇧🇪 | 4XX XX XX XX |
-| USA | US | +1 | 🇺🇸 | (XXX) XXX-XXXX |
-| Canada | CA | +1 | 🇨🇦 | (XXX) XXX-XXXX |
-| Royaume-Uni | GB | +44 | 🇬🇧 | 7XXX XXXXXX |
-| Espagne | ES | +34 | 🇪🇸 | 6XX XX XX XX |
-| Italie | IT | +39 | 🇮🇹 | 3XX XXX XXXX |
-| Allemagne | DE | +49 | 🇩🇪 | 1XX XXXXXXXX |
-| Algérie | DZ | +213 | 🇩🇿 | 5XX XX XX XX |
-| Tunisie | TN | +216 | 🇹🇳 | XX XXX XXX |
-| Sénégal | SN | +221 | 🇸🇳 | 7X XXX XX XX |
-| Suisse | CH | +41 | 🇨🇭 | 7X XXX XX XX |
-| Portugal | PT | +351 | 🇵🇹 | 9X XXX XXXX |
-| Pays-Bas | NL | +31 | 🇳🇱 | 6 XXXX XXXX |
+### **🌍 Pays prioritaires (9)**
+France 🇫🇷, Maroc 🇲🇦, Belgique 🇧🇪, États-Unis 🇺🇸, Canada 🇨🇦, Royaume-Uni 🇬🇧, Espagne 🇪🇸, Italie 🇮🇹, Allemagne 🇩🇪
+
+### **🌍 Afrique du Nord (2)**
+Algérie 🇩🇿, Tunisie 🇹🇳
+
+### **🌍 Afrique de l'Ouest (10)**
+Sénégal 🇸🇳, Côte d'Ivoire 🇨🇮, Mali 🇲🇱, Guinée 🇬🇳, Bénin 🇧🇯, Togo 🇹🇬, Burkina Faso 🇧🇫, Niger 🇳🇪, Cameroun 🇨🇲, Gabon 🇬🇦
+
+### **🌍 Afrique Centrale (1)**
+RD Congo 🇨🇩
+
+### **🌍 Afrique de l'Est (1)**
+Égypte 🇪🇬
+
+### **🇪🇺 Europe de l'Ouest (4)**
+Suisse 🇨🇭, Portugal 🇵🇹, Pays-Bas 🇳🇱, Luxembourg 🇱🇺
+
+### **🇪🇺 Europe Centrale (3)**
+Autriche 🇦🇹, Pologne 🇵🇱, République tchèque 🇨🇿
+
+### **🇪🇺 Europe du Nord (5)**
+Suède 🇸🇪, Danemark 🇩🇰, Norvège 🇳🇴, Finlande 🇫🇮, Irlande 🇮🇪
+
+### **🇪🇺 Europe du Sud (2)**
+Grèce 🇬🇷, Turquie 🇹🇷
+
+### **🏜️ Moyen-Orient (9)**
+Arabie Saoudite 🇸🇦, Émirats Arabes Unis 🇦🇪, Qatar 🇶🇦, Koweït 🇰🇼, Bahreïn 🇧🇭, Oman 🇴🇲, Liban 🇱🇧, Jordanie 🇯🇴, Israël 🇮🇱
+
+### **🌏 Asie (10)**
+Chine 🇨🇳, Japon 🇯🇵, Corée du Sud 🇰🇷, Inde 🇮🇳, Pakistan 🇵🇰, Bangladesh 🇧🇩, Vietnam 🇻🇳, Thaïlande 🇹🇭, Indonésie 🇮🇩, Philippines 🇵🇭
+
+### **🌎 Amériques (5)**
+Brésil 🇧🇷, Mexique 🇲🇽, Argentine 🇦🇷, Chili 🇨🇱, Colombie 🇨🇴
+
+**Total : 65 pays**
 
 **Pour ajouter un nouveau pays :**
 Modifier le tableau `COUNTRIES_DATA` dans `/public/static/phone-input.js` :

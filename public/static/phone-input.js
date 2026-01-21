@@ -15,11 +15,12 @@
   console.log('📞 Phone Input Module loaded');
 
   // ========================================
-  // DATASET PAYS
+  // DATASET PAYS (65 pays)
   // ========================================
   const PRIORITY_COUNTRIES = ['FR', 'MA', 'BE', 'US', 'CA', 'GB', 'ES', 'IT', 'DE'];
 
   const COUNTRIES_DATA = [
+    // ===== PAYS PRIORITAIRES (9 pays) =====
     { code: 'FR', name: 'France', dial: '+33', flag: '🇫🇷', format: '6 XX XX XX XX' },
     { code: 'MA', name: 'Maroc', dial: '+212', flag: '🇲🇦', format: '6XX XX XX XX' },
     { code: 'BE', name: 'Belgique', dial: '+32', flag: '🇧🇪', format: '4XX XX XX XX' },
@@ -29,12 +30,80 @@
     { code: 'ES', name: 'Espagne', dial: '+34', flag: '🇪🇸', format: '6XX XX XX XX' },
     { code: 'IT', name: 'Italie', dial: '+39', flag: '🇮🇹', format: '3XX XXX XXXX' },
     { code: 'DE', name: 'Allemagne', dial: '+49', flag: '🇩🇪', format: '1XX XXXXXXXX' },
+    
+    // ===== AFRIQUE DU NORD (2 pays) =====
     { code: 'DZ', name: 'Algérie', dial: '+213', flag: '🇩🇿', format: '5XX XX XX XX' },
     { code: 'TN', name: 'Tunisie', dial: '+216', flag: '🇹🇳', format: 'XX XXX XXX' },
+    
+    // ===== AFRIQUE DE L'OUEST (10 pays) =====
     { code: 'SN', name: 'Sénégal', dial: '+221', flag: '🇸🇳', format: '7X XXX XX XX' },
+    { code: 'CI', name: 'Côte d\'Ivoire', dial: '+225', flag: '🇨🇮', format: 'XX XX XX XX XX' },
+    { code: 'ML', name: 'Mali', dial: '+223', flag: '🇲🇱', format: 'XX XX XX XX' },
+    { code: 'GN', name: 'Guinée', dial: '+224', flag: '🇬🇳', format: 'XXX XX XX XX' },
+    { code: 'BJ', name: 'Bénin', dial: '+229', flag: '🇧🇯', format: 'XX XX XX XX' },
+    { code: 'TG', name: 'Togo', dial: '+228', flag: '🇹🇬', format: 'XX XX XX XX' },
+    { code: 'BF', name: 'Burkina Faso', dial: '+226', flag: '🇧🇫', format: 'XX XX XX XX' },
+    { code: 'NE', name: 'Niger', dial: '+227', flag: '🇳🇪', format: 'XX XX XX XX' },
+    { code: 'CM', name: 'Cameroun', dial: '+237', flag: '🇨🇲', format: 'X XX XX XX XX' },
+    { code: 'GA', name: 'Gabon', dial: '+241', flag: '🇬🇦', format: 'X XX XX XX' },
+    
+    // ===== AFRIQUE CENTRALE (1 pays) =====
+    { code: 'CD', name: 'RD Congo', dial: '+243', flag: '🇨🇩', format: 'XX XXX XXXX' },
+    
+    // ===== AFRIQUE DE L'EST (1 pays) =====
+    { code: 'EG', name: 'Égypte', dial: '+20', flag: '🇪🇬', format: '1X XXXX XXXX' },
+    
+    // ===== EUROPE DE L'OUEST (4 pays) =====
     { code: 'CH', name: 'Suisse', dial: '+41', flag: '🇨🇭', format: '7X XXX XX XX' },
     { code: 'PT', name: 'Portugal', dial: '+351', flag: '🇵🇹', format: '9X XXX XXXX' },
     { code: 'NL', name: 'Pays-Bas', dial: '+31', flag: '🇳🇱', format: '6 XXXX XXXX' },
+    { code: 'LU', name: 'Luxembourg', dial: '+352', flag: '🇱🇺', format: 'XXX XXX XXX' },
+    
+    // ===== EUROPE CENTRALE (3 pays) =====
+    { code: 'AT', name: 'Autriche', dial: '+43', flag: '🇦🇹', format: '6XX XXXXXXX' },
+    { code: 'PL', name: 'Pologne', dial: '+48', flag: '🇵🇱', format: 'XXX XXX XXX' },
+    { code: 'CZ', name: 'République tchèque', dial: '+420', flag: '🇨🇿', format: 'XXX XXX XXX' },
+    
+    // ===== EUROPE DU NORD (5 pays) =====
+    { code: 'SE', name: 'Suède', dial: '+46', flag: '🇸🇪', format: '7X XXX XX XX' },
+    { code: 'DK', name: 'Danemark', dial: '+45', flag: '🇩🇰', format: 'XX XX XX XX' },
+    { code: 'NO', name: 'Norvège', dial: '+47', flag: '🇳🇴', format: 'XXX XX XXX' },
+    { code: 'FI', name: 'Finlande', dial: '+358', flag: '🇫🇮', format: 'XX XXX XXXX' },
+    { code: 'IE', name: 'Irlande', dial: '+353', flag: '🇮🇪', format: 'XX XXX XXXX' },
+    
+    // ===== EUROPE DU SUD (2 pays) =====
+    { code: 'GR', name: 'Grèce', dial: '+30', flag: '🇬🇷', format: '6XX XXX XXXX' },
+    { code: 'TR', name: 'Turquie', dial: '+90', flag: '🇹🇷', format: 'XXX XXX XXXX' },
+    
+    // ===== MOYEN-ORIENT (9 pays) =====
+    { code: 'SA', name: 'Arabie Saoudite', dial: '+966', flag: '🇸🇦', format: '5X XXX XXXX' },
+    { code: 'AE', name: 'Émirats Arabes Unis', dial: '+971', flag: '🇦🇪', format: '5X XXX XXXX' },
+    { code: 'QA', name: 'Qatar', dial: '+974', flag: '🇶🇦', format: 'XXXX XXXX' },
+    { code: 'KW', name: 'Koweït', dial: '+965', flag: '🇰🇼', format: 'XXXX XXXX' },
+    { code: 'BH', name: 'Bahreïn', dial: '+973', flag: '🇧🇭', format: 'XXXX XXXX' },
+    { code: 'OM', name: 'Oman', dial: '+968', flag: '🇴🇲', format: 'XXXX XXXX' },
+    { code: 'LB', name: 'Liban', dial: '+961', flag: '🇱🇧', format: 'XX XXX XXX' },
+    { code: 'JO', name: 'Jordanie', dial: '+962', flag: '🇯🇴', format: 'X XXXX XXXX' },
+    { code: 'IL', name: 'Israël', dial: '+972', flag: '🇮🇱', format: '5X XXX XXXX' },
+    
+    // ===== ASIE (10 pays) =====
+    { code: 'CN', name: 'Chine', dial: '+86', flag: '🇨🇳', format: '1XX XXXX XXXX' },
+    { code: 'JP', name: 'Japon', dial: '+81', flag: '🇯🇵', format: '90 XXXX XXXX' },
+    { code: 'KR', name: 'Corée du Sud', dial: '+82', flag: '🇰🇷', format: '10 XXXX XXXX' },
+    { code: 'IN', name: 'Inde', dial: '+91', flag: '🇮🇳', format: 'XXXXX XXXXX' },
+    { code: 'PK', name: 'Pakistan', dial: '+92', flag: '🇵🇰', format: 'XXX XXXXXXX' },
+    { code: 'BD', name: 'Bangladesh', dial: '+880', flag: '🇧🇩', format: '1XXX XXXXXX' },
+    { code: 'VN', name: 'Vietnam', dial: '+84', flag: '🇻🇳', format: 'XX XXXX XXXX' },
+    { code: 'TH', name: 'Thaïlande', dial: '+66', flag: '🇹🇭', format: 'XX XXX XXXX' },
+    { code: 'ID', name: 'Indonésie', dial: '+62', flag: '🇮🇩', format: 'XXX XXX XXXX' },
+    { code: 'PH', name: 'Philippines', dial: '+63', flag: '🇵🇭', format: 'XXX XXX XXXX' },
+    
+    // ===== AMÉRIQUES (5 pays) =====
+    { code: 'BR', name: 'Brésil', dial: '+55', flag: '🇧🇷', format: '(XX) XXXXX-XXXX' },
+    { code: 'MX', name: 'Mexique', dial: '+52', flag: '🇲🇽', format: 'XXX XXX XXXX' },
+    { code: 'AR', name: 'Argentine', dial: '+54', flag: '🇦🇷', format: 'XX XXXX XXXX' },
+    { code: 'CL', name: 'Chili', dial: '+56', flag: '🇨🇱', format: 'X XXXX XXXX' },
+    { code: 'CO', name: 'Colombie', dial: '+57', flag: '🇨🇴', format: 'XXX XXX XXXX' },
   ];
 
   // ========================================
