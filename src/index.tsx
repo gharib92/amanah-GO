@@ -4734,10 +4734,16 @@ app.get('/signup', (c) => {
         <script src="/static/firebase-compat.js?v=2"></script>
 
         <script>
-          // Rediriger si déjà connecté
+          // Nettoyer toute session Firebase au chargement de /signup
+          console.log('📝 Signup page loaded - Checking Firebase state...');
+          
           window.firebaseAuth.onAuthStateChanged((user) => {
             if (user) {
-              window.location.href = '/verify-profile';
+              console.log('⚠️ Firebase user detected:', user.email);
+              console.log('⚠️ User will stay on signup page to allow account creation');
+              // Ne PAS rediriger automatiquement - l'utilisateur veut créer un compte
+            } else {
+              console.log('✅ No Firebase user - Ready for signup');
             }
           });
           
