@@ -4447,7 +4447,7 @@ app.get('/login', (c) => {
         <!-- Firebase COMPAT SDK -->
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-        <script src="/static/firebase-compat.js?v=2"></script>
+        <script src="/static/firebase-compat.js?v=3"></script>
 
         <div class="max-w-md mx-auto px-4 py-12">
             <div class="bg-white rounded-xl shadow-lg p-8">
@@ -4731,7 +4731,7 @@ app.get('/signup', (c) => {
         <!-- 🔥 FIREBASE COMPAT SDK -->
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-        <script src="/static/firebase-compat.js?v=2"></script>
+        <script src="/static/firebase-compat.js?v=3"></script>
 
         <script>
           // Nettoyer toute session Firebase au chargement de /signup
@@ -5684,7 +5684,7 @@ app.get('/verify-profile', (c) => {
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-        <script src="/static/firebase-compat.js?v=2"></script>
+        <script src="/static/firebase-compat.js?v=3"></script>
         <script src="/static/auth.js"></script>
         <script src="/static/kyc-verification.js"></script>
         <script>

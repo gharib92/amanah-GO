@@ -131,15 +131,33 @@ window.loginWithGoogle = async function() {
  */
 window.sendSMSVerification = async function(phoneNumber) {
   try {
-    // Créer le reCAPTCHA invisible (une seule fois)
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response) => {
-          console.log('✅ reCAPTCHA résolu');
-        }
-      });
+    // Nettoyer l'ancien reCAPTCHA s'il existe
+    if (window.recaptchaVerifier) {
+      try {
+        window.recaptchaVerifier.clear();
+      } catch (e) {
+        console.log('🔄 reCAPTCHA already cleared');
+      }
+      window.recaptchaVerifier = null;
     }
+    
+    // Vérifier que le conteneur existe
+    const container = document.getElementById('recaptcha-container');
+    if (!container) {
+      throw new Error('Conteneur reCAPTCHA introuvable');
+    }
+    
+    // Nettoyer le conteneur
+    container.innerHTML = '';
+    
+    // Créer un nouveau reCAPTCHA
+    console.log('🔄 Creating new reCAPTCHA verifier...');
+    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+      'size': 'invisible',
+      'callback': (response) => {
+        console.log('✅ reCAPTCHA résolu');
+      }
+    });
     
     console.log('🔥 Envoi SMS Firebase à:', phoneNumber);
     
@@ -157,7 +175,11 @@ window.sendSMSVerification = async function(phoneNumber) {
     
     // Reset reCAPTCHA en cas d'erreur
     if (window.recaptchaVerifier) {
-      window.recaptchaVerifier.clear();
+      try {
+        window.recaptchaVerifier.clear();
+      } catch (e) {
+        console.log('🔄 Error clearing reCAPTCHA');
+      }
       window.recaptchaVerifier = null;
     }
     
