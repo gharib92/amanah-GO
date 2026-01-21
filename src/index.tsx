@@ -4844,8 +4844,20 @@ app.get('/signup', (c) => {
               
               console.log('✅ User created in DB:', data.user);
               
-              // 5. Sauvegarder localement
-              localStorage.setItem('amanah_user', JSON.stringify(data.user));
+              // 5. Sauvegarder localement (TOKEN + USER au format Firebase)
+              localStorage.setItem('amanah_token', idToken);
+              
+              // Sauvegarder l'utilisateur au format Firebase pour compatibilité
+              const firebaseUserData = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName || name,
+                photoURL: firebaseUser.photoURL || null,
+                emailVerified: firebaseUser.emailVerified,
+                phoneNumber: firebaseUser.phoneNumber || phone
+              };
+              localStorage.setItem('amanah_user', JSON.stringify(firebaseUserData));
+              console.log('✅ Token and user saved to localStorage');
               
               // Success
               alert('✅ Compte créé avec succès!\\n\\nUn email de vérification a été envoyé à ' + email);
