@@ -7,10 +7,15 @@
 
 ### **2. Fichiers modifiés**
 - `/src/index.tsx` :
-  - Page `/signup` : Champ téléphone remplacé par le composant
-  - Script `phone-input.js` chargé
-  - Initialisation du widget au chargement de la page
-  - Récupération du numéro au format E.164 lors de la soumission
+  - **Page `/signup`** : 
+    - Champ téléphone remplacé par le composant
+    - Script `phone-input.js` chargé
+    - Initialisation du widget au chargement de la page
+    - Récupération du numéro au format E.164 lors de la soumission
+  - **Page `/verify-profile`** :
+    - Modal "Vérification du téléphone" : Champ téléphone remplacé par le composant
+    - Widget initialisé dans `initializeVerification()`
+    - `sendVerificationCode()` utilise `phoneVerifyWidget.getPhoneE164()`
 
 ---
 
@@ -164,7 +169,11 @@ phoneInputWidget.reset();
 
 ## 🔄 Pour ajouter le composant sur d'autres pages
 
-### **Exemple : Page /verify-profile**
+Le composant est déjà intégré sur :
+- ✅ **Page `/signup`** : Formulaire d'inscription
+- ✅ **Page `/verify-profile`** : Modal de vérification du téléphone (KYC)
+
+### **Exemple : Ajouter sur une autre page**
 
 1. **Charger le script**
 ```html
@@ -230,9 +239,11 @@ const COUNTRIES_DATA = [
 
 - [x] Module `/static/phone-input.js` créé
 - [x] Page `/signup` modifiée
+- [x] Page `/verify-profile` modifiée (modal téléphone KYC)
 - [x] Build réussi
 - [ ] Déploiement en production
-- [ ] Tests manuels (France, Maroc, USA)
+- [ ] Tests manuels /signup (France, Maroc, USA)
+- [ ] Tests manuels /verify-profile (modal téléphone)
 - [ ] Validation avec un numéro invalide
 - [ ] Test de la recherche de pays
 - [ ] Test du changement de pays après saisie
