@@ -4780,6 +4780,44 @@ app.get('/login', (c) => {
             document.getElementById('errorMessage').classList.remove('hidden');
             document.getElementById('errorText').textContent = message;
           }
+          
+          // ==========================================
+          // OAUTH HANDLERS
+          // ==========================================
+          
+          async function signInWithGoogle() {
+            try {
+              console.log('🔥 Google Sign In clicked')
+              
+              if (!window.loginWithGoogle) {
+                throw new Error('Firebase Google Auth non disponible')
+              }
+              
+              const result = await window.loginWithGoogle()
+              
+              if (result.success) {
+                console.log('✅ Google login successful:', result.user)
+                alert('✅ Connexion Google réussie !')
+                window.location.href = '/verify-profile'
+              } else {
+                throw new Error(result.error || 'Échec de la connexion Google')
+              }
+            } catch (error) {
+              console.error('❌ Google Sign In error:', error)
+              alert('❌ Erreur Google Sign In: ' + error.message)
+            }
+          }
+          
+          async function signInWithFacebook() {
+            try {
+              console.log('🔥 Facebook Sign In clicked')
+              alert('Facebook Sign In sera disponible prochainement !')
+              // TODO: Implémenter Firebase OAuth Facebook
+            } catch (error) {
+              console.error('❌ Facebook Sign In error:', error)
+              alert('❌ Erreur Facebook Sign In: ' + error.message)
+            }
+          }
         </script>
     </body>
     </html>
