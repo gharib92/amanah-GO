@@ -6129,7 +6129,7 @@ app.get('/verify-profile', (c) => {
               const result = await window.sendSMSVerification(phone);
               
               if (!result.success) {
-                throw new Error(result.error || \`Erreur lors de l'envoi du SMS\`);
+                throw new Error(result.error || 'Erreur lors de l\'envoi du SMS');
               }
               
               console.log('✅ SMS Firebase envoyé à:', phone);
