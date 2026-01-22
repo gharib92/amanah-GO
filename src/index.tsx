@@ -6014,6 +6014,16 @@ app.get('/verify-profile', (c) => {
           function openKycSelfieCamera() {
             console.log('📷 Opening KYC Selfie Camera...');
             
+            // Vérifier authentification
+            const token = localStorage.getItem('amanah_token');
+            if (!token) {
+              alert('❌ Vous devez être connecté pour utiliser cette fonctionnalité.\n\nVeuillez vous reconnecter.');
+              window.location.href = '/login?redirect=/verify-profile';
+              return;
+            }
+            
+            console.log('✅ User authenticated, opening camera...');
+            
             const camera = new KycSelfieCamera({
               onSuccess: (result) => {
                 console.log('✅ Selfie captured successfully:', result);

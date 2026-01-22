@@ -287,21 +287,35 @@
       formData.append('type', 'kyc_selfie');
       formData.append('timestamp', Date.now());
       
-      // Récupérer token auth
+      // Récupérer token auth depuis localStorage
       const token = localStorage.getItem('amanah_token');
+      
+      console.log('🔑 Auth token:', token ? 'Present' : 'Missing');
+      
+      if (!token) {
+        throw new Error('Vous devez être connecté pour uploader un selfie. Veuillez vous reconnecter.');
+      }
+      
+      console.log('📤 Uploading to:', CONFIG.uploadEndpoint);
       
       const response = await fetch(CONFIG.uploadEndpoint, {
         method: 'POST',
         headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
+          'Authorization': `Bearer ${token}`
+          // Ne pas définir Content-Type, laissé automatique pour FormData
         },
-        body: formData,
-        timeout: CONFIG.uploadTimeout
+        body: formData
       });
       
+      console.log('📥 Response status:', response.status);
+      
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
+        
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Erreur réseau lors de l\'upload');
+        throw new Error(error.error || error.message || `Erreur serveur (${response.status})`);
       }
       
       const data = await response.json();
