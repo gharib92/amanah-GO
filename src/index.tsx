@@ -4780,7 +4780,57 @@ app.get('/login', (c) => {
             document.getElementById('errorMessage').classList.remove('hidden');
             document.getElementById('errorText').textContent = message;
           }
+          
+          // ==========================================
+          // OAUTH FUNCTIONS (Google & Facebook)
+          // ==========================================
+          async function signInWithGoogle() {
+            try {
+              console.log('🔥 Google Sign In clicked on /login');
+              
+              // Utiliser Firebase Compat pour Google OAuth
+              if (!window.loginWithGoogle) {
+                console.error('❌ loginWithGoogle not available');
+                alert('Erreur: Firebase non initialisé correctement');
+                return;
+              }
+              
+              const result = await window.loginWithGoogle();
+              
+              if (result.success) {
+                console.log('✅ Google login successful:', result.user);
+                
+                // Récupérer le paramètre redirect
+                const params = new URLSearchParams(window.location.search);
+                const redirect = params.get('redirect') || '/verify-profile';
+                
+                console.log('🔀 Redirecting to:', redirect);
+                window.location.href = redirect;
+              } else {
+                throw new Error(result.error || 'Erreur Google Sign In');
+              }
+            } catch (error) {
+              console.error('❌ Google Sign In error:', error);
+              showError('Erreur lors de la connexion Google: ' + error.message);
+            }
+          }
+
+          async function signInWithFacebook() {
+            try {
+              console.log('🔥 Facebook Sign In clicked on /login');
+              alert('Facebook Sign In sera disponible prochainement !');
+              // TODO: Implémenter Facebook OAuth avec Firebase
+            } catch (error) {
+              console.error('❌ Facebook Sign In error:', error);
+              showError('Erreur lors de la connexion Facebook: ' + error.message);
+            }
+          }
         </script>
+        
+        <!-- Firebase COMPAT SDK -->
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+        <script src="/static/firebase-compat.js?v=3"></script>
     </body>
     </html>
   `)
