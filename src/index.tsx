@@ -5762,15 +5762,21 @@ app.get('/verify-profile', (c) => {
                                 </div>
                                 
                                 <!-- Boutons de contrôle -->
-                                <button onclick="openKycSelfieCamera()" id="startSelfieBtn"
-                                        class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition cursor-pointer">
+                                <button onclick="startSelfieCapture()" disabled id="startSelfieBtn"
+                                        class="w-full bg-blue-500/20 text-blue-300 px-4 py-2 rounded-lg font-medium transition cursor-not-allowed mb-2">
                                     <i class="fas fa-camera mr-2"></i>
-                                    📷 Prendre un selfie
+                                    Démarrer la caméra
                                 </button>
                                 
-                                <div id="selfieStatus" class="hidden mt-3 p-3 rounded-lg">
-                                    <p class="text-sm"></p>
-                                </div>
+                                <button onclick="captureSelfie()" id="captureSelfieBtn" class="hidden w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition mb-2">
+                                    <i class="fas fa-camera mr-2"></i>
+                                    Capturer
+                                </button>
+                                
+                                <button onclick="retakeSelfie()" id="retakeSelfieBtn" class="hidden w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition">
+                                    <i class="fas fa-redo mr-2"></i>
+                                    Reprendre
+                                </button>
                                 
                                 <div class="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                                     <p class="text-yellow-200 text-xs">
@@ -5942,9 +5948,6 @@ app.get('/verify-profile', (c) => {
         <!-- 📞 PHONE INPUT MODULE -->
         <script src="/static/phone-input.js"></script>
         
-        <!-- 📷 KYC SELFIE CAMERA MODULE -->
-        <script src="/static/kyc-selfie-camera.js"></script>
-        
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
         <script src="/static/firebase-compat.js?v=3"></script>
@@ -6046,72 +6049,6 @@ app.get('/verify-profile', (c) => {
             errorDiv.classList.remove('hidden');
           }
 
-          // ========================================
-          // KYC SELFIE CAMERA FUNCTION
-          // ========================================
-          function openKycSelfieCamera() {
-            console.log('📷 Opening KYC Selfie Camera...');
-            
-            // Vérifier authentification
-            const token = localStorage.getItem('amanah_token');
-            if (!token) {
-              alert('❌ Vous devez être connecté pour utiliser cette fonctionnalité.\n\nVeuillez vous reconnecter.');
-              window.location.href = '/login?redirect=/verify-profile';
-              return;
-            }
-            
-            console.log('✅ User authenticated, opening camera...');
-            
-            const camera = new KycSelfieCamera({
-              onSuccess: (result) => {
-                console.log('✅ Selfie captured successfully:', result);
-                
-                // Afficher statut succès
-                const statusDiv = document.getElementById('selfieStatus');
-                statusDiv.className = 'mt-3 p-3 rounded-lg bg-green-500/20 border border-green-500/30';
-                statusDiv.querySelector('p').innerHTML = '✅ <strong>Selfie enregistré avec succès !</strong>';
-                statusDiv.classList.remove('hidden');
-                
-                // TODO: Mettre à jour l'état KYC si nécessaire
-                // verificationState.kyc = true;
-                // updateUI();
-                
-                // Optionnel: Afficher preview de l'image uploadée
-                document.getElementById('selfiePreview').src = result.selfieUrl;
-                document.getElementById('selfiePreview').classList.remove('hidden');
-                document.getElementById('selfiePreviewEmpty').classList.add('hidden');
-              },
-              
-              onCancel: () => {
-                console.log('❌ Selfie capture cancelled');
-                
-                // Afficher statut annulation
-                const statusDiv = document.getElementById('selfieStatus');
-                statusDiv.className = 'mt-3 p-3 rounded-lg bg-gray-500/20 border border-gray-500/30';
-                statusDiv.querySelector('p').innerHTML = 'ℹ️ Capture annulée';
-                statusDiv.classList.remove('hidden');
-                
-                // Masquer après 3 secondes
-                setTimeout(() => {
-                  statusDiv.classList.add('hidden');
-                }, 3000);
-              },
-              
-              onError: (error) => {
-                console.error('❌ Selfie error:', error);
-                
-                // Afficher statut erreur
-                const statusDiv = document.getElementById('selfieStatus');
-                statusDiv.className = 'mt-3 p-3 rounded-lg bg-red-500/20 border border-red-500/30';
-                statusDiv.querySelector('p').innerHTML = '❌ <strong>Erreur:</strong> ' + error.message;
-                statusDiv.classList.remove('hidden');
-              }
-            });
-            
-            // Ouvrir la caméra
-            camera.open();
-          }
-
           async function sendVerificationCode(method) {
             // Récupérer le téléphone depuis le widget
             const phone = phoneVerifyWidget ? phoneVerifyWidget.getPhoneE164() : null;
@@ -6129,7 +6066,7 @@ app.get('/verify-profile', (c) => {
               const result = await window.sendSMSVerification(phone);
               
               if (!result.success) {
-                throw new Error(result.error || 'Erreur lors de l\'envoi du SMS');
+                throw new Error(result.error || \`Erreur lors de l'envoi du SMS\`);
               }
               
               console.log('✅ SMS Firebase envoyé à:', phone);
@@ -7551,130 +7488,6 @@ app.post('/api/packages/upload-photos', authMiddleware, async (c) => {
       success: false, 
       error: error.message 
     }, 500)
-  }
-})
-
-/**
- * ========================================
- * API KYC: Upload Selfie
- * ========================================
- * Module isolé pour upload de selfie KYC
- * Ne modifie pas la logique KYC existante
- */
-app.post('/api/kyc/upload-selfie', authMiddleware, async (c) => {
-  const { R2 } = c.env
-  const user = c.get('user')
-  
-  try {
-    const formData = await c.req.formData()
-    const selfie = formData.get('selfie')
-    const timestamp = formData.get('timestamp')
-    
-    console.log('📷 KYC Selfie upload request:', { userId: user.id, timestamp })
-    
-    // Validation
-    if (!selfie || !(selfie instanceof File)) {
-      return c.json({ 
-        success: false, 
-        error: 'Fichier selfie manquant' 
-      }, 400)
-    }
-    
-    // Valider taille (max 10MB)
-    if (selfie.size > 10 * 1024 * 1024) {
-      return c.json({ 
-        success: false, 
-        error: 'Fichier trop volumineux (max 10MB)' 
-      }, 400)
-    }
-    
-    // Valider type
-    if (!selfie.type.startsWith('image/')) {
-      return c.json({ 
-        success: false, 
-        error: 'Format de fichier invalide (image requise)' 
-      }, 400)
-    }
-    
-    // Générer ID unique
-    const selfieId = generateId()
-    const fileExt = selfie.name.split('.').pop() || 'jpg'
-    const selfieKey = `kyc/selfies/${user.id}/${selfieId}.${fileExt}`
-    
-    console.log('📤 Uploading selfie to R2:', selfieKey)
-    
-    // Upload vers R2
-    const selfieBuffer = await selfie.arrayBuffer()
-    
-    if (R2) {
-      await R2.put(selfieKey, selfieBuffer, {
-        httpMetadata: { 
-          contentType: selfie.type 
-        },
-        customMetadata: {
-          userId: user.id,
-          uploadDate: new Date().toISOString(),
-          type: 'kyc_selfie'
-        }
-      })
-      
-      console.log('✅ Selfie uploaded successfully:', selfieId)
-    } else {
-      console.warn('⚠️ R2 not configured, selfie not stored')
-    }
-    
-    // Construire URL
-    const selfieUrl = R2 
-      ? `/api/kyc/selfies/${selfieKey}`
-      : `https://via.placeholder.com/400x400?text=Selfie+KYC`
-    
-    // TODO: Optionnel - Sauvegarder référence en base D1
-    // const db = c.get('db') as DatabaseService
-    // await db.saveSelfieReference(user.id, selfieId, selfieKey)
-    
-    return c.json({ 
-      success: true, 
-      fileId: selfieId,
-      url: selfieUrl,
-      message: 'Selfie enregistré avec succès' 
-    })
-    
-  } catch (error: any) {
-    console.error('❌ Erreur upload selfie KYC:', error)
-    return c.json({ 
-      success: false, 
-      error: error.message || 'Erreur lors de l\'upload' 
-    }, 500)
-  }
-})
-
-/**
- * Récupérer un selfie KYC depuis R2
- */
-app.get('/api/kyc/selfies/*', async (c) => {
-  const { R2 } = c.env
-  const selfieKey = c.req.path.replace('/api/kyc/selfies/', '')
-  
-  try {
-    if (!R2) {
-      return c.redirect('https://via.placeholder.com/400x400?text=Selfie+KYC')
-    }
-    
-    const object = await R2.get(selfieKey)
-    
-    if (!object) {
-      return c.json({ error: 'Selfie non trouvé' }, 404)
-    }
-    
-    const headers = new Headers()
-    object.writeHttpMetadata(headers)
-    headers.set('Cache-Control', 'public, max-age=31536000')
-    
-    return new Response(object.body, { headers })
-    
-  } catch (error: any) {
-    console.error('❌ Erreur récupération selfie:', error)
-    return c.json({ error: 'Erreur serveur' }, 500)
   }
 })
 
