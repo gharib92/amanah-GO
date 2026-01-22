@@ -107,6 +107,41 @@ async function login(email, password) {
   try {
     console.log('🔐 auth.login called:', email)
     
+    // 🔍 DIAGNOSTIC: Appel à l'API debug
+    console.log('🔍 Calling debug endpoint...')
+    const debugResponse = await fetch('/api/auth/login/debug', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    })
+    const debugData = await debugResponse.json()
+    console.log('🔍 DEBUG RESULT:', debugData)
+    
+    // Si l'utilisateur n'existe pas, arrêter ici
+    if (debugData.debug && !debugData.debug.user_found) {
+      console.error('❌ User not found in D1:', email)
+      return { 
+        success: false, 
+        error: 'Compte introuvable. Veuillez créer un compte via /signup'
+      }
+    }
+    
+    // Si le mot de passe ne correspond pas
+    if (debugData.debug && !debugData.debug.password_match) {
+      console.error('❌ Password incorrect for user:', email)
+      console.error('🔍 Password hash info:', {
+        has_hash: debugData.debug.has_password_hash,
+        hash_length: debugData.debug.password_hash_length,
+        hash_prefix: debugData.debug.password_hash_starts_with
+      })
+      return { 
+        success: false, 
+        error: 'Mot de passe incorrect'
+      }
+    }
+    
+    // ✅ Debug OK, appel normal
+    console.log('✅ Debug passed, calling normal login...')
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
