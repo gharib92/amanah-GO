@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Test - Amanah GO</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4285f4;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-left: 4px solid #4285f4;
+            border-radius: 5px;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #357ae8;
+        }
+        .success {
+            color: #0f9d58;
+            font-weight: bold;
+        }
+        .error {
+            color: #db4437;
+            font-weight: bold;
+        }
+        .info {
+            color: #4285f4;
+            font-weight: bold;
+        }
+        #logs {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 3px 0;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Firebase Authentication Test</h1>
+        <p>Outil de diagnostic pour tester la configuration Firebase</p>
+
+        <!-- Test 1: Configuration -->
+        <div class="test-section">
+            <h3>📋 Test 1: Vérifier la configuration Firebase</h3>
+            <button onclick="testConfig()">Tester la configuration</button>
+            <div id="config-status"></div>
+        </div>
+
+        <!-- Test 2: Créer un compte -->
+        <div class="test-section">
+            <h3>✍️ Test 2: Créer un compte test</h3>
+            <input type="email" id="signup-email" placeholder="Email (ex: test@example.com)">
+            <input type="password" id="signup-password" placeholder="Mot de passe (min 6 caractères)">
+            <button onclick="testSignup()">Créer un compte</button>
+            <div id="signup-status"></div>
+        </div>
+
+        <!-- Test 3: Se connecter -->
+        <div class="test-section">
+            <h3>🔐 Test 3: Se connecter</h3>
+            <input type="email" id="login-email" placeholder="Email">
+            <input type="password" id="login-password" placeholder="Mot de passe">
+            <button onclick="testLogin()">Se connecter</button>
+            <div id="login-status"></div>
+        </div>
+
+        <!-- Test 4: Google OAuth -->
+        <div class="test-section">
+            <h3>🔵 Test 4: Connexion Google</h3>
+            <button onclick="testGoogleAuth()">Se connecter avec Google</button>
+            <div id="google-status"></div>
+        </div>
+
+        <!-- Test 5: Vérifier domaine -->
+        <div class="test-section">
+            <h3>🌐 Test 5: Vérifier domaine actuel</h3>
+            <button onclick="testDomain()">Vérifier domaine</button>
+            <div id="domain-status"></div>
+        </div>
+
+        <!-- Logs console -->
+        <div class="test-section">
+            <h3>📝 Console de logs</h3>
+            <button onclick="clearLogs()">Effacer les logs</button>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+    <script>
+        // Configuration Firebase (identique au code)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCtz79Y0HLOuTibmaoeJm-w0dzkpY18aiQ",
+            authDomain: "studio-1096025835-e3034.firebaseapp.com",
+            projectId: "studio-1096025835-e3034",
+            storageBucket: "studio-1096025835-e3034.firebasestorage.app",
+            messagingSenderId: "867447961267",
+            appId: "1:867447961267:web:892fdbbdf8c8c7bcf1a2c6"
+        };
+
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Logging
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const emoji = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            const logEntry = `<div class="log-entry ${type}">[${timestamp}] ${emoji} ${message}</div>`;
+            logsDiv.innerHTML += logEntry;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        function showStatus(elementId, message, type) {
+            const statusDiv = document.getElementById(elementId);
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+        }
+
+        // Test 1: Configuration
+        function testConfig() {
+            log('Test de la configuration Firebase...', 'info');
+            
+            try {
+                log(`✅ Firebase initialisé`, 'success');
+                log(`📍 Project ID: ${firebaseConfig.projectId}`, 'info');
+                log(`📍 Auth Domain: ${firebaseConfig.authDomain}`, 'info');
+                log(`📍 API Key: ${firebaseConfig.apiKey.substring(0, 20)}...`, 'info');
+                log(`🌐 Domaine actuel: ${window.location.hostname}`, 'info');
+                
+                showStatus('config-status', '✅ Configuration Firebase valide', 'success');
+            } catch (error) {
+                log(`❌ Erreur configuration: ${error.message}`, 'error');
+                showStatus('config-status', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 2: Créer un compte
+        async function testSignup() {
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+
+            if (!email || !password) {
+                showStatus('signup-status', '⚠️ Veuillez remplir tous les champs', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showStatus('signup-status', '⚠️ Mot de passe trop court (min 6 caractères)', 'error');
+                return;
+            }
+
+            log(`🔥 Tentative de création de compte: ${email}`, 'info');
+
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                log(`✅ Compte créé avec succès!`, 'success');
+                log(`👤 UID: ${user.uid}`, 'success');
+                log(`📧 Email: ${user.email}`, 'success');
+                log(`✉️ Email vérifié: ${user.emailVerified}`, 'info');
+                
+                showStatus('signup-status', `✅ Compte créé avec succès pour ${email}`, 'success');
+            } catch (error) {
+                log(`❌ Erreur création compte: ${error.code}`, 'error');
+                log(`❌ Message: ${error.message}`, 'error');
+                
+                let errorMessage = error.message;
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = 'Cet email est déjà utilisé. Essayez de vous connecter.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Format d\'email invalide.';
+                } else if (error.code === 'auth/weak-password') {
+                    errorMessage = 'Mot de passe trop faible (min 6 caractères).';
+                } else if (error.code === 'auth/operation-not-allowed') {
+                    errorMessage = '⚠️ Email/Password non activé dans Firebase Console!';
+                }
+                
+                showStatus('signup-status', `❌ Erreur: ${errorMessage}`, 'error');
+            }
+        }
+
+        // Test 3: Se connecter
+        async function testLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            if (!email || !password) {
+                showStatus('login-status', '⚠️ Veuillez remplir tous les champs', 'error');
+                return;
+            }
+
+            log(`🔐 Tentative de connexion: ${email}`, 'info');
+
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                log(`✅ Connexion réussie!`, 'success');
+                log(`👤 UID: ${user.uid}`, 'success');
+                log(`📧 Email: ${user.email}`, 'success');
+                
+                // Récupérer le token
+                const token = await user.getIdToken();
+                log(`🔑 Token JWT obtenu (${token.substring(0, 30)}...)`, 'success');
+                
+                showStatus('login-status', `✅ Connexion réussie pour ${email}`, 'success');
+            } catch (error) {
+                log(`❌ Erreur connexion: ${error.code}`, 'error');
+                log(`❌ Message: ${error.message}`, 'error');
+                
+                let errorMessage = error.message;
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = 'Aucun compte trouvé avec cet email.';
+                } else if (error.code === 'auth/wrong-password') {
+                    errorMessage = 'Mot de passe incorrect.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Format d\'email invalide.';
+                }
+                
+                showStatus('login-status', `❌ Erreur: ${errorMessage}`, 'error');
+            }
+        }
+
+        // Test 4: Google OAuth
+        async function testGoogleAuth() {
+            log(`🔵 Tentative de connexion Google...`, 'info');
+
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const result = await auth.signInWithPopup(provider);
+                const user = result.user;
+                
+                log(`✅ Connexion Google réussie!`, 'success');
+                log(`👤 Nom: ${user.displayName}`, 'success');
+                log(`📧 Email: ${user.email}`, 'success');
+                log(`🆔 Google ID: ${result.additionalUserInfo.profile.id}`, 'info');
+                
+                showStatus('google-status', `✅ Connexion Google réussie pour ${user.email}`, 'success');
+            } catch (error) {
+                log(`❌ Erreur Google Auth: ${error.code}`, 'error');
+                log(`❌ Message: ${error.message}`, 'error');
+                
+                let errorMessage = error.message;
+                if (error.code === 'auth/popup-closed-by-user') {
+                    errorMessage = 'Popup fermée par l\'utilisateur.';
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    errorMessage = '⚠️ Domaine non autorisé dans Firebase Console!';
+                }
+                
+                showStatus('google-status', `❌ Erreur: ${errorMessage}`, 'error');
+            }
+        }
+
+        // Test 5: Vérifier domaine
+        function testDomain() {
+            const currentDomain = window.location.hostname;
+            const protocol = window.location.protocol;
+            const port = window.location.port;
+            
+            log(`🌐 Domaine actuel: ${currentDomain}`, 'info');
+            log(`🔒 Protocole: ${protocol}`, 'info');
+            if (port) log(`🔌 Port: ${port}`, 'info');
+            
+            const authorizedDomains = [
+                'localhost',
+                'amanahgo.app',
+                'www.amanahgo.app',
+                'amanah-go.pages.dev',
+                'studio-1096025835-e3034.firebaseapp.com'
+            ];
+            
+            const isAuthorized = authorizedDomains.includes(currentDomain);
+            
+            if (isAuthorized) {
+                log(`✅ Domaine autorisé`, 'success');
+                showStatus('domain-status', `✅ Domaine ${currentDomain} devrait être autorisé`, 'success');
+            } else {
+                log(`⚠️ Domaine peut-être non autorisé`, 'error');
+                log(`📋 Domaines autorisés attendus: ${authorizedDomains.join(', ')}`, 'info');
+                showStatus('domain-status', `⚠️ Domaine ${currentDomain} doit être ajouté dans Firebase Console`, 'error');
+            }
+        }
+
+        // Log initial
+        log('🔥 Firebase Test Tool chargé', 'success');
+        log('Cliquez sur les boutons pour tester chaque fonctionnalité', 'info');
+    </script>
+</body>
+</html>
