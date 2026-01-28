@@ -8,6 +8,12 @@ import Stripe from 'stripe'
 import './styles.css' // Import Tailwind CSS
 import { DatabaseService, generateId } from './db.service'
 
+// ==========================================
+// CONSTANTS
+// ==========================================
+const JWT_EXPIRATION_DAYS = 30 // Token validity period in days
+const JWT_EXPIRATION_SECONDS = 60 * 60 * 24 * JWT_EXPIRATION_DAYS
+
 // Types pour le contexte avec user authentifié et DB
 type Variables = {
   user: {
@@ -3404,7 +3410,7 @@ app.post('/api/auth/signup', async (c) => {
         id: userId,
         email,
         name,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+        exp: Math.floor(Date.now() / 1000) + JWT_EXPIRATION_SECONDS
       },
       secret
     )
@@ -3530,7 +3536,7 @@ app.get('/api/auth/google/callback', async (c) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+        exp: Math.floor(Date.now() / 1000) + JWT_EXPIRATION_SECONDS
       },
       secret
     )
@@ -3669,7 +3675,7 @@ app.post('/api/auth/apple/callback', async (c) => {
         id: dbUser.id,
         email: dbUser.email,
         name: dbUser.name,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+        exp: Math.floor(Date.now() / 1000) + JWT_EXPIRATION_SECONDS
       },
       secret
     )
@@ -3783,7 +3789,7 @@ app.get('/api/auth/facebook/callback', async (c) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+        exp: Math.floor(Date.now() / 1000) + JWT_EXPIRATION_SECONDS
       },
       secret
     )
@@ -4154,7 +4160,7 @@ app.post('/api/auth/login', async (c) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+        exp: Math.floor(Date.now() / 1000) + JWT_EXPIRATION_SECONDS
       },
       secret
     )
