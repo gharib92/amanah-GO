@@ -7,6 +7,8 @@ import * as bcrypt from 'bcryptjs'
 import Stripe from 'stripe'
 import './styles.css' // Import Tailwind CSS
 import { DatabaseService, generateId } from './db.service'
+import { compareFaces, type AWSCredentials } from './aws-rekognition.service'
+import { handleError, ErrorCodes, unauthorizedError, createErrorResponse } from './error.service'
 
 // ==========================================
 // CONSTANTS
@@ -330,7 +332,8 @@ const authMiddleware = async (c: any, next: any) => {
     const authHeader = c.req.header('Authorization')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ error: 'Token manquant' }, 401)
+      const { response, status } = unauthorizedError('Token manquant')
+      return c.json(response, status)
     }
     
     const token = authHeader.substring(7)
@@ -339,7 +342,13 @@ const authMiddleware = async (c: any, next: any) => {
     const payload: any = await verify(token, secret)
     
     if (!payload || !payload.id) {
-      return c.json({ error: 'Token invalide' }, 401)
+      const { response, status } = createErrorResponse(
+        'Token invalide',
+        ErrorCodes.AUTH_TOKEN_INVALID,
+        null,
+        401
+      )
+      return c.json(response, status)
     }
     
     // ✅ MIGRATION D1: Charger les infos user depuis D1
@@ -349,7 +358,13 @@ const authMiddleware = async (c: any, next: any) => {
     const userResult = await db.getUserById(normalizedId)
     
     if (!userResult) {
-      return c.json({ error: 'Utilisateur non trouvé' }, 401)
+      const { response, status } = createErrorResponse(
+        'Utilisateur non trouvé',
+        ErrorCodes.AUTH_USER_NOT_FOUND,
+        null,
+        401
+      )
+      return c.json(response, status)
     }
     
     // Stocker user dans le contexte
@@ -364,8 +379,7 @@ const authMiddleware = async (c: any, next: any) => {
     
     await next()
   } catch (error: any) {
-    console.error('Auth middleware error:', error)
-    return c.json({ error: 'Token invalide ou expiré' }, 401)
+    return handleError(error, 'AuthMiddleware', c)
   }
 }
 
