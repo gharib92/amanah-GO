@@ -7894,9 +7894,15 @@ app.post('/api/kyc/upload-selfie', authMiddleware, async (c) => {
   const { R2 } = c.env
   const user = c.get('user')
   
+  console.log('📥 [UPLOAD-SELFIE] Request received for user:', user?.id)
+  
   try {
+    console.log('🔄 [UPLOAD-SELFIE] Parsing form data...')
     const formData = await c.req.formData()
+    console.log('✅ [UPLOAD-SELFIE] Form data parsed')
+    
     const selfie = formData.get('selfie')
+    console.log('📷 [UPLOAD-SELFIE] Selfie file:', selfie instanceof File ? 'OK' : 'MISSING')
     
     if (!selfie || !(selfie instanceof File)) {
       return c.json({ 
@@ -7923,7 +7929,9 @@ app.post('/api/kyc/upload-selfie', authMiddleware, async (c) => {
     
     console.log('📤 Uploading selfie for user:', user.id, 'Size:', (selfie.size / 1024).toFixed(2) + ' KB')
     
+    console.log('🔍 [UPLOAD-SELFIE] Checking R2 availability...')
     if (!R2) {
+      console.warn('⚠️ [UPLOAD-SELFIE] R2 not configured - dev mode')
       // Mode dev : retourner URL placeholder
       return c.json({
         success: true,
@@ -7938,8 +7946,13 @@ app.post('/api/kyc/upload-selfie', authMiddleware, async (c) => {
     const fileId = crypto.randomUUID()
     const key = `kyc/selfies/${user.id}/${fileId}.${ext}`
     
+    console.log('🗝️ [UPLOAD-SELFIE] Generated key:', key)
+    
     // Upload vers R2
+    console.log('☁️ [UPLOAD-SELFIE] Starting R2 upload...')
     const buffer = await selfie.arrayBuffer()
+    console.log('📦 [UPLOAD-SELFIE] Buffer created, size:', buffer.byteLength)
+    
     await R2.put(key, buffer, {
       httpMetadata: {
         contentType: selfie.type
@@ -7958,10 +7971,8 @@ app.post('/api/kyc/upload-selfie', authMiddleware, async (c) => {
     
   } catch (error: any) {
     console.error('❌ Upload selfie error:', error)
-    return c.json({ 
-      success: false, 
-      error: error.message 
-    }, 500)
+    console.error('❌ Error stack:', error.stack)
+    return handleError(c, error, 'upload_selfie')
   }
 })
 
