@@ -5754,6 +5754,17 @@ app.get('/expediteur', (c) => {
                     <p class="text-gray-600" data-i18n="sender.my_packages_desc">Suivez tous vos envois en cours et passés</p>
                 </a>
 
+                <a href="/messages" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-blue-100 rounded-full p-4 group-hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-comments text-2xl text-blue-600 group-hover:text-white"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Messages</h3>
+                    <p class="text-gray-600">Discutez avec les voyageurs</p>
+                </a>
+
                 <div onclick="searchTrips()" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-purple-100 rounded-full p-4 group-hover:bg-purple-600 transition-colors">
