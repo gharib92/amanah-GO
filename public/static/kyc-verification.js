@@ -248,15 +248,28 @@ async function submitKYCVerification() {
     formData.append('selfie', capturedSelfie, 'selfie.jpg');
     formData.append('id_document', uploadedID);
     
-    // TODO: Ajouter user_id depuis la session
-    const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get('user_id') || 'user001';
-    formData.append('user_id', userId);
+    // Récupérer le vrai user depuis Firebase
+    const firebaseUser = window.firebaseAuth?.currentUser
+    const localUser = JSON.parse(localStorage.getItem('amanah_user') || '{}')
+    const userId = localUser.uid || localUser.id || firebaseUser?.uid
+    
+    if (!userId) {
+      alert('Erreur: utilisateur non connecté. Veuillez vous reconnecter.')
+      submitBtn.disabled = false
+      submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Soumettre la vérification'
+      return
+    }
+    
+    formData.append('user_id', userId)
+    
+    // Récupérer le token Firebase pour l'auth
+    const token = localStorage.getItem('amanah_token') || await firebaseUser?.getIdToken()
     
     // Envoyer au serveur
     const response = await axios.post('/api/auth/verify-kyc', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': 'multipart/form-data',
+        'Authorization': token ? 'Bearer ' + token : ''
       }
     });
     
