@@ -2370,10 +2370,13 @@ async function notifyPaymentReceived(travelerId: number, amount: number) {
 
 // Middleware admin (simplif ié pour dev)
 const adminMiddleware = async (c: any, next: any) => {
-  // TODO: Vérifier rôle admin en production
-  // Pour dev, autoriser tous les utilisateurs authentifiés
   await authMiddleware(c, async () => {
-    // En production, vérifier: if (c.get('user').role !== 'admin') return c.json(...)
+    const user = c.get('user')
+    const db = c.get('db') as DatabaseService
+    const dbUser = await db.getUserById(user.id)
+    if (!dbUser || dbUser.role !== 'admin') {
+      return c.json({ success: false, error: 'Accès non autorisé' }, 403)
+    }
     await next()
   })
 }

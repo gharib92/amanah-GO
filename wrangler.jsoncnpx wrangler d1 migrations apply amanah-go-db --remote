@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "amanah-go",
+  "compatibility_date": "2024-12-27",
+  "pages_build_output_dir": "dist",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "ENVIRONMENT": "production",
+    "GOOGLE_CLIENT_ID": "",
+    "FACEBOOK_APP_ID": "",
+    "TWILIO_ACCOUNT_SID": "",
+    "TWILIO_AUTH_TOKEN": "",
+    "TWILIO_PHONE_NUMBER": "+33757591098"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "amanah-go-db",
+      "database_id": "5157b1c4-4467-491d-aaff-41a4650fe6b9"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "amanah-go-storage"
+    }
+  ]
+}

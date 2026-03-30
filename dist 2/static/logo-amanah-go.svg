@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none">
+  <!-- Avion (vert foncé) -->
+  <g id="plane">
+    <path d="M400 150 L380 180 L360 190 L365 200 L380 195 L400 200 L420 195 L435 200 L440 190 L420 180 Z" fill="#047857"/>
+    <ellipse cx="400" cy="165" rx="35" ry="15" fill="#047857"/>
+    <rect x="395" y="140" width="10" height="30" fill="#047857"/>
+  </g>
+  
+  <!-- Personne gauche (BLEU #2563EB) -->
+  <g id="person-left">
+    <!-- Tête -->
+    <circle cx="280" cy="280" r="35" fill="#2563EB"/>
+    <!-- Corps -->
+    <path d="M280 315 Q250 350 240 420 L240 450 Q240 460 250 460 L310 460 Q320 460 320 450 L320 420 Q310 350 280 315 Z" fill="#2563EB"/>
+    <!-- Bras vers le colis -->
+    <path d="M280 340 Q320 360 360 380 L380 390 Q385 392 390 388 L395 380 Q398 375 393 372 L360 355 Q320 335 280 340 Z" fill="#2563EB"/>
+  </g>
+  
+  <!-- Personne droite (VERT #16A34A) -->
+  <g id="person-right">
+    <!-- Tête -->
+    <circle cx="520" cy="280" r="35" fill="#16A34A"/>
+    <!-- Corps -->
+    <path d="M520 315 Q550 350 560 420 L560 450 Q560 460 550 460 L490 460 Q480 460 480 450 L480 420 Q490 350 520 315 Z" fill="#16A34A"/>
+    <!-- Bras vers le colis -->
+    <path d="M520 340 Q480 360 440 380 L420 390 Q415 392 410 388 L405 380 Q402 375 407 372 L440 355 Q480 335 520 340 Z" fill="#16A34A"/>
+  </g>
+  
+  <!-- Colis central (orange/jaune) -->
+  <g id="package">
+    <rect x="370" y="370" width="60" height="50" rx="5" fill="#F59E0B"/>
+    <rect x="397" y="370" width="6" height="50" fill="#D97706"/>
+    <rect x="370" y="393" width="60" height="6" fill="#D97706"/>
+  </g>
+  
+  <!-- Mains protectrices (rose) -->
+  <g id="hands">
+    <!-- Main gauche -->
+    <path d="M200 450 Q220 420 250 400 Q280 380 320 370 Q340 365 360 370 L365 375 Q368 380 365 385 Q360 390 350 388 Q320 385 290 400 Q260 415 240 440 Q230 455 220 470 Q215 480 205 478 Q195 476 195 465 Q195 455 200 450 Z" fill="#E11D48" opacity="0.7"/>
+    
+    <!-- Main droite -->
+    <path d="M600 450 Q580 420 550 400 Q520 380 480 370 Q460 365 440 370 L435 375 Q432 380 435 385 Q440 390 450 388 Q480 385 510 400 Q540 415 560 440 Q570 455 580 470 Q585 480 595 478 Q605 476 605 465 Q605 455 600 450 Z" fill="#E11D48" opacity="0.7"/>
+  </g>
+  
+  <!-- Lignes de mouvement (bleu et vert) -->
+  <path d="M280 260 Q350 240 400 230" stroke="#2563EB" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <path d="M520 260 Q450 240 400 230" stroke="#16A34A" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.6"/>
+</svg>

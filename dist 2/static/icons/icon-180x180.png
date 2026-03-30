@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#2563eb" rx="64"/>
+  
+  <!-- Airplane icon -->
+  <g transform="translate(256, 200)">
+    <path d="M0,-60 L20,-40 L80,20 L100,0 L40,-60 L60,-80 L100,-40 L120,-60 L80,-120 L40,-80 L0,-120 L-40,-80 L-80,-120 L-120,-60 L-100,-40 L-60,-80 L-40,-60 L-100,0 L-80,20 L-20,-40 Z" 
+          fill="white" 
+          transform="scale(0.8)"/>
+  </g>
+  
+  <!-- Package icon -->
+  <g transform="translate(256, 340)">
+    <rect x="-40" y="-30" width="80" height="60" fill="white" rx="8"/>
+    <line x1="-40" y1="-30" x2="40" y2="30" stroke="#2563eb" stroke-width="4"/>
+    <line x1="40" y1="-30" x2="-40" y2="30" stroke="#2563eb" stroke-width="4"/>
+  </g>
+  
+  <!-- Text "AG" -->
+  <text x="256" y="450" 
+        font-family="Arial, sans-serif" 
+        font-size="120" 
+        font-weight="bold" 
+        fill="white" 
+        text-anchor="middle">
+    AG
+  </text>
+</svg>
