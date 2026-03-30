@@ -10715,3 +10715,102 @@ app.get('/prohibited-items', (c) => {
 })
 
 export default app
+
+// ==========================================
+// PAGE: CHAT / MESSAGERIE
+// ==========================================
+app.get('/messages', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Messages - Amanah GO</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+          #messages-container { height: calc(100vh - 280px); overflow-y: auto; }
+          #conversations-list { height: calc(100vh - 140px); overflow-y: auto; }
+        </style>
+    </head>
+    <body class="bg-gray-50 h-screen">
+        <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <a href="/voyageur" class="text-blue-600 hover:text-blue-700">
+                        <i class="fas fa-arrow-left mr-2"></i>Retour
+                    </a>
+                    <span class="text-xl font-bold text-gray-900">
+                        <i class="fas fa-comments text-blue-600 mr-2"></i>Messages
+                    </span>
+                </div>
+                <span class="text-gray-600"><i class="fas fa-user-circle mr-2"></i><span id="userName"></span></span>
+            </div>
+        </nav>
+
+        <div id="chat-app" class="max-w-7xl mx-auto flex h-full">
+            <!-- Liste conversations -->
+            <div class="w-1/3 bg-white border-r">
+                <div class="p-4 border-b">
+                    <h2 class="font-bold text-gray-800">Conversations</h2>
+                </div>
+                <div id="conversations-list"></div>
+            </div>
+
+            <!-- Panel chat vide par défaut -->
+            <div class="flex-1 flex items-center justify-center bg-gray-50" id="empty-state">
+                <div class="text-center text-gray-400">
+                    <i class="fas fa-comments text-6xl mb-4"></i>
+                    <p class="text-xl">Sélectionnez une conversation</p>
+                </div>
+            </div>
+
+            <!-- Panel chat actif (caché par défaut) -->
+            <div class="flex-1 flex flex-col hidden" id="chat-panel">
+                <!-- Header conversation -->
+                <div class="p-4 border-b bg-white flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold" id="chat-header-avatar">?</div>
+                        <span class="font-semibold" id="chat-header-name"></span>
+                    </div>
+                    <button id="close-chat-btn" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Messages -->
+                <div id="messages-container" class="flex-1 p-4 overflow-y-auto bg-gray-50"></div>
+
+                <!-- Input message -->
+                <div class="p-4 bg-white border-t flex items-center space-x-3">
+                    <input type="text" id="message-input"
+                           placeholder="Tapez votre message..."
+                           class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <button id="send-message-btn"
+                            class="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 rounded-full flex items-center justify-center transition">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script src="/static/auth.js"></script>
+        <script src="/static/chat.js"></script>
+        <script>
+          const user = auth.getUser()
+          if (user) document.getElementById('userName').textContent = user.name || user.email
+
+          // Sync empty state avec chat panel
+          const origOpen = ChatApp.openConversation.bind(ChatApp)
+          ChatApp.openConversation = async function(userId, userName) {
+            document.getElementById('empty-state').classList.add('hidden')
+            document.getElementById('chat-panel').classList.remove('hidden')
+            document.getElementById('chat-header-avatar').textContent = userName.charAt(0).toUpperCase()
+            await origOpen(userId, userName)
+          }
+        </script>
+    </body>
+    </html>
+  `)
+})
