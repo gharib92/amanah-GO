@@ -5271,6 +5271,28 @@ app.get('/voyageur', (c) => {
                     <p class="text-gray-600" data-i18n="traveler.my_trips_desc">Consultez et gérez tous vos trajets publiés</p>
                 </a>
 
+                <a href="/messages" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-blue-100 rounded-full p-4 group-hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-comments text-2xl text-blue-600 group-hover:text-white"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Messages</h3>
+                    <p class="text-gray-600">Discutez avec les expéditeurs</p>
+                </a>
+
+                <a href="/messages" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-blue-100 rounded-full p-4 group-hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-comments text-2xl text-blue-600 group-hover:text-white"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Messages</h3>
+                    <p class="text-gray-600">Discutez avec les expéditeurs</p>
+                </a>
+
                 <a href="/voyageur/stripe-connect" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-orange-100 rounded-full p-4 group-hover:bg-orange-600 transition-colors">
