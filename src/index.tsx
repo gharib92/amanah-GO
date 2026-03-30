@@ -3919,7 +3919,11 @@ app.post('/api/auth/verify-kyc', async (c) => {
     if (!DB) {
       return c.json({ success: false, error: 'Database not available' }, 500)
     }
-    const user = await DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first()
+    // Chercher par firebase_uid d'abord, puis par id
+    let user = await DB.prepare('SELECT * FROM users WHERE firebase_uid = ?').bind(userId).first()
+    if (!user) {
+      user = await DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first()
+    }
     
     if (!user) {
       return c.json({ success: false, error: 'Utilisateur introuvable' }, 404)
