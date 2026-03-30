@@ -6,7 +6,16 @@ import { sign, verify } from 'hono/jwt'
 import * as bcrypt from 'bcryptjs'
 import Stripe from 'stripe'
 import './styles.css' // Import Tailwind CSS
+//  './views/verify-profile.view'
 import { DatabaseService, generateId } from './db.service'
+import { compareFaces, type AWSCredentials } from './aws-rekognition.service'
+import { handleError, ErrorCodes, unauthorizedError, createErrorResponse } from './error.service'
+
+// ==========================================
+// CONSTANTS
+// ==========================================
+const JWT_EXPIRATION_DAYS = 30 // Token validity period in days
+const JWT_EXPIRATION_SECONDS = 60 * 60 * 24 * JWT_EXPIRATION_DAYS
 
 // Types pour le contexte avec user authentifié et DB
 type Variables = {
@@ -55,7 +64,7 @@ app.use('*', async (c, next) => {
 // Initialisation Stripe
 let stripe: Stripe | null = null
 // Mode MOCK pour Stripe (dev sans vraie clé)
-const STRIPE_MOCK_MODE = true // Activer pour tester sans vraie clé Stripe
+const STRIPE_MOCK_MODE = false// Activer pour tester sans vraie clé Stripe
 
 function getStripe(c: any): Stripe | null {
   if (STRIPE_MOCK_MODE) {
@@ -324,7 +333,8 @@ const authMiddleware = async (c: any, next: any) => {
     const authHeader = c.req.header('Authorization')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ error: 'Token manquant' }, 401)
+      const { response, status } = unauthorizedError('Token manquant')
+      return c.json(response, status)
     }
     
     const token = authHeader.substring(7)
@@ -333,7 +343,13 @@ const authMiddleware = async (c: any, next: any) => {
     const payload: any = await verify(token, secret)
     
     if (!payload || !payload.id) {
-      return c.json({ error: 'Token invalide' }, 401)
+      const { response, status } = createErrorResponse(
+        'Token invalide',
+        ErrorCodes.AUTH_TOKEN_INVALID,
+        null,
+        401
+      )
+      return c.json(response, status)
     }
     
     // ✅ MIGRATION D1: Charger les infos user depuis D1
@@ -343,7 +359,13 @@ const authMiddleware = async (c: any, next: any) => {
     const userResult = await db.getUserById(normalizedId)
     
     if (!userResult) {
-      return c.json({ error: 'Utilisateur non trouvé' }, 401)
+      const { response, status } = createErrorResponse(
+        'Utilisateur non trouvé',
+        ErrorCodes.AUTH_USER_NOT_FOUND,
+        null,
+        401
+      )
+      return c.json(response, status)
     }
     
     // Stocker user dans le contexte
@@ -358,8 +380,7 @@ const authMiddleware = async (c: any, next: any) => {
     
     await next()
   } catch (error: any) {
-    console.error('Auth middleware error:', error)
-    return c.json({ error: 'Token invalide ou expiré' }, 401)
+    return handleError(error, 'AuthMiddleware', c)
   }
 }
 
@@ -3404,7 +3425,7 @@ app.post('/api/auth/signup', async (c) => {
         id: userId,
         email,
         name,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+        exp: Math.floor(Date.now() / 1000) + JWT_EXPIRATION_SECONDS
       },
       secret
     )
@@ -3530,7 +3551,7 @@ app.get('/api/auth/google/callback', async (c) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+        exp: Math.floor(Date.now() / 1000) + JWT_EXPIRATION_SECONDS
       },
       secret
     )
@@ -3669,7 +3690,7 @@ app.post('/api/auth/apple/callback', async (c) => {
         id: dbUser.id,
         email: dbUser.email,
         name: dbUser.name,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+        exp: Math.floor(Date.now() / 1000) + JWT_EXPIRATION_SECONDS
       },
       secret
     )
@@ -3783,7 +3804,7 @@ app.get('/api/auth/facebook/callback', async (c) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+        exp: Math.floor(Date.now() / 1000) + JWT_EXPIRATION_SECONDS
       },
       secret
     )
@@ -4154,7 +4175,7 @@ app.post('/api/auth/login', async (c) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) // 7 jours
+        exp: Math.floor(Date.now() / 1000) + JWT_EXPIRATION_SECONDS
       },
       secret
     )
@@ -5626,581 +5647,7 @@ app.get('/voyageur/stripe-connect', (c) => {
 
 // Page de vérification KYC
 app.get('/verify-profile', (c) => {
-  return c.html(`
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Vérification du Profil - Amanah GO</title>
-        <link href="/static/tailwind.css" rel="stylesheet">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <style>
-          .verification-card {
-            transition: all 0.3s ease;
-          }
-          .verification-card.completed {
-            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-            border-color: #10B981;
-          }
-          .verification-card.completed * {
-            color: white !important;
-          }
-        </style>
-    </head>
-    <body class="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 min-h-screen">
-        <!-- Header -->
-        <nav class="bg-blue-900/50 backdrop-blur-sm border-b border-blue-700">
-            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
-                    <span class="text-2xl font-bold text-white">Amanah GO</span>
-                </div>
-                <a href="/" class="text-white hover:text-blue-200">
-                    <i class="fas fa-arrow-left mr-2"></i>
-                    Retour à l'accueil
-                </a>
-            </div>
-        </nav>
-
-        <div class="max-w-4xl mx-auto px-4 py-12">
-            <!-- Titre -->
-            <div class="text-center mb-12">
-                <h1 class="text-4xl font-bold text-white mb-4">Vérification du Profil</h1>
-                <p class="text-blue-200 text-lg">
-                    Complétez ces étapes pour débloquer toutes les fonctionnalités et renforcer la confiance au sein de la communauté.
-                </p>
-            </div>
-
-            <!-- Statut de la vérification -->
-            <div class="bg-white/10 backdrop-blur-md rounded-2xl p-8 mb-8 border border-white/20">
-                <h2 class="text-2xl font-bold text-white mb-6">Statut de la vérification</h2>
-                
-                <div class="space-y-4">
-                    <!-- Vérifier l'E-mail -->
-                    <div id="emailCard" class="verification-card bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-6 flex items-center justify-between">
-                        <div class="flex items-center space-x-4">
-                            <div class="bg-blue-500/20 p-4 rounded-full">
-                                <i class="fas fa-envelope text-blue-300 text-2xl"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-bold text-white">Vérifier l'E-mail</h3>
-                                <p class="text-blue-200 text-sm">Confirmez votre adresse e-mail pour sécuriser votre compte.</p>
-                            </div>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button id="verifyEmailBtn" 
-                                    class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition">
-                                Vérifier maintenant
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Vérifier le Téléphone -->
-                    <div id="phoneCard" class="verification-card bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-6 flex items-center justify-between opacity-50">
-                        <div class="flex items-center space-x-4">
-                            <div class="bg-blue-500/20 p-4 rounded-full">
-                                <i class="fas fa-phone text-blue-300 text-2xl"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-bold text-white">Vérifier le Téléphone</h3>
-                                <p class="text-blue-200 text-sm">Validez par SMS ou WhatsApp pour sécuriser votre compte.</p>
-                            </div>
-                        </div>
-                        <div class="flex space-x-2">
-                            <span class="bg-yellow-500/20 text-yellow-300 px-4 py-2 rounded-lg font-medium text-sm">
-                                Requis
-                            </span>
-                            <button id="verifyPhoneBtn" disabled
-                                    class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed">
-                                Vérifier maintenant
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Pièce d'Identité & Vérification Faciale -->
-                    <div id="kycCard" class="verification-card bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-6 opacity-50">
-                        <div class="flex items-center justify-between mb-6">
-                            <div class="flex items-center space-x-4">
-                                <div class="bg-blue-500/20 p-4 rounded-full">
-                                    <i class="fas fa-id-card text-blue-300 text-2xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-bold text-white">Pièce d'Identité & Vérification Faciale</h3>
-                                    <p class="text-blue-200 text-sm">Confirmez votre identité pour augmenter la confiance.</p>
-                                </div>
-                            </div>
-                            <span class="bg-yellow-500/20 text-yellow-300 px-4 py-2 rounded-lg font-medium text-sm">
-                                Requis
-                            </span>
-                        </div>
-
-                        <!-- Étapes KYC -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                            <!-- Étape 1: Selfie -->
-                            <div class="bg-white/5 border border-white/10 rounded-lg p-6">
-                                <h4 class="text-white font-bold mb-3 flex items-center">
-                                    <i class="fas fa-shield-alt text-green-400 mr-2"></i>
-                                    Étape 1: Prendre un Selfie en Direct
-                                </h4>
-                                <p class="text-blue-200 text-xs mb-4">
-                                    🔒 Capture en direct obligatoire pour prévenir la fraude
-                                </p>
-                                
-                                <!-- Zone de capture vidéo/preview -->
-                                <div class="border-2 border-dashed border-white/20 rounded-lg overflow-hidden mb-4 bg-black/30">
-                                    <video id="selfieVideo" class="w-full hidden" autoplay playsinline></video>
-                                    <canvas id="selfieCanvas" class="hidden"></canvas>
-                                    <img id="selfiePreview" class="w-full hidden" alt="Selfie preview">
-                                    
-                                    <div id="selfiePreviewEmpty" class="p-8 text-center">
-                                        <i class="fas fa-camera text-blue-300 text-4xl mb-3"></i>
-                                        <p class="text-blue-200 text-sm">Prenez une photo de votre visage</p>
-                                        <p class="text-blue-300 text-xs mt-2">Photo claire, bien éclairée</p>
-                                    </div>
-                                </div>
-                                
-                                <!-- Boutons de contrôle -->
-                                <button onclick="startSelfieCapture()" disabled id="startSelfieBtn"
-                                        class="w-full bg-blue-500/20 text-blue-300 px-4 py-2 rounded-lg font-medium transition cursor-not-allowed mb-2">
-                                    <i class="fas fa-camera mr-2"></i>
-                                    Démarrer la caméra
-                                </button>
-                                
-                                <button onclick="captureSelfie()" id="captureSelfieBtn" class="hidden w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition mb-2">
-                                    <i class="fas fa-camera mr-2"></i>
-                                    Capturer
-                                </button>
-                                
-                                <button onclick="retakeSelfie()" id="retakeSelfieBtn" class="hidden w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition">
-                                    <i class="fas fa-redo mr-2"></i>
-                                    Reprendre
-                                </button>
-                                
-                                <div class="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                                    <p class="text-yellow-200 text-xs">
-                                        <i class="fas fa-info-circle mr-2"></i>
-                                        <strong>Important :</strong> La capture en direct est obligatoire pour prévenir la fraude. Si l'accès caméra ne fonctionne pas, vérifiez que vous utilisez HTTPS.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Étape 2: Pièce d'identité -->
-                            <div class="bg-white/5 border border-white/10 rounded-lg p-6">
-                                <h4 class="text-white font-bold mb-3">Étape 2: Télécharger la Pièce d'Identité</h4>
-                                
-                                <!-- Zone d'upload/preview -->
-                                <div class="border-2 border-dashed border-white/20 rounded-lg overflow-hidden mb-4 bg-black/30">
-                                    <img id="idPreview" class="w-full hidden" alt="ID preview">
-                                    
-                                    <div id="idPreviewEmpty" class="p-8 text-center">
-                                        <i class="fas fa-upload text-blue-300 text-4xl mb-3"></i>
-                                        <p class="text-blue-200 text-sm">CIN, Passeport ou Permis</p>
-                                        <p class="text-blue-300 text-xs mt-2">Photo recto de votre pièce</p>
-                                    </div>
-                                </div>
-                                
-                                <p id="idFileName" class="text-blue-200 text-sm mb-2 hidden truncate"></p>
-                                
-                                <button onclick="uploadIDDocument()" disabled id="uploadIDBtn"
-                                        class="w-full bg-blue-500/20 text-blue-300 px-4 py-2 rounded-lg font-medium transition cursor-not-allowed">
-                                    <i class="fas fa-file-upload mr-2"></i>
-                                    Cliquez pour télécharger
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Bouton de soumission -->
-                        <div class="mt-6">
-                            <button onclick="submitKYCVerification()" id="submitKYCBtn" disabled
-                                    class="w-full bg-green-500/20 text-green-300 px-6 py-3 rounded-lg font-bold text-lg transition cursor-not-allowed">
-                                <i class="fas fa-check mr-2"></i>
-                                Soumettre la vérification
-                            </button>
-                            <p class="text-blue-200 text-sm text-center mt-2">
-                                Les deux documents sont requis pour continuer
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bénéfices de la vérification -->
-            <div class="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20">
-                <h3 class="text-xl font-bold text-white mb-4">
-                    <i class="fas fa-shield-alt text-green-400 mr-2"></i>
-                    Pourquoi vérifier mon profil ?
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="text-center">
-                        <i class="fas fa-check-circle text-green-400 text-3xl mb-2"></i>
-                        <p class="text-white font-medium">Badge vérifié</p>
-                        <p class="text-blue-200 text-sm">Augmentez votre crédibilité</p>
-                    </div>
-                    <div class="text-center">
-                        <i class="fas fa-lock text-green-400 text-3xl mb-2"></i>
-                        <p class="text-white font-medium">Transactions sécurisées</p>
-                        <p class="text-blue-200 text-sm">Protection renforcée</p>
-                    </div>
-                    <div class="text-center">
-                        <i class="fas fa-star text-green-400 text-3xl mb-2"></i>
-                        <p class="text-white font-medium">Priorité de matching</p>
-                        <p class="text-blue-200 text-sm">Plus de propositions</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal de vérification téléphone -->
-        <div id="phoneModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50">
-            <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-2xl font-bold text-gray-900">Vérification du téléphone</h3>
-                    <button onclick="closePhoneModal()" class="text-gray-400 hover:text-gray-600 text-2xl">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <!-- Étape 1: Entrer le numéro -->
-                <div id="phoneStep1" class="space-y-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Numéro de téléphone <span class="text-red-500">*</span>
-                        </label>
-                        <div id="phone-verify-container"></div>
-                        <p class="text-sm text-gray-500 mt-1">Format international (ex: +33612345678)</p>
-                        
-                        <!-- Firebase reCAPTCHA container (invisible) -->
-                        <div id="recaptcha-container"></div>
-                    </div>
-
-                    <div>
-                        <p class="text-sm font-medium text-gray-700 mb-3">Choisissez votre méthode de vérification:</p>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button onclick="sendVerificationCode('sms')" 
-                                    class="flex flex-col items-center justify-center p-6 border-2 border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition group">
-                                <i class="fas fa-sms text-3xl text-gray-400 group-hover:text-blue-600 mb-2"></i>
-                                <span class="font-semibold text-gray-700 group-hover:text-blue-600">SMS</span>
-                                <span class="text-xs text-gray-500 mt-1">Classique</span>
-                            </button>
-                            
-                            <button onclick="sendVerificationCode('whatsapp')" 
-                                    class="flex flex-col items-center justify-center p-6 border-2 border-gray-300 rounded-xl hover:border-green-500 hover:bg-green-50 transition group">
-                                <i class="fab fa-whatsapp text-3xl text-gray-400 group-hover:text-green-600 mb-2"></i>
-                                <span class="font-semibold text-gray-700 group-hover:text-green-600">WhatsApp</span>
-                                <span class="text-xs text-gray-500 mt-1">Rapide</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="phoneError" class="hidden bg-red-50 border border-red-200 rounded-lg p-3">
-                        <p class="text-red-600 text-sm"></p>
-                    </div>
-                </div>
-
-                <!-- Étape 2: Entrer le code -->
-                <div id="phoneStep2" class="hidden space-y-6">
-                    <div class="text-center mb-4">
-                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-3">
-                            <i id="methodIcon" class="fas fa-sms text-2xl text-blue-600"></i>
-                        </div>
-                        <p class="text-gray-600">
-                            Code envoyé par <span id="methodText" class="font-semibold">SMS</span> au
-                            <br><span id="phoneDisplay" class="font-mono text-lg"></span>
-                        </p>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2 text-center">
-                            Entrez le code à 6 chiffres
-                        </label>
-                        <input type="text" id="codeInput" 
-                               maxlength="6"
-                               placeholder="000000"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl font-mono tracking-widest focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-
-                    <!-- Affichage du code en mode dev -->
-                    <div id="devCodeDisplay" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                        <p class="text-yellow-800 text-sm">
-                            <i class="fas fa-code mr-2"></i>
-                            <strong>Mode DEV:</strong> Votre code est <span id="devCode" class="font-mono text-lg"></span>
-                        </p>
-                    </div>
-
-                    <div class="flex space-x-3">
-                        <button onclick="showStep1()" 
-                                class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition">
-                            <i class="fas fa-arrow-left mr-2"></i>Retour
-                        </button>
-                        <button onclick="verifyCode()" 
-                                class="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition">
-                            Vérifier<i class="fas fa-check ml-2"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        
-        <!-- 📞 PHONE INPUT MODULE -->
-        <script src="/static/phone-input.js"></script>
-        
-        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-        <script src="/static/firebase-compat.js?v=3"></script>
-        <script src="/static/auth.js"></script>
-        <script src="/static/kyc-verification.js"></script>
-        <!-- 📷 KYC Camera Module (isolé, optionnel) -->
-        <script src="/static/kyc-camera.js"></script>
-        <script>
-          // Variables globales
-          let verificationState = {
-            email: false,
-            phone: false,
-            kyc: false
-          };
-
-          let currentPhone = '';
-          let currentMethod = '';
-          let phoneVerifyWidget = null;
-
-          function initializeVerification() {
-            console.log('🔥 Verification initialized');
-            console.log('firebaseAuth available:', !!window.firebaseAuth);
-            console.log('auth available:', !!window.auth);
-            
-            // Initialiser le widget téléphone
-            phoneVerifyWidget = new PhoneInputWithCountry('phone-verify-container', {
-              defaultCountry: 'FR',
-              placeholder: '6 12 34 56 78',
-              required: true
-            });
-            console.log('✅ Phone verify widget initialized');
-          }
-
-          async function verifyEmail() {
-            // ✅ Récupérer l'utilisateur depuis Firebase Auth
-            const user = window.getFirebaseUser();
-            
-            if (!user) {
-              alert('Erreur : Utilisateur non connecté. Veuillez vous reconnecter.');
-              console.error('❌ No user found in firebaseAuth or auth');
-              return;
-            }
-            
-            console.log('✅ User found:', user.email);
-            
-            const confirmed = confirm('Un email de vérification va être envoyé à ' + user.email + '. Continuer ?');
-            if (!confirmed) return;
-            
-            try {
-              // ✅ Utiliser Firebase pour envoyer l'email de vérification
-              const firebaseUser = window.firebaseAuth.currentUser;
-              
-              if (!firebaseUser) {
-                throw new Error('Session Firebase expirée. Veuillez vous reconnecter.');
-              }
-              
-              // Envoyer l'email de vérification Firebase avec SDK modular
-              await firebaseUser.sendEmailVerification();
-              
-              console.log('✅ Email de vérification Firebase envoyé');
-              
-              alert('✅ Email de vérification envoyé !\\n\\nVérifiez votre boîte de réception et cliquez sur le lien de vérification.');
-              
-              // Marquer comme vérifié côté client (sera confirmé après clic sur le lien)
-              verificationState.email = true;
-              updateUI();
-              
-            } catch (error) {
-              console.error('❌ Erreur envoi email:', error);
-              alert("❌ Erreur lors de l'envoi de l'email: " + error.message);
-            }
-          }
-
-          function openPhoneModal() {
-            document.getElementById('phoneModal').classList.remove('hidden');
-            document.getElementById('phoneModal').classList.add('flex');
-          }
-
-          function closePhoneModal() {
-            document.getElementById('phoneModal').classList.add('hidden');
-            document.getElementById('phoneModal').classList.remove('flex');
-            showStep1();
-          }
-
-          function showStep1() {
-            document.getElementById('phoneStep1').classList.remove('hidden');
-            document.getElementById('phoneStep2').classList.add('hidden');
-            document.getElementById('phoneError').classList.add('hidden');
-          }
-
-          function showStep2() {
-            document.getElementById('phoneStep1').classList.add('hidden');
-            document.getElementById('phoneStep2').classList.remove('hidden');
-          }
-
-          function showError(message) {
-            const errorDiv = document.getElementById('phoneError');
-            errorDiv.querySelector('p').textContent = message;
-            errorDiv.classList.remove('hidden');
-          }
-
-          async function sendVerificationCode(method) {
-            // Récupérer le téléphone depuis le widget
-            const phone = phoneVerifyWidget ? phoneVerifyWidget.getPhoneE164() : null;
-
-            if (!phone) {
-              showError('Veuillez entrer un numéro de téléphone valide');
-              return;
-            }
-
-            currentPhone = phone;
-            currentMethod = method;
-
-            try {
-              // ✅ Utiliser Firebase Phone Auth au lieu de Twilio
-              const result = await window.sendSMSVerification(phone);
-              
-              if (!result.success) {
-                throw new Error(result.error || \`Erreur lors de l'envoi du SMS\`);
-              }
-              
-              console.log('✅ SMS Firebase envoyé à:', phone);
-
-              // Mettre à jour l'affichage
-              document.getElementById('phoneDisplay').textContent = phone;
-              document.getElementById('methodText').textContent = method === 'whatsapp' ? 'WhatsApp' : 'SMS';
-              document.getElementById('methodIcon').className = method === 'whatsapp' 
-                ? 'fab fa-whatsapp text-2xl text-green-600'
-                : 'fas fa-sms text-2xl text-blue-600';
-
-              showStep2();
-
-            } catch (error) {
-              const errorMsg = error.response?.data?.error || error.message;
-              showError('Erreur: ' + errorMsg);
-            }
-          }
-
-          async function verifyCode() {
-            const code = document.getElementById('codeInput').value.trim();
-            
-            if (!code || code.length !== 6) {
-              alert('Veuillez entrer un code à 6 chiffres');
-              return;
-            }
-
-            try {
-              // ✅ Utiliser Firebase pour vérifier le code SMS
-              const result = await window.verifySMSCode(code);
-              
-              if (!result.success) {
-                throw new Error(result.error || 'Code invalide');
-              }
-              
-              console.log('✅ Téléphone vérifié avec Firebase:', currentPhone);
-              
-              verificationState.phone = true;
-              updateUI();
-              closePhoneModal();
-              alert('✅ Téléphone vérifié avec succès !');
-            } catch (error) {
-              console.error('❌ Erreur vérification code:', error);
-              alert('❌ ' + error.message);
-            }
-          }
-
-          function startSelfieCapture() {
-            alert('Fonction caméra selfie à implémenter avec Web Camera API');
-          }
-
-          function uploadIDDocument() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.onchange = async (e) => {
-              const file = e.target.files[0];
-              if (file) {
-                alert('Upload de ' + file.name + ' (à implémenter avec Cloudflare R2)');
-                // TODO: Upload vers R2 et analyse avec AI
-              }
-            };
-            input.click();
-          }
-
-          function updateUI() {
-            // Email vérifié
-            if (verificationState.email) {
-              const emailCard = document.getElementById('emailCard');
-              emailCard.classList.add('completed');
-              emailCard.querySelector('button').textContent = 'Vérifié ✓';
-              emailCard.querySelector('button').disabled = true;
-              
-              // Déverrouiller téléphone
-              const phoneCard = document.getElementById('phoneCard');
-              phoneCard.classList.remove('opacity-50');
-              phoneCard.querySelector('button').disabled = false;
-            }
-
-            // Téléphone vérifié
-            if (verificationState.phone) {
-              const phoneCard = document.getElementById('phoneCard');
-              phoneCard.classList.add('completed');
-              phoneCard.querySelector('button').textContent = 'Vérifié ✓';
-              phoneCard.querySelector('button').disabled = true;
-              
-              // Déverrouiller KYC
-              const kycCard = document.getElementById('kycCard');
-              kycCard.classList.remove('opacity-50');
-              
-              // Activer les boutons KYC
-              document.getElementById('startSelfieBtn').disabled = false;
-              document.getElementById('startSelfieBtn').classList.remove('bg-blue-500/20', 'text-blue-300', 'cursor-not-allowed');
-              document.getElementById('startSelfieBtn').classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'cursor-pointer');
-              
-              document.getElementById('uploadIDBtn').disabled = false;
-              document.getElementById('uploadIDBtn').classList.remove('bg-blue-500/20', 'text-blue-300', 'cursor-not-allowed');
-              document.getElementById('uploadIDBtn').classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'cursor-pointer');
-            }
-          }
-          
-          // ✅ Attendre que le DOM soit prêt, puis exposer les fonctions et attacher les event listeners
-          document.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ Page loaded, initializing...');
-            initializeVerification();
-            
-            // Exposer toutes les fonctions au scope global
-            window.verifyEmail = verifyEmail;
-            window.openPhoneModal = openPhoneModal;
-            window.closePhoneModal = closePhoneModal;
-            window.showStep1 = showStep1;
-            window.showStep2 = showStep2;
-            window.sendVerificationCode = sendVerificationCode;
-            window.verifyCode = verifyCode;
-            window.startSelfieCapture = startSelfieCapture;
-            window.uploadIDDocument = uploadIDDocument;
-            
-            // Attacher les event listeners aux boutons
-            const verifyEmailBtn = document.getElementById('verifyEmailBtn');
-            if (verifyEmailBtn) {
-              verifyEmailBtn.addEventListener('click', verifyEmail);
-            }
-            
-            const verifyPhoneBtn = document.getElementById('verifyPhoneBtn');
-            if (verifyPhoneBtn) {
-              verifyPhoneBtn.addEventListener('click', openPhoneModal);
-            }
-            
-            console.log('✅ Event listeners attached');
-          });
-        </script>
-    </body>
-    </html>
-  `)
+  return c.html(renderVerifyProfilePage())
 })
 
 // Espace Expéditeur - Dashboard principal
@@ -7815,9 +7262,361 @@ app.get('/api/users/:user_id/packages', async (c) => {
 })
 
 // ==========================================
-// DASHBOARD PAGES
+// KYC SELFIE API
 // ==========================================
 
+// Upload selfie KYC vers R2
+app.post('/api/kyc/upload-selfie', authMiddleware, async (c) => {
+  const { R2 } = c.env
+  const user = c.get('user')
+  
+  try {
+    const formData = await c.req.formData()
+    const selfie = formData.get('selfie')
+    
+    if (!selfie || !(selfie instanceof File)) {
+      return c.json({ 
+        success: false, 
+        error: 'Aucun fichier selfie fourni' 
+      }, 400)
+    }
+    
+    // Validation type
+    if (!selfie.type.startsWith('image/')) {
+      return c.json({ 
+        success: false, 
+        error: 'Le fichier doit être une image' 
+      }, 400)
+    }
+    
+    // Validation taille (max 10MB)
+    if (selfie.size > 10 * 1024 * 1024) {
+      return c.json({ 
+        success: false, 
+        error: 'Image trop volumineuse (max 10MB)' 
+      }, 400)
+    }
+    
+    console.log('📤 Uploading selfie for user:', user.id, 'Size:', (selfie.size / 1024).toFixed(2) + ' KB')
+    
+    if (!R2) {
+      // Mode dev : retourner URL placeholder
+      return c.json({
+        success: true,
+        selfieUrl: 'https://via.placeholder.com/400x500?text=Selfie+KYC',
+        fileId: 'dev-' + Date.now(),
+        message: 'Mode développement (R2 non configuré)'
+      })
+    }
+    
+    // Générer clé unique
+    const ext = selfie.name.split('.').pop() || 'jpg'
+    const fileId = crypto.randomUUID()
+    const key = `kyc/selfies/${user.id}/${fileId}.${ext}`
+    
+    // Upload vers R2
+    const buffer = await selfie.arrayBuffer()
+    await R2.put(key, buffer, {
+      httpMetadata: {
+        contentType: selfie.type
+      }
+    })
+    
+    console.log('✅ Selfie uploaded successfully:', key)
+    
+    // Retourner URL et fileId
+    return c.json({
+      success: true,
+      selfieUrl: `/api/kyc/selfie/${fileId}`,
+      fileId: fileId,
+      message: 'Selfie uploadé avec succès'
+    })
+    
+  } catch (error: any) {
+    console.error('❌ Upload selfie error:', error)
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500)
+  }
+})
+
+// Récupérer une photo selfie depuis R2
+app.get('/api/kyc/selfie/:fileId', async (c) => {
+  const { R2 } = c.env
+  const fileId = c.req.param('fileId')
+  
+  try {
+    if (!R2) {
+      // En dev, retourner image placeholder
+      return c.redirect('https://via.placeholder.com/400x500?text=Selfie+KYC')
+    }
+    
+    // Chercher dans R2
+    const userId = c.get('user')?.id || 'unknown'
+    const extensions = ['jpg', 'jpeg', 'png', 'webp']
+    
+    for (const ext of extensions) {
+      const key = `kyc/selfies/${userId}/${fileId}.${ext}`
+      const object = await R2.get(key)
+      
+      if (object) {
+        return new Response(object.body, {
+          headers: {
+            'Content-Type': object.httpMetadata?.contentType || 'image/jpeg',
+            'Cache-Control': 'public, max-age=31536000'
+          }
+        })
+      }
+    }
+    
+    return c.json({ error: 'Selfie introuvable' }, 404)
+    
+  } catch (error: any) {
+    console.error('❌ Get selfie error:', error)
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// 
+// ==========================================
+// VERIFF KYC INTEGRATION
+// ==========================================
+
+/**
+ * Créer une session de vérification Veriff
+ */
+app.post('/api/kyc/veriff-session', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user')
+    
+    if (!user?.id || !user?.email) {
+      return c.json({ success: false, error: 'Utilisateur non authentifié' }, 401)
+    }
+    
+    const VERIFF_API_KEY = c.env.VERIFF_API_KEY || ''
+    const VERIFF_API_SECRET = c.env.VERIFF_API_SECRET || ''
+    
+    if (!VERIFF_API_KEY || !VERIFF_API_SECRET) {
+      console.error('❌ Veriff API keys not configured')
+      return c.json({ success: false, error: 'Service KYC non configuré' }, 500)
+    }
+    
+    console.log('📝 Creating Veriff session for user:', user.id)
+    
+    const sessionData = {
+      verification: {
+        callback: `https://amanahgo.app/api/kyc/veriff-webhook`,
+        person: {
+          firstName: user.name?.split(' ')[0] || 'User',
+          lastName: user.name?.split(' ').slice(1).join(' ') || 'Amanah',
+        },
+        vendorData: user.id
+      }
+    }
+    
+    const response = await fetch('https://stationapi.veriff.com/v1/sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-AUTH-CLIENT': VERIFF_API_KEY
+      },
+      body: JSON.stringify(sessionData)
+    })
+    
+    const result = await response.json() as any
+    
+    if (!response.ok) {
+      console.error('❌ Veriff API error:', result)
+      return c.json({ 
+        success: false, 
+        error: result.message || 'Erreur lors de la création de la session Veriff' 
+      }, response.status)
+    }
+    
+    console.log('✅ Veriff session created:', result.verification.id)
+    
+    return c.json({
+      success: true,
+      sessionUrl: result.verification.url,
+      sessionId: result.verification.id
+    })
+    
+  } catch (error: any) {
+    console.error('❌ Error creating Veriff session:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+app.post('/api/kyc/veriff-webhook', async (c) => {
+  try {
+    const body = await c.req.json()
+    console.log('📥 Veriff webhook received:', JSON.stringify(body, null, 2))
+    
+    const { status, verification } = body
+    const userId = verification?.vendorData
+    
+    if (!userId) {
+      console.error('❌ No user ID in webhook data')
+      return c.json({ success: false }, 400)
+    }
+    
+    let kycStatus = 'PENDING_REVIEW'
+    
+    if (status === 'approved') {
+      kycStatus = 'VERIFIED'
+    } else if (status === 'declined' || status === 'resubmission_requested') {
+      kycStatus = 'REJECTED'
+    }
+    
+    console.log(`📝 Updating KYC status for user ${userId}: ${kycStatus}`)
+    
+    const db = c.env.DB
+    
+    await db.prepare(`
+      UPDATE users 
+      SET 
+        kyc_status = ?,
+        kyc_verified_at = ?,
+        kyc_veriff_session_id = ?
+      WHERE id = ?
+    `).bind(
+      kycStatus,
+      kycStatus === 'VERIFIED' ? new Date().toISOString() : null,
+      verification?.id || null,
+      userId
+    ).run()
+    
+    console.log(`✅ KYC status updated for user ${userId}`)
+    
+    return c.json({ success: true })
+    
+  } catch (error: any) {
+    console.error('❌ Webhook error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+// ==========================================
+// VERIFF KYC ENDPOINTS (ISOLATED)
+// ==========================================
+
+// Endpoint: Create Veriff session
+app.post('/api/kyc/veriff-session', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user')
+    if (!user || !user.id || !user.email) {
+      return c.json({ success: false, error: 'User not authenticated' }, 401)
+    }
+
+    // Get Veriff API credentials from environment
+    const VERIFF_API_KEY = c.env?.VERIFF_API_KEY
+    const VERIFF_API_SECRET = c.env?.VERIFF_API_SECRET
+
+    if (!VERIFF_API_KEY || !VERIFF_API_SECRET) {
+      console.error('❌ Veriff credentials missing')
+      return c.json({ 
+        success: false, 
+        error: 'Veriff configuration missing' 
+      }, 500)
+    }
+
+    // Create Veriff session
+    const sessionData = {
+      verification: {
+        callback: 'https://amanahgo.app/api/kyc/veriff-webhook',
+        person: {
+          firstName: user.name?.split(' ')[0] || 'User',
+          lastName: user.name?.split(' ').slice(1).join(' ') || user.email.split('@')[0]
+        },
+        vendorData: user.id // Store user ID for webhook
+      }
+    }
+
+    console.log('🔐 Creating Veriff session for user:', user.id)
+
+    const response = await fetch('https://stationapi.veriff.com/v1/sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-AUTH-CLIENT': VERIFF_API_KEY
+      },
+      body: JSON.stringify(sessionData)
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      console.error('❌ Veriff API error:', data)
+      return c.json({ 
+        success: false, 
+        error: data.message || 'Failed to create Veriff session' 
+      }, 500)
+    }
+
+    console.log('✅ Veriff session created:', data.verification.id)
+
+    return c.json({
+      success: true,
+      sessionUrl: data.verification.url,
+      sessionId: data.verification.id
+    })
+
+  } catch (error: any) {
+    console.error('❌ Veriff session error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Endpoint: Veriff webhook (receives verification results)
+app.post('/api/kyc/veriff-webhook', async (c) => {
+  try {
+    const payload = await c.req.json()
+    console.log('📨 Veriff webhook received:', JSON.stringify(payload, null, 2))
+
+    const { status, verification } = payload
+
+    if (!verification || !verification.vendorData) {
+      console.error('❌ Missing vendorData in webhook')
+      return c.json({ success: false, error: 'Invalid webhook payload' }, 400)
+    }
+
+    const userId = verification.vendorData
+    const sessionId = verification.id
+
+    console.log(`🔍 Processing webhook for user ${userId}, session ${sessionId}, status: ${status}`)
+
+    // Update user KYC status in database
+    const DB = c.env.DB
+    
+    let kycStatus = 'PENDING'
+    if (status === 'approved') {
+      kycStatus = 'VERIFIED'
+    } else if (status === 'declined' || status === 'resubmission_requested') {
+      kycStatus = 'REJECTED'
+    }
+
+    const now = new Date().toISOString()
+
+    await DB.prepare(`
+      UPDATE users 
+      SET kyc_status = ?, 
+          kyc_verified_at = ?,
+          kyc_veriff_session_id = ?
+      WHERE id = ?
+    `).bind(kycStatus, now, sessionId, userId).run()
+
+    console.log(`✅ User ${userId} KYC updated to ${kycStatus}`)
+
+    return c.json({ success: true })
+
+  } catch (error: any) {
+    console.error('❌ Webhook error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// DASHBOARD PAGES
+// ==========================================
 // Dashboard Voyageur - Mes trajets
 app.get('/voyageur/mes-trajets', (c) => {
   return c.html(`
