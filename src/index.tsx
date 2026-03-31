@@ -2370,15 +2370,46 @@ async function notifyPaymentReceived(travelerId: number, amount: number) {
 
 // Middleware admin (simplif ié pour dev)
 const adminMiddleware = async (c: any, next: any) => {
-  await authMiddleware(c, async () => {
-    const user = c.get('user')
-    const db = c.get('db') as DatabaseService
-    const dbUser = await db.getUserById(user.id)
-    if (!dbUser || dbUser.role !== 'admin') {
-      return c.json({ success: false, error: 'Accès non autorisé' }, 403)
+  try {
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: 'Token manquant' }, 401)
     }
-    await next()
-  })
+    const token = authHeader.substring(7)
+    const db = c.get('db') as DatabaseService
+    
+    // Essayer Firebase d'abord
+    try {
+      const firebaseRes = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${c.env?.FIREBASE_API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: token }) }
+      )
+      if (firebaseRes.ok) {
+        const data: any = await firebaseRes.json()
+        const firebaseUser = data.users?.[0]
+        if (firebaseUser) {
+          const dbUser = await db.getUserByFirebaseUid(firebaseUser.localId)
+          if (!dbUser || dbUser.role !== 'admin') {
+            return c.json({ success: false, error: 'Accès non autorisé' }, 403)
+          }
+          c.set('user', { id: dbUser.id, email: dbUser.email, name: dbUser.name, role: dbUser.role })
+          return await next()
+        }
+      }
+    } catch(e) {}
+    
+    // Sinon essayer JWT
+    await authMiddleware(c, async () => {
+      const user = c.get('user')
+      const dbUser = await db.getUserById(user.id)
+      if (!dbUser || dbUser.role !== 'admin') {
+        return c.json({ success: false, error: 'Accès non autorisé' }, 403)
+      }
+      await next()
+    })
+  } catch(error: any) {
+    return c.json({ success: false, error: error.message }, 500)
+  }
 }
 
 // Get admin stats
