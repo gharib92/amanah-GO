@@ -227,13 +227,19 @@ function updateAuthUI() {
     // Utilisateur connecté
     if (loginBtn) loginBtn.style.display = 'none'
     if (signupBtn) signupBtn.style.display = 'none'
-    if (userMenu) userMenu.style.display = 'flex'
-    if (userName) userName.textContent = user.name
+    if (userMenu) {
+      userMenu.style.display = 'flex'
+      userMenu.classList.remove('hidden')
+    }
+    if (userName) userName.textContent = user.name || user.displayName || user.email
   } else {
     // Non connecté
     if (loginBtn) loginBtn.style.display = 'block'
     if (signupBtn) signupBtn.style.display = 'block'
-    if (userMenu) userMenu.style.display = 'none'
+    if (userMenu) {
+      userMenu.style.display = 'none'
+      userMenu.classList.add('hidden')
+    }
   }
 }
 

@@ -6,7 +6,7 @@ import { sign, verify } from 'hono/jwt'
 import * as bcrypt from 'bcryptjs'
 import Stripe from 'stripe'
 import './styles.css' // Import Tailwind CSS
-//  './views/verify-profile.view'
+import { renderVerifyProfilePage } from './views/verify-profile.view'
 import { DatabaseService, generateId } from './db.service'
 import { compareFaces, type AWSCredentials } from './aws-rekognition.service'
 import { handleError, ErrorCodes, unauthorizedError, createErrorResponse } from './error.service'
