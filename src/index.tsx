@@ -3215,10 +3215,19 @@ app.post('/api/stripe/webhooks', async (c) => {
 // Firebase Signup - Créer utilisateur dans notre DB après création Firebase
 app.post('/api/auth/firebase-signup', firebaseTokenOnly, async (c) => {
   try {
-    const { firebaseUid, email, name, phone } = await c.req.json()
+    const body = await c.req.json()
+    // Accepter firebase_uid ou firebaseUid (compatibilité frontend)
+    const firebaseUid = body.firebase_uid || body.firebaseUid || ''
+    const email = body.email || ''
+    const name = body.name || ''
+    const phone = body.phone || ''
     const db = c.get('db') as DatabaseService
     
-    console.log('🔥 Firebase signup - Creating user in DB:', email)
+    console.log('🔥 Firebase signup - Creating user in DB:', email, 'uid:', firebaseUid)
+    
+    if (!firebaseUid) {
+      return c.json({ success: false, error: 'firebase_uid manquant' }, 400)
+    }
     
     // Vérifier si l'utilisateur existe déjà
     const existingUser = await db.getUserByFirebaseUid(firebaseUid)
@@ -3240,7 +3249,7 @@ app.post('/api/auth/firebase-signup', firebaseTokenOnly, async (c) => {
       email,
       name,
       phone,
-      password_hash: '', // Pas de password hash avec Firebase
+      password_hash: '',
       kyc_status: 'PENDING',
       rating: 0,
       reviews_count: 0,
