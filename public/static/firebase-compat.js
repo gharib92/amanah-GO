@@ -115,7 +115,7 @@ window.loginWithGoogle = async function() {
         name: user.displayName || user.email.split('@')[0] || '',
         email: user.email || '',
         phone: user.phoneNumber || '',
-        firebase_uid: user.uid || 
+        firebase_uid: user.uid || ''
       })
     });
     
