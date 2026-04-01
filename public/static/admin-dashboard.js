@@ -207,7 +207,7 @@ function displayUsers(users) {
             </span>
             
             ${(user.kyc_status === 'SUBMITTED' || user.kyc_status === 'PENDING') ? `
-              <button onclick="openValidationModal(${user.id})" 
+              <button onclick="openValidationModal('${user.id}')" 
                       class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
                 <i class="fas fa-eye mr-2"></i>
                 Valider KYC
@@ -219,7 +219,7 @@ function displayUsers(users) {
                 Voir Détails
               </button>
             ` : user.kyc_status === 'REJECTED' ? `
-              <button onclick="openValidationModal(${user.id})" 
+              <button onclick="openValidationModal('${user.id}')" 
                       class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium">
                 <i class="fas fa-redo mr-2"></i>
                 Revoir
