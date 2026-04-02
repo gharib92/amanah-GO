@@ -1397,10 +1397,10 @@ app.get('/', (c) => {
         <footer class="bg-gray-900 text-white py-8">
             <div class="max-w-7xl mx-auto px-4 text-center">
                 <div class="flex justify-center space-x-6 mb-4">
-                    <a href="#" class="hover:text-blue-400" data-i18n="landing.footer_about">À propos</a>
-                    <a href="#" class="hover:text-blue-400" data-i18n="landing.footer_toc">CGU</a>
-                    <a href="#" class="hover:text-blue-400" data-i18n="landing.footer_privacy">Confidentialité</a>
-                    <a href="#" class="hover:text-blue-400" data-i18n="landing.footer_contact">Contact</a>
+                    <a href="/mentions-legales" class="hover:text-blue-400" data-i18n="landing.footer_about">À propos</a>
+                    <a href="/cgu" class="hover:text-blue-400" data-i18n="landing.footer_toc">CGU</a>
+                    <a href="/confidentialite" class="hover:text-blue-400" data-i18n="landing.footer_privacy">Confidentialité</a>
+                    <a href="mailto:contact@amanahgo.app" class="hover:text-blue-400" data-i18n="landing.footer_contact">Contact</a>
                 </div>
                 <p class="text-gray-400" data-i18n="landing.footer_copyright">© 2025 Amanah GO. Tous droits réservés.</p>
             </div>
@@ -2603,6 +2603,69 @@ app.get('/api/admin/kyc/:userId', adminMiddleware, async (c) => {
       success: false, 
       error: error.message 
     }, 500)
+  }
+})
+
+// Servir les photos KYC depuis R2 (admin seulement)
+app.get('/api/admin/kyc-photo/:userId/:type', adminMiddleware, async (c) => {
+  const { R2 } = c.env
+  const userId = c.req.param('userId')
+  const type = c.req.param('type') // 'selfie' ou 'document'
+
+  if (!['selfie', 'document'].includes(type)) {
+    return c.json({ error: 'Type invalide (selfie ou document)' }, 400)
+  }
+
+  try {
+    if (!R2) {
+      return c.redirect(`https://via.placeholder.com/400x500?text=${type === 'selfie' ? 'Selfie' : 'ID+Document'}`)
+    }
+
+    const db = c.get('db') as DatabaseService
+    const user = await db.getUserById(userId)
+    if (!user) {
+      return c.json({ error: 'Utilisateur introuvable' }, 404)
+    }
+
+    const storedUrl = type === 'selfie' ? user.kyc_selfie_url : user.kyc_document_url
+    if (!storedUrl) {
+      return c.redirect(`https://via.placeholder.com/400x500?text=Aucune+photo`)
+    }
+
+    // Si c'est déjà une URL complète, rediriger directement
+    if (storedUrl.startsWith('http')) {
+      return c.redirect(storedUrl)
+    }
+
+    // C'est une clé R2 — la récupérer directement
+    // Essayer avec la clé telle quelle d'abord
+    let r2Key = storedUrl.startsWith('/') ? storedUrl.substring(1) : storedUrl
+    let object = await R2.get(r2Key)
+
+    // Fallback: chercher dans le répertoire selfies avec extensions
+    if (!object) {
+      const extensions = ['jpg', 'jpeg', 'png', 'webp']
+      const prefix = type === 'selfie' ? `kyc/selfies/${userId}/` : `kyc/${userId}/id-`
+      for (const ext of extensions) {
+        const altKey = `${prefix}${r2Key.split('/').pop()}.${ext}`
+        object = await R2.get(altKey)
+        if (object) break
+      }
+    }
+
+    if (!object) {
+      return c.redirect(`https://via.placeholder.com/400x500?text=Photo+introuvable`)
+    }
+
+    return new Response(object.body as ReadableStream, {
+      headers: {
+        'Content-Type': (object as any).httpMetadata?.contentType || 'image/jpeg',
+        'Cache-Control': 'private, max-age=3600'
+      }
+    })
+  } catch (error: any) {
+    console.error('❌ Erreur lecture photo KYC:', error)
+    return c.json({ error: error.message }, 500)
   }
 })
 
@@ -4500,6 +4563,344 @@ function generateMockFlights(from: string, to: string, date: string) {
 // PAGES PLACEHOLDER
 // ==========================================
 
+// ==========================================
+// PAGES LÉGALES
+// ==========================================
+
+app.get('/cgu', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conditions Générales d'Utilisation — Amanah GO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center space-x-2">
+        <span class="text-2xl font-bold text-blue-600">Amanah GO</span>
+      </a>
+      <a href="/" class="text-gray-600 hover:text-blue-600 text-sm"><i class="fas fa-arrow-left mr-1"></i>Retour</a>
+    </div>
+  </header>
+  <main class="max-w-4xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Conditions Générales d'Utilisation</h1>
+    <p class="text-gray-500 text-sm mb-8">Dernière mise à jour : 1er avril 2025</p>
+
+    <div class="prose max-w-none space-y-8">
+      <section>
+        <h2 class="text-xl font-semibold mb-3">1. Objet</h2>
+        <p>Les présentes Conditions Générales d'Utilisation (ci-après « CGU ») régissent l'accès et l'utilisation de la plateforme Amanah GO (ci-après « la Plateforme »), accessible à l'adresse <strong>amanahgo.app</strong>, exploitée par Amanah GO SAS (ci-après « la Société »).</p>
+        <p class="mt-2">Amanah GO est une plateforme de mise en relation entre des <strong>voyageurs</strong> effectuant des trajets entre la France et le Maroc et des <strong>expéditeurs</strong> souhaitant faire transporter des colis.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">2. Acceptation des CGU</h2>
+        <p>L'utilisation de la Plateforme implique l'acceptation pleine et entière des présentes CGU. Si vous n'acceptez pas ces conditions, vous devez cesser immédiatement d'utiliser la Plateforme.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">3. Inscription et compte utilisateur</h2>
+        <p>Pour accéder aux services de la Plateforme, l'utilisateur doit créer un compte en fournissant des informations exactes, complètes et à jour. L'utilisateur est responsable de la confidentialité de ses identifiants.</p>
+        <p class="mt-2">Amanah GO se réserve le droit de suspendre ou supprimer tout compte en cas de violation des présentes CGU, de fraude, ou d'utilisation abusive de la Plateforme.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">4. Vérification d'identité (KYC)</h2>
+        <p>Pour des raisons légales et de sécurité, tout utilisateur souhaitant publier un trajet ou expédier un colis doit compléter une procédure de vérification d'identité (Know Your Customer). Cette procédure implique la fourniture d'une pièce d'identité valide et d'un selfie.</p>
+        <p class="mt-2">Les documents fournis sont traités conformément à notre <a href="/confidentialite" class="text-blue-600 hover:underline">Politique de Confidentialité</a>.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">5. Services proposés</h2>
+        <p>La Plateforme permet :</p>
+        <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
+          <li>Aux <strong>voyageurs</strong> de publier leurs trajets et d'accepter des colis contre rémunération</li>
+          <li>Aux <strong>expéditeurs</strong> de publier des colis et de trouver un voyageur pour les transporter</li>
+          <li>La gestion des paiements sécurisés via Stripe</li>
+          <li>Un système de messagerie entre les parties</li>
+          <li>Un système de notation et d'avis</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">6. Obligations des utilisateurs</h2>
+        <p>L'utilisateur s'engage à :</p>
+        <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
+          <li>Ne transporter aucun objet illicite, dangereux ou interdit à l'importation/exportation</li>
+          <li>Respecter les réglementations douanières en vigueur entre la France et le Maroc</li>
+          <li>Fournir des informations exactes sur les colis (nature, poids, valeur déclarée)</li>
+          <li>Ne pas utiliser la Plateforme à des fins frauduleuses</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">7. Responsabilités</h2>
+        <p>Amanah GO agit en qualité d'intermédiaire technique et ne peut être tenu responsable :</p>
+        <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
+          <li>Des dommages subis par les colis durant le transport</li>
+          <li>De tout litige entre voyageurs et expéditeurs</li>
+          <li>Des infractions douanières commises par les utilisateurs</li>
+        </ul>
+        <p class="mt-2">Chaque utilisateur est personnellement responsable du respect des lois applicables.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">8. Tarifs et paiements</h2>
+        <p>Les paiements sont traités par <strong>Stripe</strong>, prestataire de services de paiement agréé. Amanah GO prélève une commission de service sur chaque transaction. Les tarifs en vigueur sont affichés sur la Plateforme avant toute confirmation.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">9. Propriété intellectuelle</h2>
+        <p>Tous les éléments de la Plateforme (logo, textes, design, code source) sont la propriété exclusive de Amanah GO SAS et sont protégés par les lois sur la propriété intellectuelle. Toute reproduction sans autorisation est interdite.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">10. Modification des CGU</h2>
+        <p>Amanah GO se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront informés des modifications par email ou notification dans l'application. L'utilisation continue de la Plateforme après modification vaut acceptation des nouvelles CGU.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">11. Droit applicable et juridiction</h2>
+        <p>Les présentes CGU sont régies par le droit français. Tout litige relatif à leur interprétation ou exécution sera soumis aux tribunaux compétents de Paris.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">12. Contact</h2>
+        <p>Pour toute question relative aux présentes CGU : <a href="mailto:contact@amanahgo.app" class="text-blue-600 hover:underline">contact@amanahgo.app</a></p>
+      </section>
+    </div>
+  </main>
+  <footer class="bg-gray-900 text-white py-6 mt-16">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <div class="flex justify-center space-x-6 mb-3 text-sm">
+        <a href="/cgu" class="text-blue-400 font-medium">CGU</a>
+        <a href="/confidentialite" class="hover:text-blue-400">Confidentialité</a>
+        <a href="/mentions-legales" class="hover:text-blue-400">Mentions légales</a>
+      </div>
+      <p class="text-gray-400 text-sm">© 2025 Amanah GO. Tous droits réservés.</p>
+    </div>
+  </footer>
+</body>
+</html>`)
+})
+
+app.get('/confidentialite', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Politique de Confidentialité — Amanah GO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center space-x-2">
+        <span class="text-2xl font-bold text-blue-600">Amanah GO</span>
+      </a>
+      <a href="/" class="text-gray-600 hover:text-blue-600 text-sm"><i class="fas fa-arrow-left mr-1"></i>Retour</a>
+    </div>
+  </header>
+  <main class="max-w-4xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Politique de Confidentialité</h1>
+    <p class="text-gray-500 text-sm mb-8">Dernière mise à jour : 1er avril 2025 — Conforme au RGPD (Règlement UE 2016/679)</p>
+
+    <div class="prose max-w-none space-y-8">
+      <section>
+        <h2 class="text-xl font-semibold mb-3">1. Responsable du traitement</h2>
+        <p><strong>Amanah GO SAS</strong><br>
+        Email : <a href="mailto:privacy@amanahgo.app" class="text-blue-600 hover:underline">privacy@amanahgo.app</a></p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">2. Données collectées</h2>
+        <p>Nous collectons les données suivantes :</p>
+        <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
+          <li><strong>Données d'identité :</strong> nom, prénom, date de naissance (pour la vérification KYC)</li>
+          <li><strong>Données de contact :</strong> adresse email, numéro de téléphone</li>
+          <li><strong>Documents d'identité :</strong> photo de pièce d'identité, selfie (pour la vérification KYC uniquement)</li>
+          <li><strong>Données de transaction :</strong> historique des trajets, colis, paiements</li>
+          <li><strong>Données de connexion :</strong> adresse IP, type de navigateur, logs de connexion</li>
+          <li><strong>Données de localisation :</strong> villes de départ et d'arrivée des trajets</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">3. Finalités du traitement</h2>
+        <div class="overflow-x-auto mt-2">
+          <table class="w-full text-sm border-collapse border border-gray-200">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="border border-gray-200 px-3 py-2 text-left">Finalité</th>
+                <th class="border border-gray-200 px-3 py-2 text-left">Base légale</th>
+                <th class="border border-gray-200 px-3 py-2 text-left">Durée de conservation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="border border-gray-200 px-3 py-2">Création et gestion de compte</td><td class="border border-gray-200 px-3 py-2">Exécution du contrat</td><td class="border border-gray-200 px-3 py-2">Durée du compte + 3 ans</td></tr>
+              <tr class="bg-gray-50"><td class="border border-gray-200 px-3 py-2">Vérification d'identité (KYC)</td><td class="border border-gray-200 px-3 py-2">Obligation légale</td><td class="border border-gray-200 px-3 py-2">5 ans après clôture du compte</td></tr>
+              <tr><td class="border border-gray-200 px-3 py-2">Traitement des paiements</td><td class="border border-gray-200 px-3 py-2">Exécution du contrat</td><td class="border border-gray-200 px-3 py-2">10 ans (obligations comptables)</td></tr>
+              <tr class="bg-gray-50"><td class="border border-gray-200 px-3 py-2">Sécurité et prévention des fraudes</td><td class="border border-gray-200 px-3 py-2">Intérêt légitime</td><td class="border border-gray-200 px-3 py-2">12 mois</td></tr>
+              <tr><td class="border border-gray-200 px-3 py-2">Amélioration du service</td><td class="border border-gray-200 px-3 py-2">Consentement</td><td class="border border-gray-200 px-3 py-2">Jusqu'au retrait du consentement</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">4. Destinataires des données</h2>
+        <p>Vos données peuvent être partagées avec :</p>
+        <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
+          <li><strong>Stripe Inc.</strong> — traitement des paiements (États-Unis, clauses contractuelles types)</li>
+          <li><strong>Google Firebase</strong> — authentification (États-Unis, clauses contractuelles types)</li>
+          <li><strong>Cloudflare Inc.</strong> — hébergement, stockage des documents (États-Unis, clauses contractuelles types)</li>
+          <li><strong>Autorités compétentes</strong> — sur requête légale obligatoire</li>
+        </ul>
+        <p class="mt-2">Nous ne vendons jamais vos données à des tiers à des fins commerciales.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">5. Vos droits (RGPD)</h2>
+        <p>Conformément au RGPD, vous disposez des droits suivants :</p>
+        <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
+          <li><strong>Droit d'accès :</strong> obtenir une copie de vos données</li>
+          <li><strong>Droit de rectification :</strong> corriger vos données inexactes</li>
+          <li><strong>Droit à l'effacement :</strong> supprimer vos données (sous conditions légales)</li>
+          <li><strong>Droit à la portabilité :</strong> recevoir vos données dans un format structuré</li>
+          <li><strong>Droit d'opposition :</strong> vous opposer à certains traitements</li>
+          <li><strong>Droit à la limitation :</strong> suspendre temporairement un traitement</li>
+        </ul>
+        <p class="mt-3">Pour exercer ces droits : <a href="mailto:privacy@amanahgo.app" class="text-blue-600 hover:underline">privacy@amanahgo.app</a></p>
+        <p class="mt-2">Vous pouvez également introduire une réclamation auprès de la <strong>CNIL</strong> : <a href="https://www.cnil.fr" class="text-blue-600 hover:underline" target="_blank">www.cnil.fr</a></p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">6. Sécurité des données</h2>
+        <p>Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données : chiffrement des communications (HTTPS/TLS), stockage sécurisé sur Cloudflare R2 avec accès restreint, authentification à deux facteurs disponible.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">7. Cookies</h2>
+        <p>Amanah GO utilise des cookies techniques nécessaires au fonctionnement du service (sessions, authentification). Aucun cookie publicitaire n'est utilisé.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">8. Contact</h2>
+        <p>Délégué à la Protection des Données (DPO) : <a href="mailto:privacy@amanahgo.app" class="text-blue-600 hover:underline">privacy@amanahgo.app</a></p>
+      </section>
+    </div>
+  </main>
+  <footer class="bg-gray-900 text-white py-6 mt-16">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <div class="flex justify-center space-x-6 mb-3 text-sm">
+        <a href="/cgu" class="hover:text-blue-400">CGU</a>
+        <a href="/confidentialite" class="text-blue-400 font-medium">Confidentialité</a>
+        <a href="/mentions-legales" class="hover:text-blue-400">Mentions légales</a>
+      </div>
+      <p class="text-gray-400 text-sm">© 2025 Amanah GO. Tous droits réservés.</p>
+    </div>
+  </footer>
+</body>
+</html>`)
+})
+
+app.get('/mentions-legales', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentions Légales — Amanah GO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center space-x-2">
+        <span class="text-2xl font-bold text-blue-600">Amanah GO</span>
+      </a>
+      <a href="/" class="text-gray-600 hover:text-blue-600 text-sm"><i class="fas fa-arrow-left mr-1"></i>Retour</a>
+    </div>
+  </header>
+  <main class="max-w-4xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Mentions Légales</h1>
+    <p class="text-gray-500 text-sm mb-8">Conformément aux articles 6-III et 19 de la Loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN)</p>
+
+    <div class="prose max-w-none space-y-8">
+      <section>
+        <h2 class="text-xl font-semibold mb-3">1. Éditeur du site</h2>
+        <div class="bg-white rounded-lg border border-gray-200 p-4 text-sm space-y-1">
+          <p><strong>Raison sociale :</strong> Amanah GO SAS</p>
+          <p><strong>Forme juridique :</strong> Société par Actions Simplifiée (SAS)</p>
+          <p><strong>Capital social :</strong> En cours de constitution</p>
+          <p><strong>Email :</strong> <a href="mailto:contact@amanahgo.app" class="text-blue-600 hover:underline">contact@amanahgo.app</a></p>
+          <p><strong>Directeur de la publication :</strong> Gérant de Amanah GO SAS</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">2. Hébergement</h2>
+        <div class="bg-white rounded-lg border border-gray-200 p-4 text-sm space-y-1">
+          <p><strong>Hébergeur :</strong> Cloudflare, Inc.</p>
+          <p><strong>Adresse :</strong> 101 Townsend St, San Francisco, CA 94107, États-Unis</p>
+          <p><strong>Site :</strong> <a href="https://www.cloudflare.com" class="text-blue-600 hover:underline" target="_blank">www.cloudflare.com</a></p>
+          <p><strong>Services utilisés :</strong> Cloudflare Workers, Cloudflare Pages, Cloudflare D1, Cloudflare R2</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">3. Propriété intellectuelle</h2>
+        <p>L'ensemble du contenu du site Amanah GO (textes, images, logos, icônes, code source, architecture) est protégé par le droit d'auteur et appartient à Amanah GO SAS ou à ses partenaires. Toute reproduction, représentation, modification ou exploitation sans autorisation expresse est strictement interdite.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">4. Données personnelles</h2>
+        <p>Le traitement des données personnelles des utilisateurs est décrit dans notre <a href="/confidentialite" class="text-blue-600 hover:underline">Politique de Confidentialité</a>.</p>
+        <p class="mt-2">Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données en contactant : <a href="mailto:privacy@amanahgo.app" class="text-blue-600 hover:underline">privacy@amanahgo.app</a></p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">5. Cookies</h2>
+        <p>Ce site utilise des cookies techniques nécessaires à son fonctionnement. Pour en savoir plus, consultez notre <a href="/confidentialite" class="text-blue-600 hover:underline">Politique de Confidentialité</a>.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">6. Liens hypertextes</h2>
+        <p>Amanah GO ne peut être tenu responsable du contenu des sites tiers vers lesquels des liens sont établis depuis la Plateforme.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">7. Droit applicable</h2>
+        <p>Les présentes mentions légales sont soumises au droit français. Tout litige relatif à l'utilisation du site sera de la compétence exclusive des tribunaux de Paris.</p>
+      </section>
+
+      <section>
+        <h2 class="text-xl font-semibold mb-3">8. Contact</h2>
+        <p>Pour toute question : <a href="mailto:contact@amanahgo.app" class="text-blue-600 hover:underline">contact@amanahgo.app</a></p>
+      </section>
+    </div>
+  </main>
+  <footer class="bg-gray-900 text-white py-6 mt-16">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <div class="flex justify-center space-x-6 mb-3 text-sm">
+        <a href="/cgu" class="hover:text-blue-400">CGU</a>
+        <a href="/confidentialite" class="hover:text-blue-400">Confidentialité</a>
+        <a href="/mentions-legales" class="text-blue-400 font-medium">Mentions légales</a>
+      </div>
+      <p class="text-gray-400 text-sm">© 2025 Amanah GO. Tous droits réservés.</p>
+    </div>
+  </footer>
+</body>
+</html>`)
+})
+
 /**
  * PAGE: Mot de passe oublié
  */
@@ -4974,8 +5375,8 @@ app.get('/signup', (c) => {
                         <input type="checkbox" id="terms" required
                                class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                         <label for="terms" class="ml-2 text-sm text-gray-600">
-                            J'accepte les <a href="#" class="text-blue-600 hover:underline">Conditions Générales d'Utilisation</a>
-                            et la <a href="#" class="text-blue-600 hover:underline">Politique de Confidentialité</a>
+                            J'accepte les <a href="/cgu" target="_blank" class="text-blue-600 hover:underline">Conditions Générales d'Utilisation</a>
+                            et la <a href="/confidentialite" target="_blank" class="text-blue-600 hover:underline">Politique de Confidentialité</a>
                         </label>
                     </div>
 
@@ -6887,6 +7288,27 @@ app.delete('/api/trips/:id', async (c) => {
       success: false, 
       error: error.message 
     }, 500)
+  }
+})
+
+// Rechercher un utilisateur par email (pour la notation)
+app.get('/api/users/by-email', authMiddleware, async (c) => {
+  const email = c.req.query('email')
+  if (!email) {
+    return c.json({ success: false, error: 'email requis' }, 400)
+  }
+  try {
+    const db = c.get('db') as DatabaseService
+    const user = await db.getUserByEmail(email)
+    if (!user) {
+      return c.json({ success: false, error: 'Utilisateur introuvable' }, 404)
+    }
+    return c.json({
+      success: true,
+      user: { id: user.id, name: user.name, email: user.email }
+    })
+  } catch (error: any) {
+    return c.json({ success: false, error: error.message }, 500)
   }
 })
 
