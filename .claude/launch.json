@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Dev (Vite HMR)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "Dev Sandbox (Wrangler + D1 local)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:sandbox"],
+      "port": 3000
+    },
+    {
+      "name": "Preview (build final)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview"],
+      "port": 8788
+    }
+  ]
+}
