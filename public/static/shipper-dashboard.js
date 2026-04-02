@@ -177,14 +177,23 @@ function renderPackages() {
       </div>
       
       <!-- Actions -->
-      <div class="flex gap-2">
-        <button 
+      <div class="flex gap-2 flex-wrap">
+        ${pkg.status === 'DELIVERED' ? `
+        <button
+          onclick="openReviewModal('${pkg.id}', '${pkg.title}')"
+          class="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium"
+        >
+          <i class="fas fa-star mr-2"></i>Noter le voyageur
+        </button>
+        ` : `
+        <button
           onclick="editPackage('${pkg.id}')"
           class="flex-1 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
         >
           <i class="fas fa-edit mr-2"></i>Modifier
         </button>
-        <button 
+        `}
+        <button
           onclick="deletePackage('${pkg.id}', '${pkg.title}')"
           class="flex-1 px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
         >
@@ -194,6 +203,11 @@ function renderPackages() {
     </div>
   `;
   }).join('');
+
+  // Injecter le modal de notation si absent
+  if (!document.getElementById('reviewModal')) {
+    document.body.insertAdjacentHTML('beforeend', getReviewModalHTML());
+  }
 }
 
 // Update statistics
@@ -296,7 +310,7 @@ function showNotification(type, message) {
     warning: 'bg-yellow-500',
     info: 'bg-blue-500'
   };
-  
+
   const notification = document.createElement('div');
   notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in`;
   notification.innerHTML = `
@@ -305,10 +319,143 @@ function showNotification(type, message) {
       <span>${message}</span>
     </div>
   `;
-  
+
   document.body.appendChild(notification);
-  
+
   setTimeout(() => {
     notification.remove();
   }, 5000);
+}
+
+// ==========================================
+// SYSTÈME DE NOTATION
+// ==========================================
+
+let reviewContext = { packageId: null, packageLabel: null, selectedRating: 0 };
+
+function getReviewModalHTML() {
+  return `
+  <div id="reviewModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" onclick="closeReviewModal(event)">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-gray-900">
+          <i class="fas fa-star text-yellow-500 mr-2"></i>
+          Noter le voyageur
+        </h2>
+        <button onclick="closeReviewModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+      </div>
+      <p class="text-sm text-gray-600 mb-6" id="reviewPkgLabel"></p>
+
+      <!-- Email ou ID du voyageur -->
+      <div class="mb-5">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email ou ID du voyageur à noter</label>
+        <input type="text" id="revieweeInput" placeholder="ex: voyage@exemple.com"
+               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+      </div>
+
+      <!-- Étoiles -->
+      <div class="mb-5">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Note</label>
+        <div class="flex space-x-2" id="starRating">
+          ${[1,2,3,4,5].map(n => `
+          <button onclick="setRating(${n})" data-star="${n}"
+                  class="text-3xl text-gray-300 hover:text-yellow-400 transition-colors focus:outline-none star-btn">
+            <i class="fas fa-star"></i>
+          </button>`).join('')}
+        </div>
+        <p class="text-sm text-gray-500 mt-1" id="ratingLabel">Sélectionnez une note</p>
+      </div>
+
+      <!-- Commentaire -->
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Commentaire (optionnel)</label>
+        <textarea id="reviewComment" rows="3" placeholder="Décrivez votre expérience avec ce voyageur..."
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent resize-none"></textarea>
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="closeReviewModal()" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
+          Annuler
+        </button>
+        <button onclick="submitReview()" class="flex-1 px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-bold">
+          <i class="fas fa-paper-plane mr-2"></i>Envoyer
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openReviewModal(packageId, packageLabel) {
+  reviewContext = { packageId, packageLabel, selectedRating: 0 };
+  document.getElementById('reviewPkgLabel').textContent = `Colis : ${packageLabel}`;
+  document.getElementById('revieweeInput').value = '';
+  document.getElementById('reviewComment').value = '';
+  setRating(0);
+  const modal = document.getElementById('reviewModal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+function closeReviewModal(event) {
+  if (event && event.target !== document.getElementById('reviewModal')) return;
+  const modal = document.getElementById('reviewModal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+}
+
+function setRating(value) {
+  reviewContext.selectedRating = value;
+  const labels = ['', 'Très mauvais', 'Mauvais', 'Correct', 'Bien', 'Excellent'];
+  document.getElementById('ratingLabel').textContent = value > 0 ? labels[value] : 'Sélectionnez une note';
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    const star = parseInt(btn.dataset.star);
+    btn.style.color = star <= value ? '#EAB308' : '#D1D5DB';
+  });
+}
+
+async function submitReview() {
+  const revieweeInput = document.getElementById('revieweeInput').value.trim();
+  const comment = document.getElementById('reviewComment').value.trim();
+
+  if (!revieweeInput) {
+    showNotification('error', 'Veuillez entrer l\'email ou l\'ID du voyageur');
+    return;
+  }
+  if (reviewContext.selectedRating < 1) {
+    showNotification('error', 'Veuillez sélectionner une note');
+    return;
+  }
+
+  try {
+    // Résoudre l'ID si un email est fourni
+    let revieweeId = revieweeInput;
+    if (revieweeInput.includes('@')) {
+      const res = await axios.get(`/api/users/by-email?email=${encodeURIComponent(revieweeInput)}`);
+      if (res.data.success && res.data.user) {
+        revieweeId = res.data.user.id;
+      } else {
+        showNotification('error', 'Utilisateur introuvable avec cet email');
+        return;
+      }
+    }
+
+    const token = localStorage.getItem('amanah_token');
+    const response = await axios.post('/api/reviews', {
+      reviewee_id: revieweeId,
+      booking_id: reviewContext.packageId,
+      rating: reviewContext.selectedRating,
+      comment
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (response.data.success) {
+      showNotification('success', 'Votre avis a été enregistré !');
+      closeReviewModal();
+    } else {
+      showNotification('error', response.data.error || 'Erreur lors de l\'envoi');
+    }
+  } catch (error) {
+    showNotification('error', error.response?.data?.error || 'Erreur lors de l\'envoi de l\'avis');
+  }
 }

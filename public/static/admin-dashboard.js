@@ -213,7 +213,7 @@ function displayUsers(users) {
                 Valider KYC
               </button>
             ` : user.kyc_status === 'VERIFIED' ? `
-              <button onclick="viewUserDetails(${user.id})" 
+              <button onclick="viewUserDetails('${user.id}')"
                       class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 <i class="fas fa-user mr-2"></i>
                 Voir Détails
@@ -243,7 +243,8 @@ function displayUsers(users) {
 
 // Open validation modal
 function openValidationModal(userId) {
-  const user = allUsers.find(u => u.id === userId);
+  // eslint-disable-next-line eqeqeq
+  const user = allUsers.find(u => u.id == userId || String(u.id) === String(userId));
   if (!user) return;
   
   const modal = document.getElementById('kycModal');
@@ -269,19 +270,19 @@ function openValidationModal(userId) {
             <i class="fas fa-camera text-blue-600 mr-2"></i>
             Selfie
           </h4>
-          <img src="${user.kyc_selfie_url || 'https://via.placeholder.com/300x400?text=Selfie'}" 
-               alt="Selfie" 
-               class="w-full rounded-lg border-2 border-gray-200 shadow-md">
+          <div id="kycSelfieContainer" class="w-full rounded-lg border-2 border-gray-200 shadow-md bg-gray-50 flex items-center justify-center min-h-32">
+            <i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
+          </div>
         </div>
-        
+
         <div>
           <h4 class="font-bold text-gray-800 mb-3">
             <i class="fas fa-id-card text-green-600 mr-2"></i>
             Pièce d'Identité
           </h4>
-          <img src="${user.kyc_document_url || 'https://via.placeholder.com/300x200?text=ID'}" 
-               alt="ID Document" 
-               class="w-full rounded-lg border-2 border-gray-200 shadow-md">
+          <div id="kycDocContainer" class="w-full rounded-lg border-2 border-gray-200 shadow-md bg-gray-50 flex items-center justify-center min-h-32">
+            <i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
+          </div>
         </div>
       </div>
       
@@ -302,13 +303,13 @@ function openValidationModal(userId) {
                   rows="3"></textarea>
         
         <div class="flex space-x-4">
-          <button onclick="validateKYC(${user.id}, 'VERIFIED')" 
+          <button onclick="validateKYC('${user.id}', 'VERIFIED')"
                   class="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-bold">
             <i class="fas fa-check-circle mr-2"></i>
             Approuver
           </button>
-          
-          <button onclick="validateKYC(${user.id}, 'REJECTED')" 
+
+          <button onclick="validateKYC('${user.id}', 'REJECTED')"
                   class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-bold">
             <i class="fas fa-times-circle mr-2"></i>
             Rejeter
@@ -320,6 +321,39 @@ function openValidationModal(userId) {
   
   modal.classList.remove('hidden');
   modal.classList.add('flex');
+
+  // Charger les photos KYC avec le token d'authentification
+  loadKycPhoto(user.id, 'selfie', 'kycSelfieContainer');
+  loadKycPhoto(user.id, 'document', 'kycDocContainer');
+}
+
+// Charger une photo KYC via fetch (avec Authorization header)
+async function loadKycPhoto(userId, type, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const token = localStorage.getItem('amanah_token');
+  if (!token) {
+    container.innerHTML = '<p class="text-gray-400 text-sm p-4">Token manquant</p>';
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/admin/kyc-photo/${userId}/${type}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      container.innerHTML = `<p class="text-gray-400 text-sm p-4">Photo non disponible (${response.status})</p>`;
+      return;
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    container.innerHTML = `<img src="${objectUrl}" alt="${type}" class="w-full rounded-lg">`;
+  } catch (err) {
+    container.innerHTML = '<p class="text-gray-400 text-sm p-4">Erreur chargement photo</p>';
+  }
 }
 
 // Close modal
@@ -354,7 +388,8 @@ async function validateKYC(userId, newStatus) {
     
     if (response.ok) {
       // Update local data
-      const user = allUsers.find(u => u.id === userId);
+      // eslint-disable-next-line eqeqeq
+      const user = allUsers.find(u => u.id == userId || String(u.id) === String(userId));
       if (user) {
         user.kyc_status = newStatus;
         if (newStatus === 'REJECTED') {
@@ -371,7 +406,8 @@ async function validateKYC(userId, newStatus) {
       closeModal();
     } else {
       // Mode demo: Simuler succès
-      const user = allUsers.find(u => u.id === userId);
+      // eslint-disable-next-line eqeqeq
+      const user = allUsers.find(u => u.id == userId || String(u.id) === String(userId));
       if (user) {
         user.kyc_status = newStatus;
         if (newStatus === 'REJECTED') {
@@ -393,7 +429,8 @@ async function validateKYC(userId, newStatus) {
 
 // View user details
 function viewUserDetails(userId) {
-  const user = allUsers.find(u => u.id === userId);
+  // eslint-disable-next-line eqeqeq
+  const user = allUsers.find(u => u.id == userId || String(u.id) === String(userId));
   if (!user) return;
   
   openValidationModal(userId);
