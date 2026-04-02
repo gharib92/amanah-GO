@@ -5,33 +5,63 @@
 let currentTab = 'pending';
 let allUsers = [];
 
+// Get a fresh Firebase token (refreshes if expired)
+async function getFreshToken() {
+  try {
+    if (window.firebaseAuth && window.firebaseAuth.currentUser) {
+      const freshToken = await window.firebaseAuth.currentUser.getIdToken(true);
+      localStorage.setItem('amanah_token', freshToken);
+      return freshToken;
+    }
+  } catch (e) {
+    console.warn('Token refresh failed:', e.message);
+  }
+  return localStorage.getItem('amanah_token');
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  checkAdminAuth();
-  loadStats();
-  loadUsers();
+  // Wait for Firebase auth state before loading data
+  if (window.firebaseAuth) {
+    window.firebaseAuth.onAuthStateChanged(async (user) => {
+      if (user) {
+        const token = await user.getIdToken(true);
+        localStorage.setItem('amanah_token', token);
+        localStorage.setItem('amanah_user', JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName
+        }));
+      }
+      checkAdminAuth();
+      loadStats();
+      loadUsers();
+    });
+  } else {
+    checkAdminAuth();
+    loadStats();
+    loadUsers();
+  }
 });
 
 // Check if user is admin
 function checkAdminAuth() {
   const user = JSON.parse(localStorage.getItem('amanah_user') || '{}');
-  
-  // TODO: Vérifier rôle admin en production
-  // Pour dev, simuler admin
-  if (!user.id) {
-    // Mode demo admin
-    document.getElementById('adminName').textContent = 'Admin Demo';
+  const displayName = user.displayName || user.name || user.email || 'Admin';
+  if (!user.uid && !user.id) {
+    document.getElementById('adminName').textContent = 'Non connecté';
   } else {
-    document.getElementById('adminName').textContent = user.name;
+    document.getElementById('adminName').textContent = displayName;
   }
 }
 
 // Load statistics
 async function loadStats() {
   try {
+    const token = await getFreshToken();
     const response = await fetch('/api/admin/stats', {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('amanah_token')}`
+        'Authorization': `Bearer ${token}`
       }
     });
     
@@ -50,26 +80,34 @@ async function loadStats() {
 // Load users list
 async function loadUsers() {
   try {
+    const token = await getFreshToken();
     const response = await fetch('/api/admin/users', {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('amanah_token')}`
+        'Authorization': `Bearer ${token}`
       }
     });
-    
+
     if (response.ok) {
       const data = await response.json();
       allUsers = data.users || [];
       filterAndDisplayUsers();
     } else {
-      // Mode demo avec données simulées
-      allUsers = generateMockUsers();
-      filterAndDisplayUsers();
+      const errData = await response.json().catch(() => ({}));
+      console.error('Erreur API admin/users:', response.status, errData);
+      document.getElementById('usersList').innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-3"></i>
+          <p class="text-red-700 font-medium">Erreur d'authentification (${response.status})</p>
+          <p class="text-red-500 text-sm mt-1">${errData.error || 'Vérifiez que vous êtes connecté avec un compte admin'}</p>
+          <a href="/" class="mt-4 inline-block px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Se connecter</a>
+        </div>`;
     }
   } catch (error) {
     console.error('Erreur chargement users:', error);
-    // Mode demo avec données simulées
-    allUsers = generateMockUsers();
-    filterAndDisplayUsers();
+    document.getElementById('usersList').innerHTML = `
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+        <p class="text-yellow-700">Erreur de connexion au serveur</p>
+      </div>`;
   }
 }
 
@@ -332,7 +370,7 @@ async function loadKycPhoto(userId, type, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  const token = localStorage.getItem('amanah_token');
+  const token = await getFreshToken();
   if (!token) {
     container.innerHTML = '<p class="text-gray-400 text-sm p-4">Token manquant</p>';
     return;
@@ -373,11 +411,12 @@ async function validateKYC(userId, newStatus) {
   }
   
   try {
+    const token = await getFreshToken();
     const response = await fetch('/api/admin/validate-kyc', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('amanah_token')}`
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
         user_id: userId,
