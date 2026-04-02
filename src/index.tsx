@@ -4117,19 +4117,20 @@ app.post('/api/auth/verify-kyc', async (c) => {
     }
     
     // 4. Mettre à jour le statut KYC de l'utilisateur
-    const kycStatus = faceMatch ? 'VERIFIED' : 'PENDING_REVIEW'
-    
+    // faceMatch=true means auto-VERIFIED, otherwise SUBMITTED (pending manual admin review)
+    const kycStatus = faceMatch ? 'VERIFIED' : 'SUBMITTED'
+
     if (DB) {
-      // Mode production avec D1
+      // Use user.id (D1 primary key), NOT userId (which may be a firebase_uid)
       await DB.prepare(`
-        UPDATE users 
+        UPDATE users
         SET kyc_status = ?,
             kyc_selfie_url = ?,
             kyc_document_url = ?,
             kyc_verified_at = datetime('now'),
             updated_at = datetime('now')
         WHERE id = ?
-      `).bind(kycStatus, selfieKey, idKey, userId).run()
+      `).bind(kycStatus, selfieKey, idKey, (user as any).id).run()
     }
     
     // 📧 Envoyer email si KYC vérifié
