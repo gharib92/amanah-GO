@@ -8985,7 +8985,7 @@ async function sendSecurityCodes(
               </div>
               
               <p style="text-align: center; margin-top: 30px;">
-                <a href="https://amanah-go.pages.dev/" style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Suivre mon colis</a>
+                <a href="https://amanahgo.app/" style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Suivre mon colis</a>
               </p>
             </div>
             <div class="footer">
@@ -9868,16 +9868,6 @@ app.get('/expediteur/payer', (c) => {
                         <div id="card-errors" class="hidden text-red-600 text-sm mt-2"></div>
                     </div>
 
-                    <!-- Carte de test -->
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <p class="text-sm text-gray-700">
-                            <i class="fas fa-info-circle text-yellow-600 mr-2"></i>
-                            <strong>Mode TEST :</strong> Utilisez la carte 
-                            <code class="bg-yellow-100 px-2 py-1 rounded">4242 4242 4242 4242</code>
-                            avec n'importe quelle date future et CVV.
-                        </p>
-                    </div>
-
                     <!-- Bouton de paiement -->
                     <button 
                         type="submit"
@@ -10637,8 +10627,9 @@ app.get('/results', (c) => {
                     <div class="text-center py-4">
                         <p class="text-gray-700 mb-4">Contacter <strong>\${name}</strong></p>
                         <p class="text-sm text-gray-500 mb-6">
-                            Cette fonctionnalité sera bientôt disponible. 
-                            Un système de chat en temps réel sera intégré prochainement.
+                            Pour contacter ce voyageur, envoyez un email à
+                            <a href="mailto:contact@amanahgo.app" class="text-blue-600 hover:underline">contact@amanahgo.app</a>
+                            en précisant le nom du trajet.
                         </p>
                         <button onclick="closeContactModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                             Compris
