@@ -5,6 +5,32 @@
 let currentTab = 'pending';
 let allUsers = [];
 
+// Connexion Google pour admin (force un nouveau login)
+async function loginAsAdmin() {
+  try {
+    if (!window.firebaseAuth) {
+      alert('Firebase non chargé. Rechargez la page.');
+      return;
+    }
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const result = await window.firebaseAuth.signInWithPopup(provider);
+    const user = result.user;
+    const token = await user.getIdToken(true);
+    localStorage.setItem('amanah_token', token);
+    localStorage.setItem('amanah_user', JSON.stringify({
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName
+    }));
+    // Recharger la page
+    window.location.reload();
+  } catch (err) {
+    console.error('Erreur connexion:', err);
+    alert('Erreur de connexion : ' + err.message);
+  }
+}
+
 // Get a fresh Firebase token (refreshes if expired)
 async function getFreshToken() {
   try {
@@ -94,12 +120,17 @@ async function loadUsers() {
     } else {
       const errData = await response.json().catch(() => ({}));
       console.error('Erreur API admin/users:', response.status, errData);
+      const currentEmail = (JSON.parse(localStorage.getItem('amanah_user') || '{}').email) || 'inconnu';
       document.getElementById('usersList').innerHTML = `
         <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-3"></i>
-          <p class="text-red-700 font-medium">Erreur d'authentification (${response.status})</p>
-          <p class="text-red-500 text-sm mt-1">${errData.error || 'Vérifiez que vous êtes connecté avec un compte admin'}</p>
-          <a href="/" class="mt-4 inline-block px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Se connecter</a>
+          <p class="text-red-700 font-medium">Accès refusé (${response.status})</p>
+          <p class="text-red-500 text-sm mt-1">Le compte <strong>${currentEmail}</strong> n'a pas les droits admin.</p>
+          <p class="text-gray-500 text-sm mt-1">Connectez-vous avec votre compte administrateur.</p>
+          <button onclick="loginAsAdmin()" class="mt-4 inline-flex items-center gap-2 px-5 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 shadow-sm font-medium">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
+            Se connecter avec Google (admin)
+          </button>
         </div>`;
     }
   } catch (error) {

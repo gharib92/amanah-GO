@@ -1685,7 +1685,7 @@ app.get('/admin', (c) => {
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
         <script src="/static/firebase-compat.js?v=3"></script>
-        <script src="/static/admin-dashboard.js"></script>
+        <script src="/static/admin-dashboard.js?v=4"></script>
     </body>
     </html>
   `)
