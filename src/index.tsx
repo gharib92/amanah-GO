@@ -283,7 +283,7 @@ async function sendEmail(to: string, subject: string, html: string, resendApiKey
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Amanah GO <onboarding@resend.dev>',
+        from: 'Amanah GO <noreply@amanahgo.app>',
         to: [to],
         subject: subject,
         html: html
@@ -9004,7 +9004,7 @@ async function sendSecurityCodes(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Amanah GO <onboarding@resend.dev>',
+          from: 'Amanah GO <noreply@amanahgo.app>',
           to: userEmail,
           subject: `🔐 Codes de sécurité - ${packageTitle}`,
           html: emailHtml
