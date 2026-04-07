@@ -110,10 +110,14 @@ function selectCity(type, airport) {
 // Photo upload
 function initializePhotos() {
   const photoInput = document.getElementById('photoInput');
+  const cameraInput = document.getElementById('cameraInput');
   const uploadBtn = document.getElementById('uploadPhotoBtn');
-  
+  const cameraBtn = document.getElementById('cameraBtn');
+
   uploadBtn.addEventListener('click', () => photoInput.click());
+  cameraBtn.addEventListener('click', () => cameraInput.click());
   photoInput.addEventListener('change', handlePhotoUpload);
+  cameraInput.addEventListener('change', handlePhotoUpload);
 }
 
 async function handlePhotoUpload(event) {
@@ -206,12 +210,10 @@ function renderPhotos() {
     </div>
   `).join('');
   
-  // Show/hide upload button
-  if (uploadedPhotos.length >= 5) {
-    document.getElementById('uploadPhotoBtn').classList.add('hidden');
-  } else {
-    document.getElementById('uploadPhotoBtn').classList.remove('hidden');
-  }
+  // Show/hide upload & camera buttons
+  const hidden = uploadedPhotos.length >= 5;
+  document.getElementById('uploadPhotoBtn').classList.toggle('hidden', hidden);
+  document.getElementById('cameraBtn').classList.toggle('hidden', hidden);
 }
 
 function removePhoto(index) {

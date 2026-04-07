@@ -6860,15 +6860,27 @@ app.get('/expediteur/publier-colis', (c) => {
                             <!-- Photos will be inserted here -->
                         </div>
 
-                        <button 
-                            type="button"
-                            id="uploadPhotoBtn"
-                            class="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
-                        >
-                            <i class="fas fa-plus-circle mr-2"></i>
-                            Ajouter des photos (max 5)
-                        </button>
+                        <div class="flex gap-3">
+                            <button
+                                type="button"
+                                id="uploadPhotoBtn"
+                                class="flex-1 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
+                            >
+                                <i class="fas fa-images mr-2"></i>
+                                Depuis la galerie
+                            </button>
+                            <button
+                                type="button"
+                                id="cameraBtn"
+                                class="flex-1 py-3 border-2 border-dashed border-green-300 rounded-lg text-green-600 hover:border-green-500 hover:text-green-700 transition-colors"
+                            >
+                                <i class="fas fa-camera mr-2"></i>
+                                Prendre une photo
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2 text-center">Maximum 5 photos · Taille max 5 MB par photo</p>
                         <input type="file" id="photoInput" accept="image/*" multiple class="hidden" />
+                        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" />
                     </div>
 
                     <!-- Dimensions & Poids -->
