@@ -14,7 +14,7 @@ import { handleError, ErrorCodes, unauthorizedError, createErrorResponse } from 
 // ==========================================
 // CONSTANTS
 // ==========================================
-const JWT_EXPIRATION_DAYS = 30 // Token validity period in days
+const JWT_EXPIRATION_DAYS = 7 // Token validity period in days
 const JWT_EXPIRATION_SECONDS = 60 * 60 * 24 * JWT_EXPIRATION_DAYS
 
 // Types pour le contexte avec user authentifié et DB
@@ -307,23 +307,14 @@ async function sendEmail(to: string, subject: string, html: string, resendApiKey
 }
 
 // JWT Secret - DOIT être configuré via variable d'environnement en production
-const JWT_SECRET_DEFAULT = 'amanah-go-secret-key-change-in-production'
-const JWT_EXPIRATION = '7d' // 7 jours
+const JWT_EXPIRATION = '7d'
 
 // Helper pour obtenir le JWT secret de manière sécurisée
 function getJWTSecret(env: any): string {
-  const secret = env?.JWT_SECRET || JWT_SECRET_DEFAULT
-  
-  // 🚨 SÉCURITÉ : Avertir si la clé par défaut est utilisée
-  if (secret === JWT_SECRET_DEFAULT) {
-    console.warn('⚠️  SECURITY WARNING: Using default JWT_SECRET! Set JWT_SECRET environment variable in production.')
+  const secret = env?.JWT_SECRET
+  if (!secret || secret.length < 32) {
+    throw new Error('SECURITY: JWT_SECRET environment variable is missing or too short (min 32 chars). Set it in Cloudflare secrets.')
   }
-  
-  // Valider que la clé est suffisamment forte (minimum 32 caractères)
-  if (secret.length < 32) {
-    console.error('🔴 CRITICAL: JWT_SECRET is too short! Minimum 32 characters required.')
-  }
-  
   return secret
 }
 
@@ -498,8 +489,62 @@ const firebaseTokenOnly = async (c: any, next: any) => {
   }
 }
 
-// Enable CORS pour API
-app.use('/api/*', cors())
+// Enable CORS — restreint au domaine de production
+app.use('/api/*', cors({
+  origin: (origin) => {
+    const allowed = ['https://amanahgo.app', 'https://www.amanahgo.app']
+    if (!origin || allowed.includes(origin)) return origin || allowed[0]
+    return null
+  },
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400,
+}))
+
+// Headers de sécurité HTTP sur toutes les routes
+app.use('*', async (c, next) => {
+  await next()
+  c.res.headers.set('X-Content-Type-Options', 'nosniff')
+  c.res.headers.set('X-Frame-Options', 'DENY')
+  c.res.headers.set('X-XSS-Protection', '1; mode=block')
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  if (c.req.url.startsWith('https://')) {
+    c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  }
+  // CSP — autorise Firebase, Stripe, Resend
+  c.res.headers.set('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://js.stripe.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
+    "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.stripe.com",
+    "frame-src https://js.stripe.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+  ].join('; '))
+})
+
+// Rate limiting en mémoire (par IP, par endpoint)
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
+function rateLimit(maxRequests: number, windowMs: number) {
+  return async (c: any, next: any) => {
+    const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+    const key = `${ip}:${c.req.path}`
+    const now = Date.now()
+    const entry = rateLimitStore.get(key)
+    if (!entry || entry.resetAt < now) {
+      rateLimitStore.set(key, { count: 1, resetAt: now + windowMs })
+    } else {
+      entry.count++
+      if (entry.count > maxRequests) {
+        return c.json({ success: false, error: 'Trop de tentatives. Réessayez dans quelques minutes.' }, 429)
+      }
+    }
+    await next()
+  }
+}
 
 // Serve static files
 app.use('/static/*', serveStatic({ root: './public' }))
@@ -3232,7 +3277,11 @@ app.post('/api/stripe/webhooks', async (c) => {
     }
 
     const rawBody = await c.req.text()
-    const webhookSecret = c.env?.STRIPE_WEBHOOK_SECRET || 'whsec_test_secret'
+    const webhookSecret = c.env?.STRIPE_WEBHOOK_SECRET
+    if (!webhookSecret) {
+      console.error('STRIPE_WEBHOOK_SECRET not configured')
+      return c.json({ error: 'Webhook not configured' }, 500)
+    }
 
     // Vérifier la signature du webhook
     let event
@@ -3473,7 +3522,7 @@ app.post('/api/auth/update-phone', firebaseAuthMiddleware, async (c) => {
 // ==========================================
 
 // Signup
-app.post('/api/auth/signup', async (c) => {
+app.post('/api/auth/signup', rateLimit(5, 60 * 60 * 1000), async (c) => {
   try {
     const { name, email, phone, password } = await c.req.json()
     const db = c.get('db') as DatabaseService
@@ -3928,9 +3977,9 @@ app.get('/api/auth/facebook/callback', async (c) => {
 })
 
 // Envoyer email de vérification
-app.post('/api/auth/send-verification-email', async (c) => {
+app.post('/api/auth/send-verification-email', rateLimit(3, 60 * 60 * 1000), async (c) => {
   const { DB } = c.env
-  
+
   try {
     const { email, userId } = await c.req.json()
     
@@ -3954,12 +4003,9 @@ app.post('/api/auth/send-verification-email', async (c) => {
       }, 404)
     }
     
-    // Générer code à 6 chiffres
-    const code = Math.floor(100000 + Math.random() * 900000).toString()
-    
-    // TODO: Stocker le code en DB avec expiration 10 minutes
-    // Pour l'instant, on le log juste
-    console.log(`📧 Code de vérification email pour ${email}: ${code}`)
+    // Générer code à 6 chiffres cryptographiquement sûr
+    const codeNum = crypto.getRandomValues(new Uint32Array(1))[0] % 900000 + 100000
+    const code = codeNum.toString()
     
     // Envoyer l'email
     const resendKey = c.env?.RESEND_API_KEY
@@ -4015,10 +4061,18 @@ app.post('/api/auth/verify-kyc', async (c) => {
     const userId = formData.get('user_id')
     
     if (!selfie || !idDocument || !userId) {
-      return c.json({ 
-        success: false, 
-        error: 'Selfie, pièce d\'identité et user_id requis' 
-      }, 400)
+      return c.json({ success: false, error: 'Selfie, pièce d\'identité et user_id requis' }, 400)
+    }
+
+    // Validation MIME type — uniquement images
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    const selfieFile = selfie as File
+    const idFile = idDocument as File
+    if (!allowedMimeTypes.includes(selfieFile.type) || !allowedMimeTypes.includes(idFile.type)) {
+      return c.json({ success: false, error: 'Seules les images JPEG, PNG et WebP sont acceptées' }, 400)
+    }
+    if (selfieFile.size > 10 * 1024 * 1024 || idFile.size > 10 * 1024 * 1024) {
+      return c.json({ success: false, error: 'Taille maximale par fichier : 10 MB' }, 400)
     }
     
     // ✅ MIGRATION D1: Vérifier que l'utilisateur existe
@@ -4041,24 +4095,18 @@ app.post('/api/auth/verify-kyc', async (c) => {
     
     if (R2) {
       await R2.put(selfieKey, selfieBuffer, {
-        httpMetadata: { contentType: 'image/jpeg' }
+        httpMetadata: { contentType: selfieFile.type }
       })
-      console.log('✅ Selfie uploadé vers R2:', selfieKey)
-    } else {
-      console.log('⚠️ R2 non disponible - Selfie simulé:', selfieKey)
     }
-    
-    // 2. Upload de la pièce d'identité vers R2 (ou simulation en dev)
-    const idKey = `kyc/${userId}/id-${Date.now()}.jpg`
+
+    // 2. Upload de la pièce d'identité vers R2
+    const idKey = `kyc/${userId}/id-${Date.now()}.${idFile.type.split('/')[1]}`
     const idBuffer = await idDocument.arrayBuffer()
-    
+
     if (R2) {
       await R2.put(idKey, idBuffer, {
-        httpMetadata: { contentType: 'image/jpeg' }
+        httpMetadata: { contentType: idFile.type }
       })
-      console.log('✅ ID uploadé vers R2:', idKey)
-    } else {
-      console.log('⚠️ R2 non disponible - ID simulé:', idKey)
     }
     
     // 3. Comparaison faciale avec Cloudflare AI
@@ -4068,43 +4116,25 @@ app.post('/api/auth/verify-kyc', async (c) => {
     
     try {
       if (AI) {
-        console.log('🤖 Lancement comparaison faciale Cloudflare AI...')
-        
-        // Convertir les images en base64 pour l'AI
         const selfieArray = new Uint8Array(selfieBuffer)
         const idArray = new Uint8Array(idBuffer)
-        
-        // Utiliser le modèle de détection de visages
-        // @cf/microsoft/resnet-50 pour extraction de features
+
         const selfieAnalysis = await AI.run('@cf/microsoft/resnet-50', {
           image: Array.from(selfieArray)
         })
-        
+
         const idAnalysis = await AI.run('@cf/microsoft/resnet-50', {
           image: Array.from(idArray)
         })
-        
-        // Calculer la similarité cosine entre les embeddings
-        similarity = calculateCosineSimilarity(
-          selfieAnalysis.data,
-          idAnalysis.data
-        )
-        
-        console.log(`📊 Similarité calculée: ${similarity}`)
-        
-        // Seuil de validation : 0.75 (75% de similarité)
-        faceMatch = similarity >= 0.75
-        
-        if (faceMatch) {
-          console.log('✅ Visages correspondent ! KYC validé automatiquement')
-        } else {
-          console.log('⚠️ Visages ne correspondent pas assez - Vérification manuelle requise')
-        }
+
+        similarity = calculateCosineSimilarity(selfieAnalysis.data, idAnalysis.data)
+
+        // Seuil de validation : 0.85 (85% de similarité)
+        faceMatch = similarity >= 0.85
       } else {
-        // Mode DEV sans Cloudflare AI - Simulation
-        console.log('⚠️ Cloudflare AI non disponible - Mode MOCK')
-        faceMatch = true
-        similarity = 0.85 // Simulé pour dev
+        // Mode DEV sans Cloudflare AI - validation manuelle requise
+        faceMatch = false
+        similarity = 0
       }
       
     } catch (aiErrorCaught) {
@@ -4165,96 +4195,12 @@ app.post('/api/auth/verify-kyc', async (c) => {
 })
 
 // 🔧 DEBUG USER ENDPOINT (temporary - remove in production!)
-app.get('/api/debug/user/:email', async (c) => {
-  try {
-    const email = c.req.param('email')
-    const db = c.get('db') as DatabaseService
-    const user = await db.getUserByEmail(email)
-    
-    if (!user) {
-      return c.json({
-        success: false,
-        message: 'User not found',
-        email_searched: email
-      }, 404)
-    }
-    
-    return c.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        has_password_hash: !!user.password_hash,
-        password_hash_length: user.password_hash?.length || 0,
-        password_hash_preview: user.password_hash?.substring(0, 20) + '...',
-        kyc_status: user.kyc_status,
-        created_at: user.created_at
-      }
-    })
-  } catch (error: any) {
-    return c.json({
-      success: false,
-      error: error.message
-    }, 500)
-  }
-})
-
-// 🔧 DEBUG LOGIN ENDPOINT (temporary)
-app.post('/api/auth/login/debug', async (c) => {
-  try {
-    const { email, password } = await c.req.json()
-    const db = c.get('db') as DatabaseService
-    
-    // 1) Chercher l'utilisateur
-    const user = await db.getUserByEmail(email)
-    
-    if (!user) {
-      return c.json({
-        success: false,
-        debug: {
-          step: 'user_lookup',
-          email_searched: email,
-          user_found: false,
-          message: 'Utilisateur introuvable dans D1'
-        }
-      }, 404)
-    }
-    
-    // 2) Vérifier le hash
-    const passwordMatch = await bcrypt.compare(password, user.password_hash)
-    
-    return c.json({
-      success: passwordMatch,
-      debug: {
-        step: 'password_verification',
-        user_found: true,
-        user_id: user.id,
-        user_email: user.email,
-        has_password_hash: !!user.password_hash,
-        password_hash_length: user.password_hash?.length || 0,
-        password_hash_starts_with: user.password_hash?.substring(0, 7),
-        password_match: passwordMatch,
-        message: passwordMatch ? '✅ Mot de passe correct' : '❌ Mot de passe incorrect'
-      }
-    })
-  } catch (error: any) {
-    return c.json({
-      success: false,
-      debug: {
-        step: 'error',
-        error: error.message
-      }
-    }, 500)
-  }
-})
+// Debug endpoints removed for security
 
 // Login
-app.post('/api/auth/login', async (c) => {
+app.post('/api/auth/login', rateLimit(10, 15 * 60 * 1000), async (c) => {
   try {
     const { email, password } = await c.req.json()
-    
-    console.log('🔍 Login attempt:', { email, passwordLength: password?.length })
     
     // Validation
     if (!email || !password) {
@@ -4264,25 +4210,17 @@ app.post('/api/auth/login', async (c) => {
     // ✅ MIGRATION D1: Trouver l'utilisateur
     const db = c.get('db') as DatabaseService
     const user = await db.getUserByEmail(email)
-    
-    console.log('🔍 User found in DB:', user ? { id: user.id, email: user.email, has_password: !!user.password_hash } : 'NOT FOUND')
-    
+
     if (!user) {
-      console.error('❌ User not found for email:', email)
       return c.json({ success: false, error: 'Email ou mot de passe incorrect' }, 401)
     }
-    
-    // Vérifier le mot de passe avec bcrypt
-    console.log('🔍 Comparing password...')
+
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
-    console.log('🔍 Password match:', passwordMatch)
-    
+
     if (!passwordMatch) {
-      console.error('❌ Password mismatch for user:', user.email)
       return c.json({ success: false, error: 'Email ou mot de passe incorrect' }, 401)
     }
-    
-    // Générer JWT token
+
     const secret = getJWTSecret(c.env)
     const token = await sign(
       {
@@ -4293,8 +4231,6 @@ app.post('/api/auth/login', async (c) => {
       },
       secret
     )
-    
-    console.log('✅ Login successful for:', user.email)
     
     return c.json({ 
       success: true, 
@@ -4322,11 +4258,43 @@ app.post('/api/auth/login', async (c) => {
  */
 app.get('/api/auth/me', authMiddleware, async (c) => {
   const user = c.get('user')
-  
-  return c.json({
-    success: true,
-    user
-  })
+  return c.json({ success: true, user })
+})
+
+// RGPD — Droit à l'effacement : suppression du compte et de toutes les données associées
+app.delete('/api/auth/me', authMiddleware, async (c) => {
+  const authenticatedUser = c.get('user')
+  const { DB, R2 } = c.env
+
+  try {
+    const userId = authenticatedUser.id
+
+    // Supprimer les photos KYC de R2 si disponible
+    if (R2) {
+      try {
+        const listed = await R2.list({ prefix: `kyc/${userId}/` })
+        for (const obj of (listed?.objects || [])) {
+          await R2.delete(obj.key)
+        }
+        const listedPkg = await R2.list({ prefix: `packages/${userId}/` })
+        for (const obj of (listedPkg?.objects || [])) {
+          await R2.delete(obj.key)
+        }
+      } catch (_) { /* non bloquant */ }
+    }
+
+    // Supprimer toutes les données D1 liées à l'utilisateur
+    await DB.prepare(`DELETE FROM exchange_messages WHERE sender_id = ? OR receiver_id = ?`).bind(userId, userId).run()
+    await DB.prepare(`DELETE FROM exchanges WHERE sender_id = ? OR traveler_id = ?`).bind(userId, userId).run()
+    await DB.prepare(`DELETE FROM packages WHERE user_id = ?`).bind(userId).run()
+    await DB.prepare(`DELETE FROM trips WHERE user_id = ?`).bind(userId).run()
+    await DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run()
+
+    return c.json({ success: true, message: 'Compte et données supprimés conformément au RGPD.' })
+  } catch (error: any) {
+    console.error('Erreur suppression compte:', error)
+    return c.json({ success: false, error: 'Erreur lors de la suppression du compte' }, 500)
+  }
 })
 
 /**
@@ -7156,14 +7124,14 @@ app.post('/api/trips', authMiddleware, async (c) => {
 })
 
 // Update trip
-app.put('/api/trips/:id', async (c) => {
+app.put('/api/trips/:id', authMiddleware, async (c) => {
   const { DB } = c.env
   const tripId = c.req.param('id')
-  
+  const authenticatedUser = c.get('user')
+
   try {
     const body = await c.req.json()
     const {
-      user_id,
       departure_city,
       departure_country,
       arrival_city,
@@ -7191,13 +7159,10 @@ app.put('/api/trips/:id', async (c) => {
       }, 404)
     }
     
-    if (trip.user_id !== user_id) {
-      return c.json({
-        success: false,
-        error: 'Unauthorized'
-      }, 403)
+    if (trip.user_id !== authenticatedUser.id) {
+      return c.json({ success: false, error: 'Unauthorized' }, 403)
     }
-    
+
     // Update trip
     await DB.prepare(`
       UPDATE trips SET
@@ -7250,38 +7215,27 @@ app.put('/api/trips/:id', async (c) => {
 })
 
 // Delete trip
-app.delete('/api/trips/:id', async (c) => {
+app.delete('/api/trips/:id', authMiddleware, async (c) => {
   const { DB } = c.env
   const tripId = c.req.param('id')
-  const user_id = c.req.query('user_id')
-  
+  const authenticatedUser = c.get('user')
+
   try {
-    // Check if trip exists and belongs to user
-    const trip = await DB.prepare(`
-      SELECT * FROM trips WHERE id = ?
-    `).bind(tripId).first()
-    
+    const trip = await DB.prepare(`SELECT * FROM trips WHERE id = ?`).bind(tripId).first()
+
     if (!trip) {
-      return c.json({
-        success: false,
-        error: 'Trip not found'
-      }, 404)
+      return c.json({ success: false, error: 'Trip not found' }, 404)
     }
-    
-    if (trip.user_id !== user_id) {
-      return c.json({
-        success: false,
-        error: 'Unauthorized'
-      }, 403)
+
+    if (trip.user_id !== authenticatedUser.id) {
+      return c.json({ success: false, error: 'Unauthorized' }, 403)
     }
-    
-    // Delete trip
+
     await DB.prepare(`DELETE FROM trips WHERE id = ?`).bind(tripId).run()
-    
-    // Update user trip count
+
     await DB.prepare(`
       UPDATE users SET total_trips = total_trips - 1 WHERE id = ?
-    `).bind(user_id).run()
+    `).bind(authenticatedUser.id).run()
     
     return c.json({
       success: true,
@@ -7318,7 +7272,7 @@ app.get('/api/users/by-email', authMiddleware, async (c) => {
 })
 
 // Get user's trips
-app.get('/api/users/:user_id/trips', async (c) => {
+app.get('/api/users/:user_id/trips', authMiddleware, async (c) => {
   const { DB } = c.env
   const userId = c.req.param('user_id')
   const status = c.req.query('status')
@@ -7583,14 +7537,14 @@ app.post('/api/packages', authMiddleware, async (c) => {
 })
 
 // Update package
-app.put('/api/packages/:id', async (c) => {
+app.put('/api/packages/:id', authMiddleware, async (c) => {
   const { DB } = c.env
   const packageId = c.req.param('id')
-  
+  const authenticatedUser = c.get('user')
+
   try {
     const body = await c.req.json()
     const {
-      user_id,
       title,
       description,
       content_declaration,
@@ -7619,13 +7573,10 @@ app.put('/api/packages/:id', async (c) => {
       }, 404)
     }
     
-    if (pkg.user_id !== user_id) {
-      return c.json({
-        success: false,
-        error: 'Unauthorized'
-      }, 403)
+    if (pkg.user_id !== authenticatedUser.id) {
+      return c.json({ success: false, error: 'Unauthorized' }, 403)
     }
-    
+
     // Update package
     await DB.prepare(`
       UPDATE packages SET
@@ -7679,38 +7630,27 @@ app.put('/api/packages/:id', async (c) => {
 })
 
 // Delete package
-app.delete('/api/packages/:id', async (c) => {
+app.delete('/api/packages/:id', authMiddleware, async (c) => {
   const { DB } = c.env
   const packageId = c.req.param('id')
-  const user_id = c.req.query('user_id')
-  
+  const authenticatedUser = c.get('user')
+
   try {
-    // Check if package exists and belongs to user
-    const pkg = await DB.prepare(`
-      SELECT * FROM packages WHERE id = ?
-    `).bind(packageId).first()
-    
+    const pkg = await DB.prepare(`SELECT * FROM packages WHERE id = ?`).bind(packageId).first()
+
     if (!pkg) {
-      return c.json({
-        success: false,
-        error: 'Package not found'
-      }, 404)
+      return c.json({ success: false, error: 'Package not found' }, 404)
     }
-    
-    if (pkg.user_id !== user_id) {
-      return c.json({
-        success: false,
-        error: 'Unauthorized'
-      }, 403)
+
+    if (pkg.user_id !== authenticatedUser.id) {
+      return c.json({ success: false, error: 'Unauthorized' }, 403)
     }
-    
-    // Delete package
+
     await DB.prepare(`DELETE FROM packages WHERE id = ?`).bind(packageId).run()
-    
-    // Update user package count
+
     await DB.prepare(`
       UPDATE users SET total_packages = total_packages - 1 WHERE id = ?
-    `).bind(user_id).run()
+    `).bind(authenticatedUser.id).run()
     
     return c.json({
       success: true,
@@ -7726,7 +7666,7 @@ app.delete('/api/packages/:id', async (c) => {
 })
 
 // Get user's packages
-app.get('/api/users/:user_id/packages', async (c) => {
+app.get('/api/users/:user_id/packages', authMiddleware, async (c) => {
   const { DB } = c.env
   const userId = c.req.param('user_id')
   const status = c.req.query('status')
