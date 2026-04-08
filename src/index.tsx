@@ -318,17 +318,30 @@ function getJWTSecret(env: any): string {
   return secret
 }
 
-// Middleware JWT pour routes protégées
+// Middleware JWT pour routes protégées — lit le cookie httpOnly ou le header Authorization
 const authMiddleware = async (c: any, next: any) => {
   try {
-    const authHeader = c.req.header('Authorization')
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Priorité 1 : cookie httpOnly (le plus sécurisé)
+    let token: string | null = null
+    const cookieHeader = c.req.header('Cookie') || ''
+    const cookieMatch = cookieHeader.match(/(?:^|;\s*)amanah_token=([^;]+)/)
+    if (cookieMatch) {
+      token = cookieMatch[1]
+    }
+
+    // Priorité 2 : Authorization header (fallback Firebase / mobile)
+    if (!token) {
+      const authHeader = c.req.header('Authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.substring(7)
+      }
+    }
+
+    if (!token) {
       const { response, status } = unauthorizedError('Token manquant')
       return c.json(response, status)
     }
-    
-    const token = authHeader.substring(7)
+
     const secret = getJWTSecret(c.env)
     
     const payload: any = await verify(token, secret)
@@ -527,21 +540,49 @@ app.use('*', async (c, next) => {
 })
 
 // Rate limiting en mémoire (par IP, par endpoint)
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
+// Rate limiting persistant via D1 (fonctionne correctement sur Cloudflare Workers)
 function rateLimit(maxRequests: number, windowMs: number) {
   return async (c: any, next: any) => {
+    const { DB } = c.env
+    if (!DB) { await next(); return } // pas de rate limiting si DB indisponible
+
     const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
     const key = `${ip}:${c.req.path}`
-    const now = Date.now()
-    const entry = rateLimitStore.get(key)
-    if (!entry || entry.resetAt < now) {
-      rateLimitStore.set(key, { count: 1, resetAt: now + windowMs })
-    } else {
-      entry.count++
-      if (entry.count > maxRequests) {
-        return c.json({ success: false, error: 'Trop de tentatives. Réessayez dans quelques minutes.' }, 429)
+    const now = Math.floor(Date.now() / 1000)
+    const resetAt = now + Math.floor(windowMs / 1000)
+
+    try {
+      // Nettoyer les entrées expirées périodiquement (1% des requêtes)
+      if (Math.random() < 0.01) {
+        await DB.prepare(`DELETE FROM rate_limits WHERE reset_at < ?`).bind(now).run()
       }
+
+      const record = await DB.prepare(
+        `SELECT count, reset_at FROM rate_limits WHERE key = ?`
+      ).bind(key).first()
+
+      if (!record || (record.reset_at as number) < now) {
+        // Nouveau compteur ou fenêtre expirée
+        await DB.prepare(
+          `INSERT INTO rate_limits (key, count, reset_at) VALUES (?, 1, ?)
+           ON CONFLICT(key) DO UPDATE SET count = 1, reset_at = excluded.reset_at`
+        ).bind(key, resetAt).run()
+      } else {
+        const newCount = (record.count as number) + 1
+        if (newCount > maxRequests) {
+          return c.json({
+            success: false,
+            error: 'Trop de tentatives. Réessayez dans quelques minutes.'
+          }, 429)
+        }
+        await DB.prepare(
+          `UPDATE rate_limits SET count = ? WHERE key = ?`
+        ).bind(newCount, key).run()
+      }
+    } catch (_) {
+      // Non bloquant : si D1 échoue on laisse passer
     }
+
     await next()
   }
 }
@@ -2708,7 +2749,9 @@ app.get('/api/admin/kyc-photo/:userId/:type', adminMiddleware, async (c) => {
     return new Response(object.body as ReadableStream, {
       headers: {
         'Content-Type': (object as any).httpMetadata?.contentType || 'image/jpeg',
-        'Cache-Control': 'private, max-age=3600'
+        'Cache-Control': 'private, no-store', // photos biométriques : jamais mises en cache
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Disposition': 'inline'
       }
     })
   } catch (error: any) {
@@ -3588,21 +3631,29 @@ app.post('/api/auth/signup', rateLimit(5, 60 * 60 * 1000), async (c) => {
       secret
     )
     
-    return c.json({ 
-      success: true, 
-      user: {
-        id: userId,
-        email,
-        name,
-        phone,
-        kyc_status: 'PENDING' // ✅ KYC activé
-      },
-      token,
+    const cookieOptions = [
+      `amanah_token=${token}`,
+      `HttpOnly`,
+      `Secure`,
+      `SameSite=Strict`,
+      `Path=/`,
+      `Max-Age=${JWT_EXPIRATION_SECONDS}`
+    ].join('; ')
+
+    return new Response(JSON.stringify({
+      success: true,
+      user: { id: userId, email, name, phone, kyc_status: 'PENDING' },
+      token, // maintenu pour compatibilité
       message: 'Compte créé avec succès'
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': cookieOptions
+      }
     })
-    
+
   } catch (error: any) {
-    console.error('Signup error:', error)
     return c.json({ success: false, error: error.message }, 500)
   }
 })
@@ -4006,33 +4057,94 @@ app.post('/api/auth/send-verification-email', rateLimit(3, 60 * 60 * 1000), asyn
     // Générer code à 6 chiffres cryptographiquement sûr
     const codeNum = crypto.getRandomValues(new Uint32Array(1))[0] % 900000 + 100000
     const code = codeNum.toString()
-    
+    const expiresAt = Math.floor(Date.now() / 1000) + 10 * 60 // 10 minutes
+
+    // Invalider les codes précédents non utilisés pour cet utilisateur
+    await DB.prepare(
+      `DELETE FROM email_verification_codes WHERE user_id = ? AND used_at IS NULL`
+    ).bind(userId).run()
+
+    // Stocker le nouveau code en DB avec expiration
+    await DB.prepare(
+      `INSERT INTO email_verification_codes (user_id, email, code, expires_at) VALUES (?, ?, ?, ?)`
+    ).bind(userId, email, code, expiresAt).run()
+
     // Envoyer l'email
     const resendKey = c.env?.RESEND_API_KEY
     const emailHtml = EmailTemplates.emailVerification(user.name, code)
     const emailSent = await sendEmail(
-      email, 
-      '📧 Vérification de votre email - Amanah GO', 
-      emailHtml, 
+      email,
+      '📧 Vérification de votre email - Amanah GO',
+      emailHtml,
       resendKey
     )
-    
+
     if (!emailSent && resendKey) {
-      return c.json({ 
-        success: false, 
-        error: 'Échec de l\'envoi de l\'email' 
-      }, 500)
+      return c.json({ success: false, error: 'Échec de l\'envoi de l\'email' }, 500)
     }
-    
-    return c.json({ 
-      success: true, 
+
+    return c.json({
+      success: true,
       message: 'Email de vérification envoyé',
-      code: resendKey ? undefined : code, // DEV ONLY: renvoie le code si Resend n'est pas configuré
-      dev_mode: !resendKey
+      dev_code: resendKey ? undefined : code // DEV ONLY
     })
     
   } catch (error: any) {
     console.error('❌ Erreur send-verification-email:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+// Vérifier le code email reçu par l'utilisateur
+app.post('/api/auth/verify-email-code', rateLimit(5, 15 * 60 * 1000), async (c) => {
+  const { DB } = c.env
+  try {
+    const { userId, code } = await c.req.json()
+
+    if (!userId || !code) {
+      return c.json({ success: false, error: 'userId et code requis' }, 400)
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+
+    // Chercher le code valide le plus récent pour cet utilisateur
+    const record = await DB.prepare(
+      `SELECT * FROM email_verification_codes
+       WHERE user_id = ? AND used_at IS NULL AND expires_at > ?
+       ORDER BY created_at DESC LIMIT 1`
+    ).bind(userId, now).first()
+
+    if (!record) {
+      return c.json({ success: false, error: 'Code invalide ou expiré. Demandez un nouveau code.' }, 400)
+    }
+
+    // Incrémenter les tentatives
+    await DB.prepare(
+      `UPDATE email_verification_codes SET attempts = attempts + 1 WHERE id = ?`
+    ).bind(record.id).run()
+
+    // Bloquer après 5 tentatives échouées
+    if ((record.attempts as number) >= 5) {
+      await DB.prepare(`DELETE FROM email_verification_codes WHERE id = ?`).bind(record.id).run()
+      return c.json({ success: false, error: 'Trop de tentatives. Demandez un nouveau code.' }, 429)
+    }
+
+    if (record.code !== code) {
+      return c.json({ success: false, error: 'Code incorrect.' }, 400)
+    }
+
+    // Marquer le code comme utilisé
+    await DB.prepare(
+      `UPDATE email_verification_codes SET used_at = ? WHERE id = ?`
+    ).bind(now, record.id).run()
+
+    // Marquer l'email comme vérifié dans users
+    await DB.prepare(
+      `UPDATE users SET email_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(userId).run()
+
+    return c.json({ success: true, message: 'Email vérifié avec succès.' })
+  } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500)
   }
 })
@@ -4232,8 +4344,19 @@ app.post('/api/auth/login', rateLimit(10, 15 * 60 * 1000), async (c) => {
       secret
     )
     
-    return c.json({ 
-      success: true, 
+    // Définir le cookie httpOnly (protection XSS)
+    c.res = new Response(null)
+    const cookieOptions = [
+      `amanah_token=${token}`,
+      `HttpOnly`,
+      `Secure`,
+      `SameSite=Strict`,
+      `Path=/`,
+      `Max-Age=${JWT_EXPIRATION_SECONDS}`
+    ].join('; ')
+
+    const responseBody = JSON.stringify({
+      success: true,
       user: {
         id: user.id,
         email: user.email,
@@ -4242,13 +4365,20 @@ app.post('/api/auth/login', rateLimit(10, 15 * 60 * 1000), async (c) => {
         kyc_status: user.kyc_status,
         rating: user.rating
       },
-      token,
+      token, // maintenu pour compatibilité avec les flux Firebase
       message: 'Connexion réussie'
     })
-    
+
+    return new Response(responseBody, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': cookieOptions
+      }
+    })
+
   } catch (error: any) {
-    console.error('❌ Login error:', error)
-    return c.json({ success: false, error: error.message }, 500)
+    return c.json({ success: false, error: 'Erreur lors de la connexion' }, 500)
   }
 })
 
@@ -4259,6 +4389,17 @@ app.post('/api/auth/login', rateLimit(10, 15 * 60 * 1000), async (c) => {
 app.get('/api/auth/me', authMiddleware, async (c) => {
   const user = c.get('user')
   return c.json({ success: true, user })
+})
+
+// Logout — efface le cookie httpOnly
+app.post('/api/auth/logout', async (c) => {
+  return new Response(JSON.stringify({ success: true }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Set-Cookie': 'amanah_token=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'
+    }
+  })
 })
 
 // RGPD — Droit à l'effacement : suppression du compte et de toutes les données associées
