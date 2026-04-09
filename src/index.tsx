@@ -514,26 +514,17 @@ app.use('/api/*', cors({
   maxAge: 86400,
 }))
 
-// Headers de sécurité HTTP sur toutes les routes
+// Headers de sécurité HTTP — uniquement sur les routes HTML et API (pas les fichiers statiques)
 app.use('*', async (c, next) => {
   await next()
+  const path = new URL(c.req.url).pathname
+  // Ne pas modifier les réponses de fichiers statiques
+  if (path.startsWith('/static/')) return
   c.header('X-Content-Type-Options', 'nosniff')
   c.header('X-Frame-Options', 'DENY')
   c.header('X-XSS-Protection', '1; mode=block')
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
-  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
-  c.header('Content-Security-Policy', [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://js.stripe.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://apis.google.com https://accounts.google.com",
-    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.jsdelivr.net",
-    "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https:",
-    "connect-src 'self' https: wss:",
-    "frame-src https://js.stripe.com https://accounts.google.com",
-    "object-src 'none'",
-    "base-uri 'self'",
-  ].join('; '))
 })
 
 // Rate limiting en mémoire (par IP, par endpoint)
