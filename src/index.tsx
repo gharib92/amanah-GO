@@ -525,12 +525,12 @@ app.use('*', async (c, next) => {
   c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   c.header('Content-Security-Policy', [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://js.stripe.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
-    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
-    "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://js.stripe.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://apis.google.com https://accounts.google.com",
+    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.jsdelivr.net",
+    "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
-    "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.stripe.com",
-    "frame-src https://js.stripe.com",
+    "connect-src 'self' https: wss:",
+    "frame-src https://js.stripe.com https://accounts.google.com",
     "object-src 'none'",
     "base-uri 'self'",
   ].join('; '))
