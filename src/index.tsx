@@ -517,16 +517,13 @@ app.use('/api/*', cors({
 // Headers de sécurité HTTP sur toutes les routes
 app.use('*', async (c, next) => {
   await next()
-  c.res.headers.set('X-Content-Type-Options', 'nosniff')
-  c.res.headers.set('X-Frame-Options', 'DENY')
-  c.res.headers.set('X-XSS-Protection', '1; mode=block')
-  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  if (c.req.url.startsWith('https://')) {
-    c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
-  }
-  // CSP — autorise Firebase, Stripe, Resend
-  c.res.headers.set('Content-Security-Policy', [
+  c.header('X-Content-Type-Options', 'nosniff')
+  c.header('X-Frame-Options', 'DENY')
+  c.header('X-XSS-Protection', '1; mode=block')
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  c.header('Content-Security-Policy', [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://js.stripe.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
@@ -3640,17 +3637,12 @@ app.post('/api/auth/signup', rateLimit(5, 60 * 60 * 1000), async (c) => {
       `Max-Age=${JWT_EXPIRATION_SECONDS}`
     ].join('; ')
 
-    return new Response(JSON.stringify({
+    c.header('Set-Cookie', cookieOptions)
+    return c.json({
       success: true,
       user: { id: userId, email, name, phone, kyc_status: 'PENDING' },
-      token, // maintenu pour compatibilité
+      token,
       message: 'Compte créé avec succès'
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Set-Cookie': cookieOptions
-      }
     })
 
   } catch (error: any) {
@@ -4344,8 +4336,6 @@ app.post('/api/auth/login', rateLimit(10, 15 * 60 * 1000), async (c) => {
       secret
     )
     
-    // Définir le cookie httpOnly (protection XSS)
-    c.res = new Response(null)
     const cookieOptions = [
       `amanah_token=${token}`,
       `HttpOnly`,
@@ -4355,7 +4345,8 @@ app.post('/api/auth/login', rateLimit(10, 15 * 60 * 1000), async (c) => {
       `Max-Age=${JWT_EXPIRATION_SECONDS}`
     ].join('; ')
 
-    const responseBody = JSON.stringify({
+    c.header('Set-Cookie', cookieOptions)
+    return c.json({
       success: true,
       user: {
         id: user.id,
@@ -4365,16 +4356,8 @@ app.post('/api/auth/login', rateLimit(10, 15 * 60 * 1000), async (c) => {
         kyc_status: user.kyc_status,
         rating: user.rating
       },
-      token, // maintenu pour compatibilité avec les flux Firebase
+      token,
       message: 'Connexion réussie'
-    })
-
-    return new Response(responseBody, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Set-Cookie': cookieOptions
-      }
     })
 
   } catch (error: any) {
@@ -4393,13 +4376,8 @@ app.get('/api/auth/me', authMiddleware, async (c) => {
 
 // Logout — efface le cookie httpOnly
 app.post('/api/auth/logout', async (c) => {
-  return new Response(JSON.stringify({ success: true }), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'Set-Cookie': 'amanah_token=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'
-    }
-  })
+  c.header('Set-Cookie', 'amanah_token=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0')
+  return c.json({ success: true })
 })
 
 // RGPD — Droit à l'effacement : suppression du compte et de toutes les données associées
