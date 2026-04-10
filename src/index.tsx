@@ -2457,17 +2457,26 @@ const adminMiddleware = async (c: any, next: any) => {
     
     // Essayer Firebase d'abord
     try {
+      const firebaseApiKey = c.env?.FIREBASE_API_KEY
       const firebaseRes = await fetch(
-        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${c.env?.FIREBASE_API_KEY}`,
+        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: token }) }
       )
       if (firebaseRes.ok) {
         const data: any = await firebaseRes.json()
         const firebaseUser = data.users?.[0]
         if (firebaseUser) {
-          const dbUser = await db.getUserByFirebaseUid(firebaseUser.localId)
+          // Cherche par firebase_uid en priorité, puis par email en fallback
+          let dbUser = await db.getUserByFirebaseUid(firebaseUser.localId)
+          if (!dbUser && firebaseUser.email) {
+            dbUser = await db.getUserByEmail(firebaseUser.email)
+          }
           if (!dbUser || dbUser.role !== 'admin') {
             return c.json({ success: false, error: 'Accès non autorisé' }, 403)
+          }
+          // Mettre à jour firebase_uid si manquant
+          if (!dbUser.firebase_uid) {
+            await db.updateUser(dbUser.id, { firebase_uid: firebaseUser.localId })
           }
           c.set('user', { id: dbUser.id, email: dbUser.email, name: dbUser.name, role: dbUser.role })
           return await next()
