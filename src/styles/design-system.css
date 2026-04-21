@@ -1,0 +1,89 @@
+/**
+ * Amanah GO — Classes utilitaires du design system
+ * Construites au-dessus des tokens (tokens.css).
+ * Usage : <button class="bg-primary">...</button>
+ */
+
+/* ===== BACKGROUND ===== */
+.bg-primary        { background-color: var(--color-primary-500); }
+.bg-primary-50     { background-color: var(--color-primary-50); }
+.bg-primary-100    { background-color: var(--color-primary-100); }
+.bg-primary-200    { background-color: var(--color-primary-200); }
+.bg-primary-500    { background-color: var(--color-primary-500); }
+.bg-primary-600    { background-color: var(--color-primary-600); }
+.bg-primary-700    { background-color: var(--color-primary-700); }
+.bg-primary-800    { background-color: var(--color-primary-800); }
+
+.bg-success        { background-color: var(--color-success-600); }
+.bg-success-50     { background-color: var(--color-success-50); }
+.bg-success-100    { background-color: var(--color-success-100); }
+.bg-success-500    { background-color: var(--color-success-500); }
+.bg-success-600    { background-color: var(--color-success-600); }
+
+.bg-warning        { background-color: var(--color-warning-500); }
+.bg-warning-50     { background-color: var(--color-warning-50); }
+.bg-warning-100    { background-color: var(--color-warning-100); }
+.bg-warning-500    { background-color: var(--color-warning-500); }
+
+.bg-danger         { background-color: var(--color-danger-600); }
+.bg-danger-50      { background-color: var(--color-danger-50); }
+.bg-danger-100     { background-color: var(--color-danger-100); }
+.bg-danger-500     { background-color: var(--color-danger-500); }
+.bg-danger-600     { background-color: var(--color-danger-600); }
+.bg-danger-700     { background-color: var(--color-danger-700); }
+
+.bg-info           { background-color: var(--color-info-600); }
+.bg-info-50        { background-color: var(--color-info-50); }
+.bg-info-100       { background-color: var(--color-info-100); }
+.bg-info-500       { background-color: var(--color-info-500); }
+
+.bg-brand          { background-color: var(--color-brand); }
+.bg-brand-soft     { background-color: var(--color-brand-soft); }
+.bg-brand-strong   { background-color: var(--color-brand-strong); }
+
+.bg-gradient-brand      { background-image: var(--gradient-brand); }
+.bg-gradient-brand-soft { background-image: var(--gradient-brand-soft); }
+
+/* ===== HOVER ===== */
+.hover\:bg-primary:hover      { background-color: var(--color-primary-500); }
+.hover\:bg-primary-600:hover  { background-color: var(--color-primary-600); }
+.hover\:bg-primary-700:hover  { background-color: var(--color-primary-700); }
+.hover\:bg-primary-50:hover   { background-color: var(--color-primary-50); }
+.hover\:bg-success-700:hover  { background-color: var(--color-success-700); }
+.hover\:bg-danger-700:hover   { background-color: var(--color-danger-700); }
+.hover\:bg-brand:hover        { background-color: var(--color-brand); }
+.hover\:bg-brand-hover:hover  { background-color: var(--color-brand-hover); }
+
+/* ===== TEXT COLOR ===== */
+.text-primary      { color: var(--color-primary-500); }
+.text-primary-600  { color: var(--color-primary-600); }
+.text-primary-700  { color: var(--color-primary-700); }
+.text-primary-800  { color: var(--color-primary-800); }
+
+.text-success      { color: var(--color-success-600); }
+.text-success-700  { color: var(--color-success-700); }
+.text-success-600  { color: var(--color-success-600); }
+
+.text-warning      { color: var(--color-warning-600); }
+.text-warning-700  { color: var(--color-warning-700); }
+
+.text-danger       { color: var(--color-danger-600); }
+.text-danger-700   { color: var(--color-danger-700); }
+
+.text-info         { color: var(--color-info-600); }
+.text-info-700     { color: var(--color-info-700); }
+
+.text-brand        { color: var(--color-brand); }
+
+.hover\:text-brand:hover { color: var(--color-brand); }
+
+/* ===== BORDER COLOR ===== */
+.border-primary    { border-color: var(--color-primary-500); }
+.border-primary-100{ border-color: var(--color-primary-100); }
+.border-success-100{ border-color: var(--color-success-100); }
+.border-warning-100{ border-color: var(--color-warning-100); }
+.border-danger-100 { border-color: var(--color-danger-100); }
+.border-info-100   { border-color: var(--color-info-100); }
+
+/* ===== SHADOWS ===== */
+.shadow-brand { box-shadow: var(--shadow-brand); }
