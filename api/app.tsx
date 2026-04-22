@@ -513,7 +513,7 @@ app.get('/', (c) => {
         <link rel="manifest" href="/manifest.json">
         
         <!-- Icons -->
-        <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+        <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512x512.png">
         <link rel="apple-touch-icon" href="/static/icons/icon-180x180.png">
         <link rel="icon" sizes="192x192" href="/static/icons/icon-192x192.png">
         <link rel="icon" sizes="512x512" href="/static/icons/icon-512x512.png">
