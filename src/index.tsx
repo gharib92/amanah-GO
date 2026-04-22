@@ -7,6 +7,8 @@ import * as bcrypt from 'bcryptjs'
 import Stripe from 'stripe'
 import './styles.css' // Import Tailwind CSS
 import { renderVerifyProfilePage } from './views/verify-profile.view'
+import { renderDesignPreviewPage } from './views/design-preview.view'
+import { renderLandingV2Page } from './views/landing-v2.view'
 import { DatabaseService, generateId } from './db.service'
 import { compareFaces, type AWSCredentials } from './aws-rekognition.service'
 import { handleError, ErrorCodes, unauthorizedError, createErrorResponse } from './error.service'
@@ -587,7 +589,7 @@ app.get('/manifest.json', (c) => {
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#2563eb",
+    theme_color: "#667eea",
     orientation: "portrait-primary",
     scope: "/",
     icons: [
@@ -1037,7 +1039,8 @@ app.get('/test-i18n', (c) => {
 // ==========================================
 // LANDING PAGE
 // ==========================================
-app.get('/', (c) => {
+// Ancienne landing conservée sur /legacy (retour arrière possible en 1 clic)
+app.get('/legacy', (c) => {
   return c.html(`
     <!DOCTYPE html>
     <html lang="fr">
@@ -1080,7 +1083,7 @@ app.get('/', (c) => {
         <link rel="manifest" href="/manifest.json">
         
         <!-- Icons -->
-        <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+        <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512x512.png">
         <link rel="apple-touch-icon" href="/static/icons/icon-180x180.png">
         <link rel="icon" sizes="192x192" href="/static/icons/icon-192x192.png">
         <link rel="icon" sizes="512x512" href="/static/icons/icon-512x512.png">
@@ -1437,7 +1440,7 @@ app.get('/', (c) => {
                     
                     <div class="text-center p-6">
                         <i class="fas fa-lock text-green-600 text-4xl mb-4"></i>
-                        <h3 class="font-bold mb-2" data-i18n="landing.security_escrow_title">Paiement Escrow</h3>
+                        <h3 class="font-bold mb-2" data-i18n="landing.security_escrow_title">Paiement en séquestre</h3>
                         <p class="text-sm text-gray-600" data-i18n="landing.security_escrow_desc">Fonds sécurisés jusqu'à livraison</p>
                     </div>
                     
@@ -1631,101 +1634,107 @@ app.get('/admin', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
-    <body class="bg-gray-50">
+    <body class="bg-slate-50 font-sans text-slate-900 min-h-screen">
         <!-- Header -->
-        <nav class="bg-gradient-to-r from-purple-900 to-indigo-900 text-white shadow-lg">
-            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-shield-alt text-3xl"></i>
+        <nav class="bg-gradient-brand text-white shadow-xl">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur">
+                        <i class="fas fa-shield-halved text-xl"></i>
+                    </div>
                     <div>
-                        <h1 class="text-xl font-bold">Admin Dashboard</h1>
-                        <p class="text-sm text-purple-200">Validation KYC & Modération</p>
+                        <h1 class="text-xl font-bold leading-tight">Admin Dashboard</h1>
+                        <p class="text-xs opacity-80">Validation KYC & Modération</p>
                     </div>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <span id="adminName" class="text-sm"></span>
-                    <a href="/" class="hover:text-purple-200">
-                        <i class="fas fa-home mr-1"></i> Accueil
+                <div class="flex items-center gap-5">
+                    <span id="adminName" class="text-sm font-medium opacity-90"></span>
+                    <a href="/" class="text-sm font-semibold hover:opacity-80 inline-flex items-center gap-1.5">
+                        <i class="fas fa-home"></i>Accueil
                     </a>
                 </div>
             </div>
         </nav>
 
         <!-- Stats Dashboard -->
-        <div class="max-w-7xl mx-auto px-4 py-8">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="max-w-7xl mx-auto px-6 py-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <!-- Total Users -->
-                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-gray-600 text-sm mb-1">Total Utilisateurs</p>
-                            <p id="totalUsers" class="text-3xl font-bold text-gray-800">0</p>
+                            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-1">Total Utilisateurs</p>
+                            <p id="totalUsers" class="text-3xl font-bold">0</p>
                         </div>
-                        <i class="fas fa-users text-4xl text-blue-500"></i>
+                        <div class="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center">
+                            <i class="fas fa-users text-primary-600 text-xl"></i>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Pending KYC -->
-                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-gray-600 text-sm mb-1">KYC En Attente</p>
-                            <p id="pendingKYC" class="text-3xl font-bold text-gray-800">0</p>
+                            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-1">KYC En Attente</p>
+                            <p id="pendingKYC" class="text-3xl font-bold">0</p>
                         </div>
-                        <i class="fas fa-clock text-4xl text-yellow-500"></i>
+                        <div class="w-12 h-12 rounded-xl bg-warning-100 flex items-center justify-center">
+                            <i class="fas fa-clock text-warning-600 text-xl"></i>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Verified Users -->
-                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-gray-600 text-sm mb-1">Utilisateurs Vérifiés</p>
-                            <p id="verifiedUsers" class="text-3xl font-bold text-gray-800">0</p>
+                            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-1">Vérifiés</p>
+                            <p id="verifiedUsers" class="text-3xl font-bold text-success-600">0</p>
                         </div>
-                        <i class="fas fa-check-circle text-4xl text-green-500"></i>
+                        <div class="w-12 h-12 rounded-xl bg-success-100 flex items-center justify-center">
+                            <i class="fas fa-check-circle text-success-600 text-xl"></i>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Rejected KYC -->
-                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-gray-600 text-sm mb-1">KYC Rejetés</p>
-                            <p id="rejectedKYC" class="text-3xl font-bold text-gray-800">0</p>
+                            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-1">KYC Rejetés</p>
+                            <p id="rejectedKYC" class="text-3xl font-bold text-danger-600">0</p>
                         </div>
-                        <i class="fas fa-times-circle text-4xl text-red-500"></i>
+                        <div class="w-12 h-12 rounded-xl bg-danger-100 flex items-center justify-center">
+                            <i class="fas fa-times-circle text-danger-600 text-xl"></i>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Tabs -->
-            <div class="bg-white rounded-lg shadow-md mb-6">
-                <div class="border-b border-gray-200">
-                    <nav class="flex space-x-4 px-6">
-                        <button onclick="switchTab('pending')" 
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm mb-6">
+                <div class="border-b border-slate-200">
+                    <nav class="flex gap-1 px-4 overflow-x-auto">
+                        <button onclick="switchTab('pending')"
                                 id="tab-pending"
-                                class="tab-btn py-4 px-6 font-medium border-b-2 border-yellow-500 text-yellow-600">
-                            <i class="fas fa-clock mr-2"></i>
-                            KYC En Attente
+                                class="tab-btn py-4 px-5 font-semibold text-sm border-b-2 border-primary text-primary-600 whitespace-nowrap">
+                            <i class="fas fa-clock mr-2"></i>KYC En Attente
                         </button>
-                        <button onclick="switchTab('verified')" 
+                        <button onclick="switchTab('verified')"
                                 id="tab-verified"
-                                class="tab-btn py-4 px-6 font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-800">
-                            <i class="fas fa-check-circle mr-2"></i>
-                            Vérifiés
+                                class="tab-btn py-4 px-5 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-primary-600 whitespace-nowrap transition">
+                            <i class="fas fa-check-circle mr-2"></i>Vérifiés
                         </button>
-                        <button onclick="switchTab('rejected')" 
+                        <button onclick="switchTab('rejected')"
                                 id="tab-rejected"
-                                class="tab-btn py-4 px-6 font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-800">
-                            <i class="fas fa-times-circle mr-2"></i>
-                            Rejetés
+                                class="tab-btn py-4 px-5 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-primary-600 whitespace-nowrap transition">
+                            <i class="fas fa-times-circle mr-2"></i>Rejetés
                         </button>
-                        <button onclick="switchTab('all')" 
+                        <button onclick="switchTab('all')"
                                 id="tab-all"
-                                class="tab-btn py-4 px-6 font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-800">
-                            <i class="fas fa-list mr-2"></i>
-                            Tous
+                                class="tab-btn py-4 px-5 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-primary-600 whitespace-nowrap transition">
+                            <i class="fas fa-list mr-2"></i>Tous
                         </button>
                     </nav>
                 </div>
@@ -1738,18 +1747,20 @@ app.get('/admin', (c) => {
         </div>
 
         <!-- Modal KYC Validation -->
-        <div id="kycModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-            <div class="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                <div class="p-6 border-b border-gray-200 flex items-center justify-between">
-                    <h2 class="text-2xl font-bold text-gray-800">
-                        <i class="fas fa-id-card mr-2 text-purple-600"></i>
+        <div id="kycModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div class="p-6 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <h2 class="text-xl font-bold inline-flex items-center gap-2">
+                        <span class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+                            <i class="fas fa-id-card text-primary-600"></i>
+                        </span>
                         Validation KYC
                     </h2>
-                    <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                    <button onclick="closeModal()" class="w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition flex items-center justify-center">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                
+
                 <div id="modalContent" class="p-6">
                     <!-- Content loaded dynamically -->
                 </div>
@@ -3003,7 +3014,7 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
         traveler_stripe_account: traveler.stripe_account_id,
         platform: 'amanah-go'
       },
-      description: `Paiement Escrow pour trajet ${trip.departure_city} → ${trip.arrival_city}`
+      description: `Paiement en séquestre pour trajet ${trip.departure_city} → ${trip.arrival_city}`
     })
 
     // ✅ MIGRATION D1: Sauvegarder le payment_intent_id dans la transaction
@@ -4668,13 +4679,19 @@ app.get('/cgu', (c) => {
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-50 text-gray-800">
-  <header class="bg-white shadow-sm sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/" class="flex items-center space-x-2">
-        <span class="text-2xl font-bold text-blue-600">Amanah GO</span>
+<body class="bg-slate-50 text-slate-800 font-sans">
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="/" class="inline-flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shadow-brand">
+          <span class="text-white font-bold text-lg">A</span>
+        </div>
+        <div>
+          <div class="font-bold text-lg leading-tight text-slate-900">Amanah GO</div>
+          <div class="text-xs text-slate-500 -mt-0.5">France ↔ Maroc</div>
+        </div>
       </a>
-      <a href="/" class="text-gray-600 hover:text-blue-600 text-sm"><i class="fas fa-arrow-left mr-1"></i>Retour</a>
+      <a href="/" class="text-sm font-semibold text-slate-600 hover:text-brand transition inline-flex items-center gap-1.5"><i class="fas fa-arrow-left"></i>Retour</a>
     </div>
   </header>
   <main class="max-w-4xl mx-auto px-4 py-12">
@@ -4683,30 +4700,30 @@ app.get('/cgu', (c) => {
 
     <div class="prose max-w-none space-y-8">
       <section>
-        <h2 class="text-xl font-semibold mb-3">1. Objet</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>1. Objet</h2>
         <p>Les présentes Conditions Générales d'Utilisation (ci-après « CGU ») régissent l'accès et l'utilisation de la plateforme Amanah GO (ci-après « la Plateforme »), accessible à l'adresse <strong>amanahgo.app</strong>, exploitée par Amanah GO SAS (ci-après « la Société »).</p>
         <p class="mt-2">Amanah GO est une plateforme de mise en relation entre des <strong>voyageurs</strong> effectuant des trajets entre la France et le Maroc et des <strong>expéditeurs</strong> souhaitant faire transporter des colis.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">2. Acceptation des CGU</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>2. Acceptation des CGU</h2>
         <p>L'utilisation de la Plateforme implique l'acceptation pleine et entière des présentes CGU. Si vous n'acceptez pas ces conditions, vous devez cesser immédiatement d'utiliser la Plateforme.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">3. Inscription et compte utilisateur</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>3. Inscription et compte utilisateur</h2>
         <p>Pour accéder aux services de la Plateforme, l'utilisateur doit créer un compte en fournissant des informations exactes, complètes et à jour. L'utilisateur est responsable de la confidentialité de ses identifiants.</p>
         <p class="mt-2">Amanah GO se réserve le droit de suspendre ou supprimer tout compte en cas de violation des présentes CGU, de fraude, ou d'utilisation abusive de la Plateforme.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">4. Vérification d'identité (KYC)</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>4. Vérification d'identité (KYC)</h2>
         <p>Pour des raisons légales et de sécurité, tout utilisateur souhaitant publier un trajet ou expédier un colis doit compléter une procédure de vérification d'identité (Know Your Customer). Cette procédure implique la fourniture d'une pièce d'identité valide et d'un selfie.</p>
-        <p class="mt-2">Les documents fournis sont traités conformément à notre <a href="/confidentialite" class="text-blue-600 hover:underline">Politique de Confidentialité</a>.</p>
+        <p class="mt-2">Les documents fournis sont traités conformément à notre <a href="/confidentialite" class="text-primary-600 hover:underline">Politique de Confidentialité</a>.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">5. Services proposés</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>5. Services proposés</h2>
         <p>La Plateforme permet :</p>
         <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
           <li>Aux <strong>voyageurs</strong> de publier leurs trajets et d'accepter des colis contre rémunération</li>
@@ -4718,7 +4735,7 @@ app.get('/cgu', (c) => {
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">6. Obligations des utilisateurs</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>6. Obligations des utilisateurs</h2>
         <p>L'utilisateur s'engage à :</p>
         <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
           <li>Ne transporter aucun objet illicite, dangereux ou interdit à l'importation/exportation</li>
@@ -4729,7 +4746,7 @@ app.get('/cgu', (c) => {
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">7. Responsabilités</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>7. Responsabilités</h2>
         <p>Amanah GO agit en qualité d'intermédiaire technique et ne peut être tenu responsable :</p>
         <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
           <li>Des dommages subis par les colis durant le transport</li>
@@ -4740,39 +4757,39 @@ app.get('/cgu', (c) => {
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">8. Tarifs et paiements</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>8. Tarifs et paiements</h2>
         <p>Les paiements sont traités par <strong>Stripe</strong>, prestataire de services de paiement agréé. Amanah GO prélève une commission de service sur chaque transaction. Les tarifs en vigueur sont affichés sur la Plateforme avant toute confirmation.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">9. Propriété intellectuelle</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>9. Propriété intellectuelle</h2>
         <p>Tous les éléments de la Plateforme (logo, textes, design, code source) sont la propriété exclusive de Amanah GO SAS et sont protégés par les lois sur la propriété intellectuelle. Toute reproduction sans autorisation est interdite.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">10. Modification des CGU</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>10. Modification des CGU</h2>
         <p>Amanah GO se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront informés des modifications par email ou notification dans l'application. L'utilisation continue de la Plateforme après modification vaut acceptation des nouvelles CGU.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">11. Droit applicable et juridiction</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>11. Droit applicable et juridiction</h2>
         <p>Les présentes CGU sont régies par le droit français. Tout litige relatif à leur interprétation ou exécution sera soumis aux tribunaux compétents de Paris.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">12. Contact</h2>
-        <p>Pour toute question relative aux présentes CGU : <a href="mailto:contact@amanahgo.app" class="text-blue-600 hover:underline">contact@amanahgo.app</a></p>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>12. Contact</h2>
+        <p>Pour toute question relative aux présentes CGU : <a href="mailto:contact@amanahgo.app" class="text-primary-600 hover:underline">contact@amanahgo.app</a></p>
       </section>
     </div>
   </main>
-  <footer class="bg-gray-900 text-white py-6 mt-16">
-    <div class="max-w-4xl mx-auto px-4 text-center">
-      <div class="flex justify-center space-x-6 mb-3 text-sm">
-        <a href="/cgu" class="text-blue-400 font-medium">CGU</a>
-        <a href="/confidentialite" class="hover:text-blue-400">Confidentialité</a>
-        <a href="/mentions-legales" class="hover:text-blue-400">Mentions légales</a>
+  <footer class="bg-slate-900 text-slate-400 py-8 mt-16">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <div class="flex justify-center gap-6 mb-3 text-sm">
+        <a href="/cgu" class="text-primary-400 font-semibold">CGU</a>
+        <a href="/confidentialite" class="hover:text-white transition">Confidentialité</a>
+        <a href="/mentions-legales" class="hover:text-white transition">Mentions légales</a>
       </div>
-      <p class="text-gray-400 text-sm">© 2025 Amanah GO. Tous droits réservés.</p>
+      <p class="text-sm">© 2025 Amanah GO. Tous droits réservés.</p>
     </div>
   </footer>
 </body>
@@ -4789,13 +4806,19 @@ app.get('/confidentialite', (c) => {
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-50 text-gray-800">
-  <header class="bg-white shadow-sm sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/" class="flex items-center space-x-2">
-        <span class="text-2xl font-bold text-blue-600">Amanah GO</span>
+<body class="bg-slate-50 text-slate-800 font-sans">
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="/" class="inline-flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shadow-brand">
+          <span class="text-white font-bold text-lg">A</span>
+        </div>
+        <div>
+          <div class="font-bold text-lg leading-tight text-slate-900">Amanah GO</div>
+          <div class="text-xs text-slate-500 -mt-0.5">France ↔ Maroc</div>
+        </div>
       </a>
-      <a href="/" class="text-gray-600 hover:text-blue-600 text-sm"><i class="fas fa-arrow-left mr-1"></i>Retour</a>
+      <a href="/" class="text-sm font-semibold text-slate-600 hover:text-brand transition inline-flex items-center gap-1.5"><i class="fas fa-arrow-left"></i>Retour</a>
     </div>
   </header>
   <main class="max-w-4xl mx-auto px-4 py-12">
@@ -4804,13 +4827,13 @@ app.get('/confidentialite', (c) => {
 
     <div class="prose max-w-none space-y-8">
       <section>
-        <h2 class="text-xl font-semibold mb-3">1. Responsable du traitement</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>1. Responsable du traitement</h2>
         <p><strong>Amanah GO SAS</strong><br>
-        Email : <a href="mailto:privacy@amanahgo.app" class="text-blue-600 hover:underline">privacy@amanahgo.app</a></p>
+        Email : <a href="mailto:privacy@amanahgo.app" class="text-primary-600 hover:underline">privacy@amanahgo.app</a></p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">2. Données collectées</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>2. Données collectées</h2>
         <p>Nous collectons les données suivantes :</p>
         <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
           <li><strong>Données d'identité :</strong> nom, prénom, date de naissance (pour la vérification KYC)</li>
@@ -4823,7 +4846,7 @@ app.get('/confidentialite', (c) => {
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">3. Finalités du traitement</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>3. Finalités du traitement</h2>
         <div class="overflow-x-auto mt-2">
           <table class="w-full text-sm border-collapse border border-gray-200">
             <thead class="bg-gray-100">
@@ -4845,7 +4868,7 @@ app.get('/confidentialite', (c) => {
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">4. Destinataires des données</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>4. Destinataires des données</h2>
         <p>Vos données peuvent être partagées avec :</p>
         <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
           <li><strong>Stripe Inc.</strong> — traitement des paiements (États-Unis, clauses contractuelles types)</li>
@@ -4857,7 +4880,7 @@ app.get('/confidentialite', (c) => {
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">5. Vos droits (RGPD)</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>5. Vos droits (RGPD)</h2>
         <p>Conformément au RGPD, vous disposez des droits suivants :</p>
         <ul class="list-disc list-inside mt-2 space-y-1 text-gray-700">
           <li><strong>Droit d'accès :</strong> obtenir une copie de vos données</li>
@@ -4867,34 +4890,34 @@ app.get('/confidentialite', (c) => {
           <li><strong>Droit d'opposition :</strong> vous opposer à certains traitements</li>
           <li><strong>Droit à la limitation :</strong> suspendre temporairement un traitement</li>
         </ul>
-        <p class="mt-3">Pour exercer ces droits : <a href="mailto:privacy@amanahgo.app" class="text-blue-600 hover:underline">privacy@amanahgo.app</a></p>
-        <p class="mt-2">Vous pouvez également introduire une réclamation auprès de la <strong>CNIL</strong> : <a href="https://www.cnil.fr" class="text-blue-600 hover:underline" target="_blank">www.cnil.fr</a></p>
+        <p class="mt-3">Pour exercer ces droits : <a href="mailto:privacy@amanahgo.app" class="text-primary-600 hover:underline">privacy@amanahgo.app</a></p>
+        <p class="mt-2">Vous pouvez également introduire une réclamation auprès de la <strong>CNIL</strong> : <a href="https://www.cnil.fr" class="text-primary-600 hover:underline" target="_blank">www.cnil.fr</a></p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">6. Sécurité des données</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>6. Sécurité des données</h2>
         <p>Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données : chiffrement des communications (HTTPS/TLS), stockage sécurisé sur Cloudflare R2 avec accès restreint, authentification à deux facteurs disponible.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">7. Cookies</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>7. Cookies</h2>
         <p>Amanah GO utilise des cookies techniques nécessaires au fonctionnement du service (sessions, authentification). Aucun cookie publicitaire n'est utilisé.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">8. Contact</h2>
-        <p>Délégué à la Protection des Données (DPO) : <a href="mailto:privacy@amanahgo.app" class="text-blue-600 hover:underline">privacy@amanahgo.app</a></p>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>8. Contact</h2>
+        <p>Délégué à la Protection des Données (DPO) : <a href="mailto:privacy@amanahgo.app" class="text-primary-600 hover:underline">privacy@amanahgo.app</a></p>
       </section>
     </div>
   </main>
-  <footer class="bg-gray-900 text-white py-6 mt-16">
-    <div class="max-w-4xl mx-auto px-4 text-center">
-      <div class="flex justify-center space-x-6 mb-3 text-sm">
-        <a href="/cgu" class="hover:text-blue-400">CGU</a>
-        <a href="/confidentialite" class="text-blue-400 font-medium">Confidentialité</a>
-        <a href="/mentions-legales" class="hover:text-blue-400">Mentions légales</a>
+  <footer class="bg-slate-900 text-slate-400 py-8 mt-16">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <div class="flex justify-center gap-6 mb-3 text-sm">
+        <a href="/cgu" class="hover:text-white transition">CGU</a>
+        <a href="/confidentialite" class="text-primary-400 font-semibold">Confidentialité</a>
+        <a href="/mentions-legales" class="hover:text-white transition">Mentions légales</a>
       </div>
-      <p class="text-gray-400 text-sm">© 2025 Amanah GO. Tous droits réservés.</p>
+      <p class="text-sm">© 2025 Amanah GO. Tous droits réservés.</p>
     </div>
   </footer>
 </body>
@@ -4911,13 +4934,19 @@ app.get('/mentions-legales', (c) => {
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-50 text-gray-800">
-  <header class="bg-white shadow-sm sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/" class="flex items-center space-x-2">
-        <span class="text-2xl font-bold text-blue-600">Amanah GO</span>
+<body class="bg-slate-50 text-slate-800 font-sans">
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="/" class="inline-flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shadow-brand">
+          <span class="text-white font-bold text-lg">A</span>
+        </div>
+        <div>
+          <div class="font-bold text-lg leading-tight text-slate-900">Amanah GO</div>
+          <div class="text-xs text-slate-500 -mt-0.5">France ↔ Maroc</div>
+        </div>
       </a>
-      <a href="/" class="text-gray-600 hover:text-blue-600 text-sm"><i class="fas fa-arrow-left mr-1"></i>Retour</a>
+      <a href="/" class="text-sm font-semibold text-slate-600 hover:text-brand transition inline-flex items-center gap-1.5"><i class="fas fa-arrow-left"></i>Retour</a>
     </div>
   </header>
   <main class="max-w-4xl mx-auto px-4 py-12">
@@ -4926,66 +4955,66 @@ app.get('/mentions-legales', (c) => {
 
     <div class="prose max-w-none space-y-8">
       <section>
-        <h2 class="text-xl font-semibold mb-3">1. Éditeur du site</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>1. Éditeur du site</h2>
         <div class="bg-white rounded-lg border border-gray-200 p-4 text-sm space-y-1">
           <p><strong>Raison sociale :</strong> Amanah GO SAS</p>
           <p><strong>Forme juridique :</strong> Société par Actions Simplifiée (SAS)</p>
           <p><strong>Capital social :</strong> En cours de constitution</p>
-          <p><strong>Email :</strong> <a href="mailto:contact@amanahgo.app" class="text-blue-600 hover:underline">contact@amanahgo.app</a></p>
+          <p><strong>Email :</strong> <a href="mailto:contact@amanahgo.app" class="text-primary-600 hover:underline">contact@amanahgo.app</a></p>
           <p><strong>Directeur de la publication :</strong> Gérant de Amanah GO SAS</p>
         </div>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">2. Hébergement</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>2. Hébergement</h2>
         <div class="bg-white rounded-lg border border-gray-200 p-4 text-sm space-y-1">
           <p><strong>Hébergeur :</strong> Cloudflare, Inc.</p>
           <p><strong>Adresse :</strong> 101 Townsend St, San Francisco, CA 94107, États-Unis</p>
-          <p><strong>Site :</strong> <a href="https://www.cloudflare.com" class="text-blue-600 hover:underline" target="_blank">www.cloudflare.com</a></p>
+          <p><strong>Site :</strong> <a href="https://www.cloudflare.com" class="text-primary-600 hover:underline" target="_blank">www.cloudflare.com</a></p>
           <p><strong>Services utilisés :</strong> Cloudflare Workers, Cloudflare Pages, Cloudflare D1, Cloudflare R2</p>
         </div>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">3. Propriété intellectuelle</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>3. Propriété intellectuelle</h2>
         <p>L'ensemble du contenu du site Amanah GO (textes, images, logos, icônes, code source, architecture) est protégé par le droit d'auteur et appartient à Amanah GO SAS ou à ses partenaires. Toute reproduction, représentation, modification ou exploitation sans autorisation expresse est strictement interdite.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">4. Données personnelles</h2>
-        <p>Le traitement des données personnelles des utilisateurs est décrit dans notre <a href="/confidentialite" class="text-blue-600 hover:underline">Politique de Confidentialité</a>.</p>
-        <p class="mt-2">Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données en contactant : <a href="mailto:privacy@amanahgo.app" class="text-blue-600 hover:underline">privacy@amanahgo.app</a></p>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>4. Données personnelles</h2>
+        <p>Le traitement des données personnelles des utilisateurs est décrit dans notre <a href="/confidentialite" class="text-primary-600 hover:underline">Politique de Confidentialité</a>.</p>
+        <p class="mt-2">Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données en contactant : <a href="mailto:privacy@amanahgo.app" class="text-primary-600 hover:underline">privacy@amanahgo.app</a></p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">5. Cookies</h2>
-        <p>Ce site utilise des cookies techniques nécessaires à son fonctionnement. Pour en savoir plus, consultez notre <a href="/confidentialite" class="text-blue-600 hover:underline">Politique de Confidentialité</a>.</p>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>5. Cookies</h2>
+        <p>Ce site utilise des cookies techniques nécessaires à son fonctionnement. Pour en savoir plus, consultez notre <a href="/confidentialite" class="text-primary-600 hover:underline">Politique de Confidentialité</a>.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">6. Liens hypertextes</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>6. Liens hypertextes</h2>
         <p>Amanah GO ne peut être tenu responsable du contenu des sites tiers vers lesquels des liens sont établis depuis la Plateforme.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">7. Droit applicable</h2>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>7. Droit applicable</h2>
         <p>Les présentes mentions légales sont soumises au droit français. Tout litige relatif à l'utilisation du site sera de la compétence exclusive des tribunaux de Paris.</p>
       </section>
 
       <section>
-        <h2 class="text-xl font-semibold mb-3">8. Contact</h2>
-        <p>Pour toute question : <a href="mailto:contact@amanahgo.app" class="text-blue-600 hover:underline">contact@amanahgo.app</a></p>
+        <h2 class="text-xl font-bold mb-3 text-slate-900 flex items-center gap-2"><span class="inline-flex w-8 h-8 rounded-lg bg-primary-100 text-primary-600 items-center justify-center text-sm font-bold">§</span>8. Contact</h2>
+        <p>Pour toute question : <a href="mailto:contact@amanahgo.app" class="text-primary-600 hover:underline">contact@amanahgo.app</a></p>
       </section>
     </div>
   </main>
-  <footer class="bg-gray-900 text-white py-6 mt-16">
-    <div class="max-w-4xl mx-auto px-4 text-center">
-      <div class="flex justify-center space-x-6 mb-3 text-sm">
-        <a href="/cgu" class="hover:text-blue-400">CGU</a>
-        <a href="/confidentialite" class="hover:text-blue-400">Confidentialité</a>
-        <a href="/mentions-legales" class="text-blue-400 font-medium">Mentions légales</a>
+  <footer class="bg-slate-900 text-slate-400 py-8 mt-16">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <div class="flex justify-center gap-6 mb-3 text-sm">
+        <a href="/cgu" class="hover:text-white transition">CGU</a>
+        <a href="/confidentialite" class="hover:text-white transition">Confidentialité</a>
+        <a href="/mentions-legales" class="text-primary-400 font-semibold">Mentions légales</a>
       </div>
-      <p class="text-gray-400 text-sm">© 2025 Amanah GO. Tous droits réservés.</p>
+      <p class="text-sm">© 2025 Amanah GO. Tous droits réservés.</p>
     </div>
   </footer>
 </body>
@@ -5007,63 +5036,71 @@ app.get('/forgot-password', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
-    <body class="bg-gray-50">
+    <body class="bg-slate-50 font-sans text-slate-900 min-h-screen">
         <!-- Header -->
-        <nav class="bg-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 py-4">
-                <a href="/" class="flex items-center space-x-2">
-                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+        <nav class="bg-white border-b border-slate-200 sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-6 py-4">
+                <a href="/" class="inline-flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shadow-brand">
+                        <span class="text-white font-bold text-lg">A</span>
+                    </div>
+                    <div>
+                        <div class="font-bold text-lg leading-tight">Amanah GO</div>
+                        <div class="text-xs text-slate-500 -mt-0.5">France ↔ Maroc</div>
+                    </div>
                 </a>
             </div>
         </nav>
 
-        <div class="max-w-md mx-auto px-4 py-12">
-            <div class="bg-white rounded-xl shadow-lg p-8">
-                <div class="text-center mb-8">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                        <i class="fas fa-key text-blue-600 text-2xl"></i>
-                    </div>
-                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Mot de passe oublié ?</h1>
-                    <p class="text-gray-600">Entrez votre email pour recevoir un lien de réinitialisation</p>
-                </div>
+        <div class="relative overflow-hidden">
+            <div class="absolute top-10 -left-20 w-80 h-80 rounded-full bg-primary-200/40 blur-3xl"></div>
+            <div class="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-primary-300/30 blur-3xl"></div>
 
-                <form id="resetForm" class="space-y-6">
-                    <!-- Email -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Adresse email
-                        </label>
-                        <input type="email" id="email" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                               placeholder="exemple@email.com">
+            <div class="relative max-w-md mx-auto px-6 py-12">
+                <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+                    <div class="text-center mb-8">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-brand shadow-brand mb-4">
+                            <i class="fas fa-key text-white text-2xl"></i>
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-bold mb-2">Mot de passe oublié ?</h1>
+                        <p class="text-slate-500 text-sm">Entrez votre email pour recevoir un lien de réinitialisation</p>
                     </div>
 
-                    <!-- Messages -->
-                    <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        <span id="errorText"></span>
+                    <form id="resetForm" class="space-y-5">
+                        <!-- Email -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Adresse email</label>
+                            <input type="email" id="email" required
+                                   class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-primary focus:outline-none transition"
+                                   placeholder="exemple@email.com">
+                        </div>
+
+                        <!-- Messages -->
+                        <div id="errorMessage" class="hidden bg-danger-50 border border-danger-100 text-danger-700 px-4 py-3 rounded-xl text-sm">
+                            <i class="fas fa-exclamation-circle mr-2"></i>
+                            <span id="errorText"></span>
+                        </div>
+
+                        <div id="successMessage" class="hidden bg-success-50 border border-success-100 text-success-700 px-4 py-3 rounded-xl text-sm">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            <span id="successText"></span>
+                        </div>
+
+                        <!-- Bouton -->
+                        <button type="submit" id="submitBtn"
+                                class="w-full bg-primary hover:bg-primary-600 text-white font-semibold py-3.5 rounded-xl transition shadow-brand inline-flex items-center justify-center gap-2">
+                            <i class="fas fa-paper-plane"></i>
+                            Envoyer le lien de réinitialisation
+                        </button>
+                    </form>
+
+                    <!-- Retour connexion -->
+                    <div class="mt-6 text-center">
+                        <a href="/login" class="text-primary-600 hover:underline text-sm font-semibold inline-flex items-center gap-1">
+                            <i class="fas fa-arrow-left"></i>
+                            Retour à la connexion
+                        </a>
                     </div>
-
-                    <div id="successMessage" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-                        <i class="fas fa-check-circle mr-2"></i>
-                        <span id="successText"></span>
-                    </div>
-
-                    <!-- Bouton -->
-                    <button type="submit" id="submitBtn"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition">
-                        <i class="fas fa-paper-plane mr-2"></i>
-                        Envoyer le lien de réinitialisation
-                    </button>
-                </form>
-
-                <!-- Retour connexion -->
-                <div class="mt-6 text-center">
-                    <a href="/login" class="text-blue-600 hover:underline text-sm">
-                        <i class="fas fa-arrow-left mr-1"></i>
-                        Retour à la connexion
-                    </a>
                 </div>
             </div>
         </div>
@@ -5196,13 +5233,18 @@ app.get('/login', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
-    <body class="bg-gray-50">
+    <body class="bg-slate-50 font-sans text-slate-900 min-h-screen">
         <!-- Header -->
-        <nav class="bg-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 py-4">
-                <a href="/" class="flex items-center space-x-2">
-                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+        <nav class="bg-white border-b border-slate-200 sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-6 py-4">
+                <a href="/" class="inline-flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shadow-brand">
+                        <span class="text-white font-bold text-lg">A</span>
+                    </div>
+                    <div>
+                        <div class="font-bold text-lg leading-tight">Amanah GO</div>
+                        <div class="text-xs text-slate-500 -mt-0.5">France ↔ Maroc</div>
+                    </div>
                 </a>
             </div>
         </nav>
@@ -5212,86 +5254,96 @@ app.get('/login', (c) => {
         <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
         <script src="/static/firebase-compat.js?v=3"></script>
 
-        <div class="max-w-md mx-auto px-4 py-12">
-            <div class="bg-white rounded-xl shadow-lg p-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Connexion</h1>
-                <p class="text-gray-600 mb-8">Bienvenue sur Amanah GO</p>
+        <div class="relative overflow-hidden">
+            <div class="absolute top-10 -left-20 w-80 h-80 rounded-full bg-primary-200/40 blur-3xl"></div>
+            <div class="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-primary-300/30 blur-3xl"></div>
 
-                <form id="loginForm" class="space-y-6">
-                    <!-- Email -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Email
-                        </label>
-                        <input type="email" id="email" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                               placeholder="exemple@email.com">
+            <div class="relative max-w-md mx-auto px-6 py-12">
+                <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+                    <h1 class="text-3xl font-bold mb-2">Connexion</h1>
+                    <p class="text-slate-500 mb-8">Bon retour parmi nous 👋</p>
+
+                    <form id="loginForm" class="space-y-5">
+                        <!-- Email -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
+                            <input type="email" id="email" required
+                                   class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-primary focus:outline-none transition"
+                                   placeholder="exemple@email.com">
+                        </div>
+
+                        <!-- Mot de passe -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="text-sm font-semibold text-slate-700">Mot de passe</label>
+                                <a href="/forgot-password" class="text-primary-600 hover:underline text-sm font-medium">Mot de passe oublié ?</a>
+                            </div>
+                            <input type="password" id="password" required
+                                   class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-primary focus:outline-none transition"
+                                   placeholder="Votre mot de passe">
+                        </div>
+
+                        <!-- Message d'erreur -->
+                        <div id="errorMessage" class="hidden bg-danger-50 border border-danger-100 text-danger-700 px-4 py-3 rounded-xl text-sm">
+                            <i class="fas fa-exclamation-circle mr-2"></i>
+                            <span id="errorText"></span>
+                        </div>
+
+                        <!-- Bouton connexion -->
+                        <button type="submit"
+                                class="w-full bg-primary hover:bg-primary-600 text-white font-semibold py-3.5 rounded-xl transition shadow-brand inline-flex items-center justify-center gap-2">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Se connecter
+                        </button>
+                    </form>
+
+                    <!-- Séparateur -->
+                    <div class="relative my-6">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-slate-200"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-3 bg-white text-slate-500 font-medium">Ou continuer avec</span>
+                        </div>
                     </div>
 
-                    <!-- Mot de passe -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2 flex justify-between">
-                            <span>Mot de passe</span>
-                            <a href="/forgot-password" class="text-blue-600 hover:underline text-sm">Mot de passe oublié ?</a>
-                        </label>
-                        <input type="password" id="password" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                               placeholder="Votre mot de passe">
+                    <!-- OAuth Buttons -->
+                    <div class="space-y-2.5">
+                        <a href="/api/auth/apple"
+                           class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition font-semibold">
+                            <i class="fab fa-apple text-xl"></i>
+                            Sign in with Apple
+                        </a>
+                        <button onclick="signInWithGoogle()" type="button"
+                           class="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition font-semibold text-slate-700">
+                            <i class="fab fa-google text-red-500"></i>
+                            Continuer avec Google
+                        </button>
+                        <button onclick="signInWithFacebook()" type="button"
+                           class="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition font-semibold text-slate-700">
+                            <i class="fab fa-facebook text-blue-600"></i>
+                            Continuer avec Facebook
+                        </button>
                     </div>
 
-                    <!-- Message d'erreur -->
-                    <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        <span id="errorText"></span>
-                    </div>
-
-                    <!-- Bouton connexion -->
-                    <button type="submit"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition">
-                        <i class="fas fa-sign-in-alt mr-2"></i>
-                        Se connecter
-                    </button>
-                </form>
-
-                <!-- Séparateur -->
-                <div class="relative my-6">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div class="relative flex justify-center text-sm">
-                        <span class="px-2 bg-white text-gray-500">Ou continuer avec</span>
-                    </div>
+                    <!-- Lien inscription -->
+                    <p class="mt-8 text-center text-sm text-slate-500">
+                        Pas encore de compte ?
+                        <a href="/signup" class="text-primary-600 hover:underline font-semibold">Créer un compte</a>
+                    </p>
                 </div>
 
-                <!-- OAuth Buttons -->
-                <div class="space-y-3">
-                    <!-- Apple Sign In -->
-                    <a href="/api/auth/apple"
-                       class="w-full flex items-center justify-center px-4 py-3 bg-black hover:bg-gray-900 text-white rounded-lg transition cursor-pointer">
-                        <i class="fab fa-apple text-white mr-2 text-xl"></i>
-                        <span class="font-medium">Sign in with Apple</span>
-                    </a>
-                    
-                    <!-- Google Sign In -->
-                    <button onclick="signInWithGoogle()" type="button"
-                       class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
-                        <i class="fab fa-google text-red-500 mr-2"></i>
-                        <span class="font-medium text-gray-700">Continuer avec Google</span>
-                    </button>
-                    
-                    <!-- Facebook Sign In -->
-                    <button onclick="signInWithFacebook()" type="button"
-                       class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
-                        <i class="fab fa-facebook text-blue-600 mr-2"></i>
-                        <span class="font-medium text-gray-700">Continuer avec Facebook</span>
-                    </button>
+                <!-- Trust indicators -->
+                <div class="mt-6 flex items-center justify-center gap-6 text-xs text-slate-500">
+                    <div class="flex items-center gap-1.5">
+                        <i class="fas fa-lock text-primary-500"></i>
+                        <span>Connexion sécurisée</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i class="fas fa-shield-halved text-primary-500"></i>
+                        <span>RGPD</span>
+                    </div>
                 </div>
-
-                <!-- Lien inscription -->
-                <p class="mt-6 text-center text-sm text-gray-600">
-                    Vous n'avez pas de compte ?
-                    <a href="/signup" class="text-blue-600 hover:underline font-medium">Créer un compte</a>
-                </p>
             </div>
         </div>
 
@@ -5396,134 +5448,155 @@ app.get('/signup', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     </head>
-    <body class="bg-gray-50">
+    <body class="bg-slate-50 font-sans text-slate-900 min-h-screen">
         <!-- Header -->
-        <nav class="bg-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 py-4">
-                <a href="/" class="flex items-center space-x-2">
-                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
+        <nav class="bg-white border-b border-slate-200 sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-6 py-4">
+                <a href="/" class="inline-flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shadow-brand">
+                        <span class="text-white font-bold text-lg">A</span>
+                    </div>
+                    <div>
+                        <div class="font-bold text-lg leading-tight">Amanah GO</div>
+                        <div class="text-xs text-slate-500 -mt-0.5">France ↔ Maroc</div>
+                    </div>
                 </a>
             </div>
         </nav>
 
-        <div class="max-w-md mx-auto px-4 py-12">
-            <div class="bg-white rounded-xl shadow-lg p-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Créer un compte</h1>
-                <p class="text-gray-600 mb-8">Rejoignez la communauté Amanah GO</p>
+        <div class="relative overflow-hidden">
+            <div class="absolute top-10 -left-20 w-80 h-80 rounded-full bg-primary-200/40 blur-3xl"></div>
+            <div class="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-primary-300/30 blur-3xl"></div>
 
-                <form id="signupForm" class="space-y-6">
-                    <!-- Nom complet -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Nom complet <span class="text-red-500">*</span>
-                        </label>
-                        <input type="text" id="name" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                               placeholder="Ex: Mohammed Alami">
+            <div class="relative max-w-md mx-auto px-6 py-12">
+                <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+                    <h1 class="text-3xl font-bold mb-2">Créer un compte</h1>
+                    <p class="text-slate-500 mb-8">Rejoignez la communauté Amanah GO 🚀</p>
+
+                    <form id="signupForm" class="space-y-5">
+                        <!-- Nom complet -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                                Nom complet <span class="text-danger-500">*</span>
+                            </label>
+                            <input type="text" id="name" required
+                                   class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-primary focus:outline-none transition"
+                                   placeholder="Ex: Mohammed Alami">
+                        </div>
+
+                        <!-- Email -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                                Email <span class="text-danger-500">*</span>
+                            </label>
+                            <input type="email" id="email" required
+                                   class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-primary focus:outline-none transition"
+                                   placeholder="exemple@email.com">
+                        </div>
+
+                        <!-- Téléphone avec sélecteur pays -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                                Téléphone <span class="text-danger-500">*</span>
+                            </label>
+                            <div id="phone-input-container"></div>
+                        </div>
+
+                        <!-- Mot de passe -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                                Mot de passe <span class="text-danger-500">*</span>
+                            </label>
+                            <input type="password" id="password" required
+                                   class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-primary focus:outline-none transition"
+                                   placeholder="Minimum 8 caractères">
+                        </div>
+
+                        <!-- Confirmer mot de passe -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                                Confirmer le mot de passe <span class="text-danger-500">*</span>
+                            </label>
+                            <input type="password" id="confirmPassword" required
+                                   class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-primary focus:outline-none transition"
+                                   placeholder="Retapez votre mot de passe">
+                        </div>
+
+                        <!-- CGU -->
+                        <div class="flex items-start gap-2 bg-primary-50 border border-primary-100 rounded-xl p-3">
+                            <input type="checkbox" id="terms" required
+                                   class="mt-1 h-4 w-4 accent-primary rounded">
+                            <label for="terms" class="text-sm text-slate-700 leading-relaxed">
+                                J'accepte les <a href="/cgu" target="_blank" class="text-primary-600 hover:underline font-semibold">CGU</a>
+                                et la <a href="/confidentialite" target="_blank" class="text-primary-600 hover:underline font-semibold">Politique de Confidentialité</a>
+                            </label>
+                        </div>
+
+                        <!-- Message d'erreur -->
+                        <div id="errorMessage" class="hidden bg-danger-50 border border-danger-100 text-danger-700 px-4 py-3 rounded-xl text-sm">
+                            <i class="fas fa-exclamation-circle mr-2"></i>
+                            <span id="errorText"></span>
+                        </div>
+
+                        <!-- Bouton inscription -->
+                        <button type="submit"
+                                class="w-full bg-gradient-brand hover:opacity-95 text-white font-semibold py-3.5 rounded-xl transition shadow-brand inline-flex items-center justify-center gap-2">
+                            <i class="fas fa-user-plus"></i>
+                            Créer mon compte
+                        </button>
+                    </form>
+
+                    <!-- Séparateur -->
+                    <div class="relative my-6">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-slate-200"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-3 bg-white text-slate-500 font-medium">Ou continuer avec</span>
+                        </div>
                     </div>
 
-                    <!-- Email -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Email <span class="text-red-500">*</span>
-                        </label>
-                        <input type="email" id="email" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                               placeholder="exemple@email.com">
+                    <!-- OAuth Buttons -->
+                    <div class="space-y-2.5">
+                        <a href="/api/auth/apple"
+                           class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition font-semibold">
+                            <i class="fab fa-apple text-xl"></i>
+                            Sign in with Apple
+                        </a>
+                        <button onclick="signInWithGoogle()" type="button"
+                           class="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition font-semibold text-slate-700">
+                            <i class="fab fa-google text-red-500"></i>
+                            Continuer avec Google
+                        </button>
+                        <button onclick="signInWithFacebook()" type="button"
+                           class="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition font-semibold text-slate-700">
+                            <i class="fab fa-facebook text-blue-600"></i>
+                            Continuer avec Facebook
+                        </button>
                     </div>
 
-                    <!-- Téléphone avec sélecteur pays -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Téléphone <span class="text-red-500">*</span>
-                        </label>
-                        <div id="phone-input-container"></div>
-                    </div>
-
-                    <!-- Mot de passe -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Mot de passe <span class="text-red-500">*</span>
-                        </label>
-                        <input type="password" id="password" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                               placeholder="Minimum 8 caractères">
-                    </div>
-
-                    <!-- Confirmer mot de passe -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Confirmer le mot de passe <span class="text-red-500">*</span>
-                        </label>
-                        <input type="password" id="confirmPassword" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                               placeholder="Retapez votre mot de passe">
-                    </div>
-
-                    <!-- CGU -->
-                    <div class="flex items-start">
-                        <input type="checkbox" id="terms" required
-                               class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                        <label for="terms" class="ml-2 text-sm text-gray-600">
-                            J'accepte les <a href="/cgu" target="_blank" class="text-blue-600 hover:underline">Conditions Générales d'Utilisation</a>
-                            et la <a href="/confidentialite" target="_blank" class="text-blue-600 hover:underline">Politique de Confidentialité</a>
-                        </label>
-                    </div>
-
-                    <!-- Message d'erreur -->
-                    <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        <span id="errorText"></span>
-                    </div>
-
-                    <!-- Bouton inscription -->
-                    <button type="submit"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition">
-                        <i class="fas fa-user-plus mr-2"></i>
-                        Créer mon compte
-                    </button>
-                </form>
-
-                <!-- Séparateur -->
-                <div class="relative my-6">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div class="relative flex justify-center text-sm">
-                        <span class="px-2 bg-white text-gray-500">Ou continuer avec</span>
-                    </div>
+                    <!-- Lien connexion -->
+                    <p class="mt-8 text-center text-sm text-slate-500">
+                        Déjà un compte ?
+                        <a href="/login" class="text-primary-600 hover:underline font-semibold">Se connecter</a>
+                    </p>
                 </div>
 
-                <!-- OAuth Buttons -->
-                <div class="space-y-3">
-                    <!-- Apple Sign In -->
-                    <a href="/api/auth/apple"
-                       class="w-full flex items-center justify-center px-4 py-3 bg-black hover:bg-gray-900 text-white rounded-lg transition cursor-pointer">
-                        <i class="fab fa-apple text-white mr-2 text-xl"></i>
-                        <span class="font-medium">Sign in with Apple</span>
-                    </a>
-                    
-                    <!-- Google Sign In -->
-                    <button onclick="signInWithGoogle()" type="button"
-                       class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
-                        <i class="fab fa-google text-red-500 mr-2"></i>
-                        <span class="font-medium text-gray-700">Continuer avec Google</span>
-                    </button>
-                    
-                    <!-- Facebook Sign In -->
-                    <button onclick="signInWithFacebook()" type="button"
-                       class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer">
-                        <i class="fab fa-facebook text-blue-600 mr-2"></i>
-                        <span class="font-medium text-gray-700">Continuer avec Facebook</span>
-                    </button>
+                <!-- Trust indicators -->
+                <div class="mt-6 flex items-center justify-center gap-6 text-xs text-slate-500">
+                    <div class="flex items-center gap-1.5">
+                        <i class="fas fa-lock text-primary-500"></i>
+                        <span>Données chiffrées</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i class="fas fa-shield-halved text-primary-500"></i>
+                        <span>RGPD</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i class="fas fa-gift text-primary-500"></i>
+                        <span>Gratuit</span>
+                    </div>
                 </div>
-
-                <!-- Lien connexion -->
-                <p class="mt-6 text-center text-sm text-gray-600">
-                    Vous avez déjà un compte ?
-                    <a href="/login" class="text-blue-600 hover:underline font-medium">Se connecter</a>
-                </p>
             </div>
         </div>
 
@@ -5739,167 +5812,177 @@ app.get('/voyageur', (c) => {
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
-    <body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen">
+    <body class="bg-slate-50 font-sans text-slate-900 min-h-screen">
         <!-- Header -->
-        <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
-            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
-                </div>
-                <div class="flex items-center space-x-4">
+        <nav class="bg-white border-b border-slate-200 sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <a href="/" class="inline-flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shadow-brand">
+                        <span class="text-white font-bold text-lg">A</span>
+                    </div>
+                    <div>
+                        <div class="font-bold text-lg leading-tight">Amanah GO</div>
+                        <div class="text-xs text-slate-500 -mt-0.5">Espace voyageur</div>
+                    </div>
+                </a>
+                <div class="flex items-center gap-3 md:gap-5">
                     <div id="langSwitcher"></div>
-                    <span class="text-gray-600">
-                        <i class="fas fa-user-circle mr-2"></i>
-                        <span id="userName">Utilisateur</span>
-                    </span>
-                    <button data-auth="logout" class="text-red-600 hover:text-red-700 transition-colors" title="Se déconnecter">
-                        <i class="fas fa-sign-out-alt mr-2"></i><span data-i18n="common.logout">Déconnexion</span>
+                    <a href="/prohibited-items" class="hidden md:inline-flex items-center gap-1.5 text-sm font-semibold text-danger-600 hover:text-danger-700" title="Produits interdits">
+                        <i class="fas fa-ban"></i><span data-i18n="nav.prohibited_items">Liste Noire</span>
+                    </a>
+                    <a href="/" class="hidden md:inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-brand transition">
+                        <i class="fas fa-home"></i><span data-i18n="common.home">Accueil</span>
+                    </a>
+                    <div class="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200">
+                        <div class="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center text-white text-sm font-bold">
+                            <span id="userInitial">U</span>
+                        </div>
+                        <span class="text-sm font-medium text-slate-700" id="userName">Utilisateur</span>
+                    </div>
+                    <button data-auth="logout" class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-danger-600 transition" title="Se déconnecter">
+                        <i class="fas fa-sign-out-alt"></i><span class="hidden md:inline" data-i18n="common.logout">Déconnexion</span>
                     </button>
-                    <a href="/prohibited-items" class="text-red-600 hover:text-red-700 transition-colors font-bold" title="Produits interdits">
-                        <i class="fas fa-ban mr-2"></i><span data-i18n="nav.prohibited_items">Liste Noire</span>
-                    </a>
-                    <a href="/" class="text-blue-600 hover:text-blue-700 transition-colors">
-                        <i class="fas fa-home mr-2"></i><span data-i18n="common.home">Accueil</span>
-                    </a>
                 </div>
             </div>
         </nav>
 
-        <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="max-w-7xl mx-auto px-6 py-8">
             <!-- Welcome Banner -->
-            <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl shadow-xl p-8 mb-8 text-white">
-                <div class="flex items-center justify-between">
+            <div class="relative overflow-hidden bg-gradient-brand rounded-3xl shadow-xl p-8 md:p-10 mb-8 text-white">
+                <div class="absolute -top-10 -right-10 w-64 h-64 rounded-full bg-white/10 blur-2xl"></div>
+                <div class="absolute bottom-0 right-20 w-48 h-48 rounded-full bg-white/10 blur-2xl"></div>
+                <div class="relative flex items-center justify-between gap-6">
                     <div>
-                        <h1 class="text-3xl font-bold mb-2">
-                            <i class="fas fa-plane-departure mr-3"></i>
-                            <span data-i18n="traveler.welcome">Bienvenue dans votre Espace Voyageur</span>
-                        </h1>
-                        <p class="text-blue-100 text-lg" data-i18n="traveler.welcome_subtitle">Monétisez vos trajets France ↔ Maroc en transportant des colis</p>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-xs font-bold uppercase tracking-widest mb-3">
+                            <i class="fas fa-plane-departure"></i>
+                            Espace Voyageur
+                        </div>
+                        <h1 class="text-3xl md:text-4xl font-bold mb-2" data-i18n="traveler.welcome">Bienvenue dans votre Espace Voyageur</h1>
+                        <p class="opacity-90 md:text-lg max-w-xl" data-i18n="traveler.welcome_subtitle">Monétisez vos trajets France ↔ Maroc en transportant des colis</p>
                     </div>
-                    <div class="hidden md:block">
-                        <i class="fas fa-suitcase-rolling text-6xl opacity-20"></i>
+                    <div class="hidden md:flex items-center justify-center w-28 h-28 rounded-2xl bg-white/15 backdrop-blur">
+                        <i class="fas fa-suitcase-rolling text-5xl text-white/90"></i>
                     </div>
                 </div>
             </div>
 
             <!-- Quick Actions -->
-            <div class="grid md:grid-cols-4 gap-6 mb-8">
-                <a href="/voyageur/publier-trajet" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+                <a href="/voyageur/publier-trajet" class="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-primary-200 transition-all">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-blue-100 rounded-full p-4 group-hover:bg-blue-600 transition-colors">
-                            <i class="fas fa-plus text-2xl text-blue-600 group-hover:text-white"></i>
+                        <div class="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center group-hover:bg-primary-600 transition-colors">
+                            <i class="fas fa-plus text-xl text-primary-600 group-hover:text-white transition-colors"></i>
                         </div>
-                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                        <i class="fas fa-arrow-right text-slate-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="traveler.publish_trip">Publier un Trajet</h3>
-                    <p class="text-gray-600" data-i18n="traveler.publish_trip_desc">Ajoutez un nouveau trajet et commencez à gagner de l'argent</p>
+                    <h3 class="text-lg font-bold mb-1" data-i18n="traveler.publish_trip">Publier un Trajet</h3>
+                    <p class="text-sm text-slate-500" data-i18n="traveler.publish_trip_desc">Ajoutez un nouveau trajet et commencez à gagner de l'argent</p>
                 </a>
 
-                <a href="/voyageur/mes-trajets" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                <a href="/voyageur/mes-trajets" class="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-primary-200 transition-all">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-green-100 rounded-full p-4 group-hover:bg-green-600 transition-colors">
-                            <i class="fas fa-list text-2xl text-green-600 group-hover:text-white"></i>
+                        <div class="w-12 h-12 rounded-xl bg-success-100 flex items-center justify-center group-hover:bg-success-600 transition-colors">
+                            <i class="fas fa-list text-xl text-success-600 group-hover:text-white transition-colors"></i>
                         </div>
-                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-green-600 transition-colors"></i>
+                        <i class="fas fa-arrow-right text-slate-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="traveler.my_trips">Mes Trajets</h3>
-                    <p class="text-gray-600" data-i18n="traveler.my_trips_desc">Consultez et gérez tous vos trajets publiés</p>
+                    <h3 class="text-lg font-bold mb-1" data-i18n="traveler.my_trips">Mes Trajets</h3>
+                    <p class="text-sm text-slate-500" data-i18n="traveler.my_trips_desc">Consultez et gérez tous vos trajets publiés</p>
                 </a>
 
-                <a href="/messages" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                <a href="/messages" class="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-primary-200 transition-all">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-blue-100 rounded-full p-4 group-hover:bg-blue-600 transition-colors">
-                            <i class="fas fa-comments text-2xl text-blue-600 group-hover:text-white"></i>
+                        <div class="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center group-hover:bg-primary-600 transition-colors">
+                            <i class="fas fa-comments text-xl text-primary-600 group-hover:text-white transition-colors"></i>
                         </div>
-                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                        <i class="fas fa-arrow-right text-slate-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Messages</h3>
-                    <p class="text-gray-600">Discutez avec les expéditeurs</p>
+                    <h3 class="text-lg font-bold mb-1">Messages</h3>
+                    <p class="text-sm text-slate-500">Discutez avec les expéditeurs</p>
                 </a>
 
-                <a href="/voyageur/stripe-connect" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                <a href="/voyageur/stripe-connect" class="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-primary-200 transition-all">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-orange-100 rounded-full p-4 group-hover:bg-orange-600 transition-colors">
-                            <i class="fas fa-credit-card text-2xl text-orange-600 group-hover:text-white"></i>
+                        <div class="w-12 h-12 rounded-xl bg-warning-100 flex items-center justify-center group-hover:bg-warning-500 transition-colors">
+                            <i class="fas fa-credit-card text-xl text-warning-600 group-hover:text-white transition-colors"></i>
                         </div>
-                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-orange-600 transition-colors"></i>
+                        <i class="fas fa-arrow-right text-slate-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Stripe Connect</h3>
-                    <p class="text-gray-600">Configurez votre compte pour recevoir des paiements</p>
+                    <h3 class="text-lg font-bold mb-1">Stripe Connect</h3>
+                    <p class="text-sm text-slate-500">Configurez votre compte pour recevoir des paiements</p>
                 </a>
 
-                <a href="/verify-profile" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                <a href="/verify-profile" class="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-primary-200 transition-all">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-purple-100 rounded-full p-4 group-hover:bg-purple-600 transition-colors">
-                            <i class="fas fa-shield-alt text-2xl text-purple-600 group-hover:text-white"></i>
+                        <div class="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center group-hover:bg-primary-600 transition-colors">
+                            <i class="fas fa-shield-halved text-xl text-primary-600 group-hover:text-white transition-colors"></i>
                         </div>
-                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-purple-600 transition-colors"></i>
+                        <i class="fas fa-arrow-right text-slate-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="nav.verify_profile">Vérifier mon Profil</h3>
-                    <p class="text-gray-600" data-i18n="traveler.verify_profile_desc">Complétez votre KYC pour débloquer toutes les fonctionnalités</p>
+                    <h3 class="text-lg font-bold mb-1" data-i18n="nav.verify_profile">Vérifier mon Profil</h3>
+                    <p class="text-sm text-slate-500" data-i18n="traveler.verify_profile_desc">Complétez votre KYC pour débloquer toutes les fonctionnalités</p>
                 </a>
             </div>
 
             <!-- Stats Overview -->
-            <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                    <i class="fas fa-chart-line text-blue-600 mr-2"></i>
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8 mb-8">
+                <h2 class="text-xl font-bold mb-6 inline-flex items-center gap-2">
+                    <i class="fas fa-chart-line text-primary-600"></i>
                     <span data-i18n="traveler.quick_overview">Aperçu Rapide</span>
                 </h2>
-                <div class="grid md:grid-cols-4 gap-6">
-                    <div class="text-center">
-                        <div class="bg-blue-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                            <i class="fas fa-route text-2xl text-blue-600"></i>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center mb-3">
+                            <i class="fas fa-route text-primary-600"></i>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900" id="statTrips">0</p>
-                        <p class="text-sm text-gray-600" data-i18n="traveler.stats_trips">Trajets publiés</p>
+                        <p class="text-3xl font-bold" id="statTrips">0</p>
+                        <p class="text-xs text-slate-500 mt-1" data-i18n="traveler.stats_trips">Trajets publiés</p>
                     </div>
-                    <div class="text-center">
-                        <div class="bg-green-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                            <i class="fas fa-check-circle text-2xl text-green-600"></i>
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-success-100 flex items-center justify-center mb-3">
+                            <i class="fas fa-check-circle text-success-600"></i>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900" id="statActive">0</p>
-                        <p class="text-sm text-gray-600" data-i18n="traveler.stats_active">Trajets actifs</p>
+                        <p class="text-3xl font-bold" id="statActive">0</p>
+                        <p class="text-xs text-slate-500 mt-1" data-i18n="traveler.stats_active">Trajets actifs</p>
                     </div>
-                    <div class="text-center">
-                        <div class="bg-purple-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                            <i class="fas fa-weight-hanging text-2xl text-purple-600"></i>
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center mb-3">
+                            <i class="fas fa-weight-hanging text-primary-600"></i>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900" id="statWeight">0</p>
-                        <p class="text-sm text-gray-600" data-i18n="traveler.stats_weight">kg disponibles</p>
+                        <p class="text-3xl font-bold" id="statWeight">0</p>
+                        <p class="text-xs text-slate-500 mt-1" data-i18n="traveler.stats_weight">kg disponibles</p>
                     </div>
-                    <div class="text-center">
-                        <div class="bg-yellow-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                            <i class="fas fa-euro-sign text-2xl text-yellow-600"></i>
+                    <div class="bg-gradient-brand rounded-2xl p-5 text-white">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-3">
+                            <i class="fas fa-euro-sign"></i>
                         </div>
-                        <p class="text-3xl font-bold text-green-600" id="statEarnings">0</p>
-                        <p class="text-sm text-gray-600" data-i18n="traveler.stats_earnings">Gains potentiels</p>
+                        <p class="text-3xl font-bold" id="statEarnings">0</p>
+                        <p class="text-xs opacity-80 mt-1" data-i18n="traveler.stats_earnings">Gains potentiels</p>
                     </div>
                 </div>
             </div>
 
             <!-- How It Works -->
-            <div class="bg-white rounded-xl shadow-lg p-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                    <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8">
+                <h2 class="text-xl font-bold mb-6 inline-flex items-center gap-2">
+                    <i class="fas fa-lightbulb text-warning-500"></i>
                     <span data-i18n="landing.how_it_works_title">Comment ça marche ?</span>
                 </h2>
-                <div class="grid md:grid-cols-3 gap-6">
-                    <div class="text-center">
-                        <div class="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
-                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="traveler.how_step1">Publiez votre trajet</h3>
-                        <p class="text-gray-600 text-sm" data-i18n="traveler.how_step1_desc">Indiquez votre itinéraire, dates et poids disponible</p>
+                <div class="grid md:grid-cols-3 gap-5">
+                    <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-brand text-white flex items-center justify-center mb-4 font-bold">1</div>
+                        <h3 class="font-bold mb-2" data-i18n="traveler.how_step1">Publiez votre trajet</h3>
+                        <p class="text-sm text-slate-500" data-i18n="traveler.how_step1_desc">Indiquez votre itinéraire, dates et poids disponible</p>
                     </div>
-                    <div class="text-center">
-                        <div class="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
-                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="traveler.how_step2">Recevez des propositions</h3>
-                        <p class="text-gray-600 text-sm" data-i18n="traveler.how_step2_desc">Les expéditeurs vous contactent avec leurs demandes</p>
+                    <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-brand text-white flex items-center justify-center mb-4 font-bold">2</div>
+                        <h3 class="font-bold mb-2" data-i18n="traveler.how_step2">Recevez des propositions</h3>
+                        <p class="text-sm text-slate-500" data-i18n="traveler.how_step2_desc">Les expéditeurs vous contactent avec leurs demandes</p>
                     </div>
-                    <div class="text-center">
-                        <div class="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
-                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="traveler.how_step3">Gagnez de l'argent</h3>
-                        <p class="text-gray-600 text-sm" data-i18n="traveler.how_step3_desc">Transportez et recevez votre paiement sécurisé</p>
+                    <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-brand text-white flex items-center justify-center mb-4 font-bold">3</div>
+                        <h3 class="font-bold mb-2" data-i18n="traveler.how_step3">Gagnez de l'argent</h3>
+                        <p class="text-sm text-slate-500" data-i18n="traveler.how_step3_desc">Transportez et recevez votre paiement sécurisé</p>
                     </div>
                 </div>
             </div>
@@ -5935,8 +6018,10 @@ app.get('/voyageur', (c) => {
           const userName = localStorage.getItem('userName')
           if (userName) {
             document.getElementById('userName').textContent = userName
+            const initialEl = document.getElementById('userInitial')
+            if (initialEl) initialEl.textContent = userName.charAt(0).toUpperCase()
           }
-          
+
           loadStats()
         </script>
 
@@ -6200,6 +6285,21 @@ app.get('/verify-profile', (c) => {
   return c.html(renderVerifyProfilePage())
 })
 
+// Page de test design system (isolée, aucun impact sur le reste du site)
+app.get('/design-preview', (c) => {
+  return c.html(renderDesignPreviewPage())
+})
+
+// Landing principale — nouvelle version (design system Indigo)
+app.get('/', (c) => {
+  return c.html(renderLandingV2Page())
+})
+
+// Alias temporaire vers la nouvelle landing (au cas où des liens /v2 existent)
+app.get('/v2', (c) => {
+  return c.html(renderLandingV2Page())
+})
+
 // Espace Expéditeur - Dashboard principal
 app.get('/expediteur', (c) => {
   return c.html(`
@@ -6214,105 +6314,118 @@ app.get('/expediteur', (c) => {
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/i18n.css?v=3" rel="stylesheet">
     </head>
-    <body class="bg-gradient-to-br from-green-50 to-green-100 min-h-screen">
+    <body class="bg-slate-50 font-sans text-slate-900 min-h-screen">
         <!-- Header -->
-        <nav class="bg-white shadow-sm border-b sticky top-0 z-10">
-            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <img src="/static/logo-amanah-go-v2.png" alt="Amanah GO" class="h-16 w-auto">
-                    <span class="text-2xl font-bold text-gray-900">Amanah GO</span>
-                </div>
-                <div class="flex items-center space-x-4">
+        <nav class="bg-white border-b border-slate-200 sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <a href="/" class="inline-flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shadow-brand">
+                        <span class="text-white font-bold text-lg">A</span>
+                    </div>
+                    <div>
+                        <div class="font-bold text-lg leading-tight">Amanah GO</div>
+                        <div class="text-xs text-slate-500 -mt-0.5">Espace expéditeur</div>
+                    </div>
+                </a>
+                <div class="flex items-center gap-3 md:gap-5">
                     <div id="langSwitcher"></div>
-                    <span class="text-gray-600">
-                        <i class="fas fa-user-circle mr-2"></i>
-                        <span id="userName">Utilisateur</span>
-                    </span>
-                    <a href="/prohibited-items" class="text-red-600 hover:text-red-700 transition-colors font-bold" title="Produits interdits">
-                        <i class="fas fa-ban mr-2"></i><span data-i18n="nav.prohibited_items">Liste Noire</span>
+                    <a href="/prohibited-items" class="hidden md:inline-flex items-center gap-1.5 text-sm font-semibold text-danger-600 hover:text-danger-700" title="Produits interdits">
+                        <i class="fas fa-ban"></i><span data-i18n="nav.prohibited_items">Liste Noire</span>
                     </a>
-                    <a href="/" class="text-green-600 hover:text-green-700 transition-colors">
-                        <i class="fas fa-home mr-2"></i><span data-i18n="common.home">Accueil</span>
+                    <a href="/" class="hidden md:inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-brand transition">
+                        <i class="fas fa-home"></i><span data-i18n="common.home">Accueil</span>
                     </a>
+                    <div class="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200">
+                        <div class="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center text-white text-sm font-bold">
+                            <span id="userInitial">U</span>
+                        </div>
+                        <span class="text-sm font-medium text-slate-700" id="userName">Utilisateur</span>
+                    </div>
+                    <button data-auth="logout" class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-danger-600 transition" title="Se déconnecter">
+                        <i class="fas fa-sign-out-alt"></i><span class="hidden md:inline" data-i18n="common.logout">Déconnexion</span>
+                    </button>
                 </div>
             </div>
         </nav>
 
-        <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="max-w-7xl mx-auto px-6 py-8">
             <!-- Welcome Banner -->
-            <div class="bg-gradient-to-r from-green-600 to-green-800 rounded-2xl shadow-xl p-8 mb-8 text-white">
-                <div class="flex items-center justify-between">
+            <div class="relative overflow-hidden bg-gradient-brand rounded-3xl shadow-xl p-8 md:p-10 mb-8 text-white">
+                <div class="absolute -top-10 -right-10 w-64 h-64 rounded-full bg-white/10 blur-2xl"></div>
+                <div class="absolute bottom-0 right-20 w-48 h-48 rounded-full bg-white/10 blur-2xl"></div>
+                <div class="relative flex items-center justify-between gap-6">
                     <div>
-                        <h1 class="text-3xl font-bold mb-2">
-                            <i class="fas fa-box mr-3"></i>
-                            <span data-i18n="sender.welcome">Bienvenue dans votre Espace Expéditeur</span>
-                        </h1>
-                        <p class="text-green-100 text-lg" data-i18n="sender.welcome_subtitle">Économisez jusqu'à 70% sur vos envois France ↔ Maroc</p>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-xs font-bold uppercase tracking-widest mb-3">
+                            <i class="fas fa-box"></i>
+                            Espace Expéditeur
+                        </div>
+                        <h1 class="text-3xl md:text-4xl font-bold mb-2" data-i18n="sender.welcome">Bienvenue dans votre Espace Expéditeur</h1>
+                        <p class="opacity-90 md:text-lg max-w-xl" data-i18n="sender.welcome_subtitle">Économisez jusqu'à 70% sur vos envois France ↔ Maroc</p>
                     </div>
-                    <div class="hidden md:block">
-                        <i class="fas fa-shipping-fast text-6xl opacity-20"></i>
+                    <div class="hidden md:flex items-center justify-center w-28 h-28 rounded-2xl bg-white/15 backdrop-blur">
+                        <i class="fas fa-shipping-fast text-5xl text-white/90"></i>
                     </div>
                 </div>
             </div>
 
             <!-- Quick Actions -->
-            <div class="grid md:grid-cols-3 gap-6 mb-8">
-                <a href="/expediteur/publier-colis" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                <a href="/expediteur/publier-colis" class="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-primary-200 transition-all">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-green-100 rounded-full p-4 group-hover:bg-green-600 transition-colors">
-                            <i class="fas fa-plus text-2xl text-green-600 group-hover:text-white"></i>
+                        <div class="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center group-hover:bg-primary-600 transition-colors">
+                            <i class="fas fa-plus text-xl text-primary-600 group-hover:text-white transition-colors"></i>
                         </div>
-                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-green-600 transition-colors"></i>
+                        <i class="fas fa-arrow-right text-slate-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="sender.publish_package">Publier un Colis</h3>
-                    <p class="text-gray-600" data-i18n="sender.publish_package_desc">Créez une nouvelle demande d'envoi de colis</p>
+                    <h3 class="text-lg font-bold mb-1" data-i18n="sender.publish_package">Publier un Colis</h3>
+                    <p class="text-sm text-slate-500" data-i18n="sender.publish_package_desc">Créez une nouvelle demande d'envoi de colis</p>
                 </a>
 
-                <a href="/expediteur/mes-colis" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                <a href="/expediteur/mes-colis" class="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-primary-200 transition-all">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-blue-100 rounded-full p-4 group-hover:bg-blue-600 transition-colors">
-                            <i class="fas fa-list text-2xl text-blue-600 group-hover:text-white"></i>
+                        <div class="w-12 h-12 rounded-xl bg-success-100 flex items-center justify-center group-hover:bg-success-600 transition-colors">
+                            <i class="fas fa-list text-xl text-success-600 group-hover:text-white transition-colors"></i>
                         </div>
-                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                        <i class="fas fa-arrow-right text-slate-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="sender.my_packages">Mes Colis</h3>
-                    <p class="text-gray-600" data-i18n="sender.my_packages_desc">Suivez tous vos envois en cours et passés</p>
+                    <h3 class="text-lg font-bold mb-1" data-i18n="sender.my_packages">Mes Colis</h3>
+                    <p class="text-sm text-slate-500" data-i18n="sender.my_packages_desc">Suivez tous vos envois en cours et passés</p>
                 </a>
 
-                <a href="/messages" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                <a href="/messages" class="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-primary-200 transition-all">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-blue-100 rounded-full p-4 group-hover:bg-blue-600 transition-colors">
-                            <i class="fas fa-comments text-2xl text-blue-600 group-hover:text-white"></i>
+                        <div class="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center group-hover:bg-primary-600 transition-colors">
+                            <i class="fas fa-comments text-xl text-primary-600 group-hover:text-white transition-colors"></i>
                         </div>
-                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                        <i class="fas fa-arrow-right text-slate-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Messages</h3>
-                    <p class="text-gray-600">Discutez avec les voyageurs</p>
+                    <h3 class="text-lg font-bold mb-1">Messages</h3>
+                    <p class="text-sm text-slate-500">Discutez avec les voyageurs</p>
                 </a>
 
-                <div onclick="searchTrips()" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 cursor-pointer group">
+                <div onclick="searchTrips()" class="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-primary-200 transition-all cursor-pointer">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-purple-100 rounded-full p-4 group-hover:bg-purple-600 transition-colors">
-                            <i class="fas fa-search text-2xl text-purple-600 group-hover:text-white"></i>
+                        <div class="w-12 h-12 rounded-xl bg-warning-100 flex items-center justify-center group-hover:bg-warning-500 transition-colors">
+                            <i class="fas fa-search text-xl text-warning-600 group-hover:text-white transition-colors"></i>
                         </div>
-                        <i class="fas fa-arrow-right text-gray-400 group-hover:text-purple-600 transition-colors"></i>
+                        <i class="fas fa-arrow-right text-slate-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2" data-i18n="sender.search_trip">Rechercher un Trajet</h3>
-                    <p class="text-gray-600" data-i18n="sender.search_trip_desc">Trouvez un voyageur pour transporter votre colis</p>
+                    <h3 class="text-lg font-bold mb-1" data-i18n="sender.search_trip">Rechercher un Trajet</h3>
+                    <p class="text-sm text-slate-500" data-i18n="sender.search_trip_desc">Trouvez un voyageur pour transporter votre colis</p>
                 </div>
             </div>
 
             <!-- Search Section -->
-            <div id="searchSection" class="bg-white rounded-xl shadow-lg p-8 mb-8 hidden">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                    <i class="fas fa-search text-green-600 mr-2"></i>
+            <div id="searchSection" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8 mb-8 hidden">
+                <h2 class="text-xl font-bold mb-6 inline-flex items-center gap-2">
+                    <i class="fas fa-search text-primary-600"></i>
                     <span data-i18n="sender.search_title">Rechercher un Trajet Disponible</span>
                 </h2>
-                <div class="grid md:grid-cols-3 gap-4 mb-6">
-                    <input type="text" id="searchOrigin" placeholder="Ville de départ" data-i18n-placeholder="sender.search_origin" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                    <input type="text" id="searchDestination" placeholder="Ville d'arrivée" data-i18n-placeholder="sender.search_destination" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                    <button onclick="performSearch()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold">
-                        <i class="fas fa-search mr-2"></i><span data-i18n="sender.search_button">Rechercher</span>
+                <div class="grid md:grid-cols-3 gap-3 mb-6">
+                    <input type="text" id="searchOrigin" placeholder="Ville de départ" data-i18n-placeholder="sender.search_origin" class="px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-primary focus:outline-none transition">
+                    <input type="text" id="searchDestination" placeholder="Ville d'arrivée" data-i18n-placeholder="sender.search_destination" class="px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-primary focus:outline-none transition">
+                    <button onclick="performSearch()" class="px-6 py-3 bg-primary hover:bg-primary-600 text-white rounded-xl font-semibold shadow-brand transition inline-flex items-center justify-center gap-2">
+                        <i class="fas fa-search"></i><span data-i18n="sender.search_button">Rechercher</span>
                     </button>
                 </div>
                 <div id="searchResults" class="space-y-4">
@@ -6321,64 +6434,64 @@ app.get('/expediteur', (c) => {
             </div>
 
             <!-- Stats Overview -->
-            <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                    <i class="fas fa-chart-line text-green-600 mr-2"></i>
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8 mb-8">
+                <h2 class="text-xl font-bold mb-6 inline-flex items-center gap-2">
+                    <i class="fas fa-chart-line text-primary-600"></i>
                     <span data-i18n="traveler.quick_overview">Aperçu Rapide</span>
                 </h2>
-                <div class="grid md:grid-cols-4 gap-6">
-                    <div class="text-center">
-                        <div class="bg-green-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                            <i class="fas fa-box text-2xl text-green-600"></i>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center mb-3">
+                            <i class="fas fa-box text-primary-600"></i>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900" id="statPackages">0</p>
-                        <p class="text-sm text-gray-600" data-i18n="sender.stats_packages">Colis publiés</p>
+                        <p class="text-3xl font-bold" id="statPackages">0</p>
+                        <p class="text-xs text-slate-500 mt-1" data-i18n="sender.stats_packages">Colis publiés</p>
                     </div>
-                    <div class="text-center">
-                        <div class="bg-blue-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                            <i class="fas fa-clock text-2xl text-blue-600"></i>
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-warning-100 flex items-center justify-center mb-3">
+                            <i class="fas fa-clock text-warning-600"></i>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900" id="statPending">0</p>
-                        <p class="text-sm text-gray-600" data-i18n="sender.stats_pending">En attente</p>
+                        <p class="text-3xl font-bold" id="statPending">0</p>
+                        <p class="text-xs text-slate-500 mt-1" data-i18n="sender.stats_pending">En attente</p>
                     </div>
-                    <div class="text-center">
-                        <div class="bg-yellow-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                            <i class="fas fa-shipping-fast text-2xl text-yellow-600"></i>
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-info-100 flex items-center justify-center mb-3">
+                            <i class="fas fa-shipping-fast text-info-600"></i>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900" id="statInTransit">0</p>
-                        <p class="text-sm text-gray-600" data-i18n="sender.stats_in_transit">En transit</p>
+                        <p class="text-3xl font-bold" id="statInTransit">0</p>
+                        <p class="text-xs text-slate-500 mt-1" data-i18n="sender.stats_in_transit">En transit</p>
                     </div>
-                    <div class="text-center">
-                        <div class="bg-purple-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                            <i class="fas fa-check-circle text-2xl text-purple-600"></i>
+                    <div class="bg-gradient-brand rounded-2xl p-5 text-white">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-3">
+                            <i class="fas fa-check-circle"></i>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900" id="statDelivered">0</p>
-                        <p class="text-sm text-gray-600" data-i18n="sender.stats_delivered">Livrés</p>
+                        <p class="text-3xl font-bold" id="statDelivered">0</p>
+                        <p class="text-xs opacity-80 mt-1" data-i18n="sender.stats_delivered">Livrés</p>
                     </div>
                 </div>
             </div>
 
             <!-- How It Works -->
-            <div class="bg-white rounded-xl shadow-lg p-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                    <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8">
+                <h2 class="text-xl font-bold mb-6 inline-flex items-center gap-2">
+                    <i class="fas fa-lightbulb text-warning-500"></i>
                     <span data-i18n="landing.how_it_works_title">Comment ça marche ?</span>
                 </h2>
-                <div class="grid md:grid-cols-3 gap-6">
-                    <div class="text-center">
-                        <div class="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
-                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="sender.how_step1">Publiez votre colis</h3>
-                        <p class="text-gray-600 text-sm" data-i18n="sender.how_step1_desc">Décrivez votre envoi, destination et budget</p>
+                <div class="grid md:grid-cols-3 gap-5">
+                    <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-brand text-white flex items-center justify-center mb-4 font-bold">1</div>
+                        <h3 class="font-bold mb-2" data-i18n="sender.how_step1">Publiez votre colis</h3>
+                        <p class="text-sm text-slate-500" data-i18n="sender.how_step1_desc">Décrivez votre envoi, destination et budget</p>
                     </div>
-                    <div class="text-center">
-                        <div class="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
-                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="sender.how_step2">Trouvez un voyageur</h3>
-                        <p class="text-gray-600 text-sm" data-i18n="sender.how_step2_desc">Des voyageurs vous contactent ou recherchez-en un</p>
+                    <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-brand text-white flex items-center justify-center mb-4 font-bold">2</div>
+                        <h3 class="font-bold mb-2" data-i18n="sender.how_step2">Trouvez un voyageur</h3>
+                        <p class="text-sm text-slate-500" data-i18n="sender.how_step2_desc">Des voyageurs vous contactent ou recherchez-en un</p>
                     </div>
-                    <div class="text-center">
-                        <div class="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
-                        <h3 class="font-semibold text-gray-900 mb-2" data-i18n="sender.how_step3">Économisez de l'argent</h3>
-                        <p class="text-gray-600 text-sm" data-i18n="sender.how_step3_desc">Recevez votre colis jusqu'à 70% moins cher</p>
+                    <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-brand text-white flex items-center justify-center mb-4 font-bold">3</div>
+                        <h3 class="font-bold mb-2" data-i18n="sender.how_step3">Économisez de l'argent</h3>
+                        <p class="text-sm text-slate-500" data-i18n="sender.how_step3_desc">Recevez votre colis jusqu'à 70% moins cher</p>
                     </div>
                 </div>
             </div>
@@ -6472,8 +6585,10 @@ app.get('/expediteur', (c) => {
           const userName = localStorage.getItem('userName')
           if (userName) {
             document.getElementById('userName').textContent = userName
+            const initialEl = document.getElementById('userInitial')
+            if (initialEl) initialEl.textContent = userName.charAt(0).toUpperCase()
           }
-          
+
           loadStats()
         </script>
 

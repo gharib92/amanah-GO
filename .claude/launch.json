@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "Kozy Korner (static)",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "kozy-korner", "-p", "4321", "--no-clipboard"],
+      "port": 4321
+    },
+    {
       "name": "Dev (Vite HMR)",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],

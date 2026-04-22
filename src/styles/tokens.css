@@ -1,0 +1,60 @@
+/**
+ * Amanah GO — Design Tokens
+ * Palette Indigo doux (Option B)
+ * Primary : #667EEA → #4F46E5
+ */
+
+:root {
+  /* PRIMARY · Indigo */
+  --color-primary-50:  #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #667eea; /* signature, utilisé dans emails */
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+
+  /* Success · Green */
+  --color-success-50:  #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+
+  /* Warning · Amber */
+  --color-warning-50:  #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+
+  /* Danger · Red */
+  --color-danger-50:  #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+
+  /* Info · Blue */
+  --color-info-50:  #eff6ff;
+  --color-info-100: #dbeafe;
+  --color-info-500: #3b82f6;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
+
+  /* Alias sémantiques */
+  --color-brand:        #667eea;
+  --color-brand-hover:  #4f46e5;
+  --color-brand-soft:   #e0e7ff;
+  --color-brand-strong: #3730a3;
+
+  /* Shadow de marque */
+  --shadow-brand: 0 8px 24px -6px rgb(102 126 234 / 0.4);
+
+  /* Gradients */
+  --gradient-brand:      linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-brand-soft: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+}
