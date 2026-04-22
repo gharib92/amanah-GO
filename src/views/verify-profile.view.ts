@@ -307,12 +307,16 @@ export function renderVerifyProfilePage() {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Envoi...'
 
             try {
-              // Nettoyer reCAPTCHA précédent
+              // Nettoyer reCAPTCHA précédent (remplacer le node DOM pour éviter "already been rendered")
               if (recaptchaVerifier) {
                 try { recaptchaVerifier.clear() } catch(e) {}
                 recaptchaVerifier = null
               }
-              document.getElementById('recaptcha-container').innerHTML = ''
+              const oldContainer = document.getElementById('recaptcha-container')
+              const newContainer = document.createElement('div')
+              newContainer.id = 'recaptcha-container'
+              newContainer.className = oldContainer.className
+              oldContainer.parentNode.replaceChild(newContainer, oldContainer)
 
               recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
                 size: 'invisible',
@@ -350,6 +354,12 @@ export function renderVerifyProfilePage() {
               // Téléphone lié à UN AUTRE compte Firebase → forcer via signInWithPhoneNumber
               if (e.code === 'auth/credential-already-in-use' || e.code === 'auth/phone-number-already-exists') {
                 try {
+                  // Re-créer le container pour éviter "already rendered"
+                  const oldC = document.getElementById('recaptcha-container')
+                  const newC = document.createElement('div')
+                  newC.id = 'recaptcha-container'
+                  newC.className = oldC.className
+                  oldC.parentNode.replaceChild(newC, oldC)
                   recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible', callback: () => {} })
                   phoneConfirmationResult = await window.firebaseAuth.signInWithPhoneNumber(phone, recaptchaVerifier)
                   btn.innerHTML = '<i class="fas fa-check mr-2"></i>Code envoyé !'
