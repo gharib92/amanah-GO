@@ -80,43 +80,45 @@ export class DatabaseService {
     }
   }
   
-  async updateUser(id: string, updates: any) {
-    const fields = []
-    const values = []
-    
+  // Colonnes que l'utilisateur peut modifier lui-même
+  private static readonly USER_UPDATABLE_COLUMNS = new Set([
+    'name', 'phone', 'avatar_url', 'bio', 'language', 'notification_preferences'
+  ])
+
+  // Colonnes que seul le système/admin peut modifier
+  private static readonly SYSTEM_UPDATABLE_COLUMNS = new Set([
+    'name', 'phone', 'avatar_url', 'bio', 'language', 'notification_preferences',
+    'kyc_status', 'selfie_url', 'id_document_url', 'email_verified',
+    'stripe_account_id', 'stripe_onboarding_complete', 'firebase_uid',
+    'push_subscription', 'password_hash'
+  ])
+
+  private buildUpdateFields(updates: any, allowedColumns: Set<string>): { fields: string[], values: any[] } {
+    const fields: string[] = []
+    const values: any[] = []
     for (const [key, value] of Object.entries(updates)) {
+      if (!allowedColumns.has(key)) continue
       fields.push(`${key} = ?`)
       values.push(value)
     }
-    
+    return { fields, values }
+  }
+
+  async updateUser(id: string, updates: any) {
+    const { fields, values } = this.buildUpdateFields(updates, DatabaseService.SYSTEM_UPDATABLE_COLUMNS)
     if (fields.length === 0) return await this.getUserById(id)
-    
     await this.db.prepare(`
-      UPDATE users 
-      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP 
-      WHERE id = ?
+      UPDATE users SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?
     `).bind(...values, id).run()
-    
     return await this.getUserById(id)
   }
-  
+
   async updateUserByEmail(email: string, updates: any) {
-    const fields = []
-    const values = []
-    
-    for (const [key, value] of Object.entries(updates)) {
-      fields.push(`${key} = ?`)
-      values.push(value)
-    }
-    
+    const { fields, values } = this.buildUpdateFields(updates, DatabaseService.SYSTEM_UPDATABLE_COLUMNS)
     if (fields.length === 0) return await this.getUserByEmail(email)
-    
     await this.db.prepare(`
-      UPDATE users 
-      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP 
-      WHERE email = ?
+      UPDATE users SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE email = ?
     `).bind(...values, email).run()
-    
     return await this.getUserByEmail(email)
   }
   
