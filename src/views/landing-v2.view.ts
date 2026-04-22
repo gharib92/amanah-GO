@@ -44,7 +44,7 @@ export function renderLandingV2Page(): string {
   <link rel="manifest" href="/manifest.json" />
 
   <!-- Icons -->
-  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512x512.png" />
   <link rel="apple-touch-icon" href="/static/icons/icon-180x180.png" />
   <link rel="icon" sizes="192x192" href="/static/icons/icon-192x192.png" />
   <link rel="icon" sizes="512x512" href="/static/icons/icon-512x512.png" />
@@ -171,7 +171,7 @@ export function renderLandingV2Page(): string {
 
         <h1 class="text-4xl md:text-6xl font-bold leading-tight tracking-tight mb-6">
           <span data-i18n="landing_v2.hero_title_1">Envoyez vos colis</span><br/>
-          <span class="bg-clip-text text-transparent bg-gradient-brand" data-i18n="landing_v2.hero_title_2">entre confiance.</span>
+          <span class="bg-clip-text text-transparent bg-gradient-brand" data-i18n="landing_v2.hero_title_2">en toute confiance.</span>
         </h1>
 
         <p class="text-lg md:text-xl text-slate-600 mb-8 max-w-xl" data-i18n="landing_v2.hero_subtitle">
@@ -190,7 +190,7 @@ export function renderLandingV2Page(): string {
           </a>
         </div>
 
-        <div class="flex items-center gap-6 text-sm text-slate-600 mb-8">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-600 mb-8">
           <div class="flex items-center gap-2">
             <div class="flex -space-x-2">
               <div class="w-8 h-8 rounded-full bg-gradient-brand border-2 border-white"></div>
@@ -199,15 +199,15 @@ export function renderLandingV2Page(): string {
             </div>
             <span data-i18n="landing_v2.users_count">+12 000 utilisateurs</span>
           </div>
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1.5 whitespace-nowrap">
             <span class="text-warning-500">★★★★★</span>
             <span class="font-semibold">4.8/5</span>
-            <span class="text-slate-400">· <span data-i18n="landing_v2.reviews_count">150 avis</span></span>
+            <span class="text-slate-400">·&nbsp;<span data-i18n="landing_v2.reviews_count">150 avis</span></span>
           </div>
         </div>
 
         <!-- Connexion rapide -->
-        <div class="bg-white/60 backdrop-blur rounded-2xl p-5 border border-primary-100 shadow-lg max-w-md">
+        <div class="bg-white/60 backdrop-blur rounded-2xl p-5 border border-primary-100 shadow-lg w-full max-w-md">
           <div class="text-xs font-bold uppercase tracking-widest text-primary-600 mb-3 text-center" data-i18n="landing_v2.quick_login">Connexion rapide</div>
           <div class="grid grid-cols-3 gap-2">
             <a href="/api/auth/apple" class="flex items-center justify-center py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition" aria-label="Sign in with Apple">
@@ -353,7 +353,7 @@ export function renderLandingV2Page(): string {
               <i class="fa-solid fa-shield-halved text-primary-600 text-xl"></i>
             </div>
             <h3 class="text-xl font-bold mb-2" data-i18n="landing_v2.how_step3_title">Livraison protégée</h3>
-            <p class="text-slate-600" data-i18n="landing_v2.how_step3_desc">Paiement bloqué en escrow. Libéré uniquement à la livraison validée par les deux parties.</p>
+            <p class="text-slate-600" data-i18n="landing_v2.how_step3_desc">Paiement en séquestre. Libéré uniquement à la livraison validée par les deux parties.</p>
           </div>
         </div>
       </div>
@@ -386,7 +386,7 @@ export function renderLandingV2Page(): string {
                 <i class="fa-solid fa-lock text-primary-600"></i>
               </div>
               <div>
-                <div class="font-semibold" data-i18n="landing_v2.sec_escrow_title">Paiement Escrow sécurisé</div>
+                <div class="font-semibold" data-i18n="landing_v2.sec_escrow_title">Paiement en séquestre sécurisé</div>
                 <div class="text-sm text-slate-600" data-i18n="landing_v2.sec_escrow_desc">Fonds bloqués jusqu'à la livraison confirmée</div>
               </div>
             </div>
@@ -436,7 +436,7 @@ export function renderLandingV2Page(): string {
                 <i class="fa-solid fa-check-circle text-success-600"></i>
                 <div class="text-sm flex-1">
                   <div class="font-semibold text-success-700" data-i18n="landing_v2.status_payment_locked">Paiement bloqué</div>
-                  <div class="text-xs text-success-700/70" data-i18n="landing_v2.status_payment_locked_desc">45 € en escrow sécurisé</div>
+                  <div class="text-xs text-success-700/70" data-i18n="landing_v2.status_payment_locked_desc">45 € en séquestre sécurisé</div>
                 </div>
               </div>
               <div class="flex items-center gap-3 p-3 rounded-xl bg-warning-50 border border-warning-100">
@@ -531,7 +531,7 @@ export function renderLandingV2Page(): string {
             <span data-i18n="landing_v2.faq_q1">Comment fonctionne le paiement sécurisé ?</span>
             <i class="fa-solid fa-chevron-down text-primary-600 group-open:rotate-180 transition"></i>
           </summary>
-          <p class="text-slate-600 mt-4" data-i18n="landing_v2.faq_a1">Votre paiement est bloqué (escrow) dès la réservation. Le voyageur ne reçoit les fonds qu'après la confirmation de livraison par les deux parties. Aucun risque de perte.</p>
+          <p class="text-slate-600 mt-4" data-i18n="landing_v2.faq_a1">Votre paiement est mis en séquestre dès la réservation. Le voyageur ne reçoit les fonds qu'après la confirmation de livraison par les deux parties. Aucun risque de perte.</p>
         </details>
 
         <details class="group bg-white rounded-2xl border border-slate-200 p-6 open:shadow-lg transition">
@@ -563,7 +563,7 @@ export function renderLandingV2Page(): string {
             <span data-i18n="landing_v2.faq_q5">Que faire si mon colis n'arrive pas ?</span>
             <i class="fa-solid fa-chevron-down text-primary-600 group-open:rotate-180 transition"></i>
           </summary>
-          <p class="text-slate-600 mt-4" data-i18n="landing_v2.faq_a5">Grâce au paiement escrow, vous êtes intégralement remboursé si la livraison n'a pas lieu. Notre équipe de support peut aussi intervenir en cas de litige.</p>
+          <p class="text-slate-600 mt-4" data-i18n="landing_v2.faq_a5">Grâce au paiement en séquestre, vous êtes intégralement remboursé si la livraison n'a pas lieu. Notre équipe de support peut aussi intervenir en cas de litige.</p>
         </details>
       </div>
 

@@ -515,7 +515,7 @@ app.get('/manifest.json', (c) => {
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#2563eb",
+    theme_color: "#667eea",
     orientation: "portrait-primary",
     scope: "/",
     icons: [
@@ -1009,7 +1009,7 @@ app.get('/legacy', (c) => {
         <link rel="manifest" href="/manifest.json">
         
         <!-- Icons -->
-        <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+        <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512x512.png">
         <link rel="apple-touch-icon" href="/static/icons/icon-180x180.png">
         <link rel="icon" sizes="192x192" href="/static/icons/icon-192x192.png">
         <link rel="icon" sizes="512x512" href="/static/icons/icon-512x512.png">
@@ -1366,7 +1366,7 @@ app.get('/legacy', (c) => {
                     
                     <div class="text-center p-6">
                         <i class="fas fa-lock text-green-600 text-4xl mb-4"></i>
-                        <h3 class="font-bold mb-2" data-i18n="landing.security_escrow_title">Paiement Escrow</h3>
+                        <h3 class="font-bold mb-2" data-i18n="landing.security_escrow_title">Paiement en séquestre</h3>
                         <p class="text-sm text-gray-600" data-i18n="landing.security_escrow_desc">Fonds sécurisés jusqu'à livraison</p>
                     </div>
                     
@@ -2926,7 +2926,7 @@ app.post('/api/stripe/payment/create', authMiddleware, async (c) => {
         traveler_stripe_account: traveler.stripe_account_id,
         platform: 'amanah-go'
       },
-      description: `Paiement Escrow pour trajet ${trip.departure_city} → ${trip.arrival_city}`
+      description: `Paiement en séquestre pour trajet ${trip.departure_city} → ${trip.arrival_city}`
     })
 
     // ✅ MIGRATION D1: Sauvegarder le payment_intent_id dans la transaction
